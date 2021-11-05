@@ -18,7 +18,6 @@ docker pull configcat/configcat-proxy
 ```bash
 docker run \
    -e CONFIGCAT_SDK_KEY=##YOURSDKKEY## \
-   -p 8081:8081 \
    configcat/configcat-proxy
 ```
 

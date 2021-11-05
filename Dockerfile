@@ -13,10 +13,11 @@ RUN npm prune --production
 FROM node:14-alpine
 
 ENV NODE_ENV production
-ENV PORT 8101
+ENV PORT 4224
 
 WORKDIR /
 COPY --from=builder /configcat/dist /configcat
-EXPOSE 8101
 USER node
+HEALTHCHECK --interval=60s --timeout=10s --start-period=60s \  
+    CMD wget -q --method=GET http://localhost:4224/health
 CMD node configcat
