@@ -2,9 +2,8 @@
   "name": "configcat-proxy",
   "version": "0.0.0",
   "scripts": {
-    "build": "./node_modules/.bin/ts-node build.ts",
-    "lint": "eslint . --ext .ts",
-    "start": "node -r module-alias/register ./dist --env=production",
+    "build": "tsc --pretty",
+    "start": "node ./dist --env=production",
     "start:dev": "nodemon"
   },
   "nodemonConfig": {
