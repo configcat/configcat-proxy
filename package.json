@@ -2,7 +2,7 @@
   "name": "configcat-proxy",
   "version": "0.0.1",
   "scripts": {
-    "build": "tsc --pretty",
+    "build": "tsc -p .",
     "start": "node ./dist --env=production",
     "start:dev": "nodemon"
   },
@@ -11,10 +11,7 @@
       "src"
     ],
     "ext": "ts, html",
-    "exec": "./node_modules/.bin/ts-node -r tsconfig-paths/register ./src"
-  },
-  "_moduleAliases": {
-    "@server": "dist/Server"
+    "exec": "ts-node -r tsconfig-paths/register ./src"
   },
   "eslintConfig": {
     "parser": "@typescript-eslint/parser",

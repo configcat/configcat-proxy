@@ -6,7 +6,7 @@ import express, { NextFunction, Request, Response, Router } from 'express';
 import StatusCodes from 'http-status-codes';
 import 'express-async-errors';
 
-import logger from '@shared/Logger';
+import logger from './shared/Logger';
 import { getValue, getAllValues, getAllKeys, forceRefresh } from './routes/featureflags';
 import { health } from './routes/health';
 

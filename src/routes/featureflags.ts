@@ -1,6 +1,6 @@
 import StatusCodes from 'http-status-codes';
 import { Request, Response } from 'express';
-import configCatClient from "@shared/ConfigCatClient";
+import configCatClient from "../shared/ConfigCatClient";
 
 /**
  * Get Feature Flag value.
