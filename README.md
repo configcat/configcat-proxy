@@ -30,15 +30,15 @@ curl http://localhost:4224/health  -I
 ```
 ### Configuration
 Configuration is available through environment variables.
-Name | Description | Default value
---------- | ----------- |
-`CONFIGCAT_SDK_KEY` | SDK Key to access your feature flags and configurations. Get it from ConfigCat Dashboard. | *required*
-`CONFIGCAT_DATA_GOVERNANCE` | Describes the location of your feature flag and setting data within the ConfigCat CDN. This parameter needs to be in sync with your Data Governance preferences. Read more at https://configcat.com/docs/advanced/data-governance. Available options: `Global`, `EuOnly`. | `Global`
-`CONFIGCAT_POLLING_MODE` | The ConfigCat SDK supports 3 different polling mechanisms to acquire the setting values from ConfigCat. Read more at https://configcat.com/docs/sdk-reference/node/#polling-modes. Available options: `AutoPoll`, `LazyLoad`, `ManualPoll`. | `AutoPoll`
-`CONFIGCAT_REQUEST_TIMEOUT_MS` | The amount of milliseconds the SDK waits for a response from the ConfigCat servers before returning values from the cache. | `30000`
-`CONFIGCAT_AUTOPOLL_POLL_INTERVAL_SECONDS` | Polling interval. Range: 1 - Number.MAX_SAFE_INTEGER. Only available for the `AutoPoll` mode. | `60`
-`CONFIGCAT_AUTOPOLL_MAX_INIT_WAIT_TIME_SECONDS` | Maximum waiting time between the client initialization and the first config acquisition in seconds. Only available for the `AutoPoll` mode. | `5`
-`CONFIGCAT_LAZYLOAD_CACHE_TIME_TO_LIVE_SECONDS` | Maximum waiting time between the client initialization and the first config acquisition in seconds. Only available for the `LazyLoad` mode. | `60`
+| Name | Description | Default value |
+| --------- | ----------- | ----------- |
+| `CONFIGCAT_SDK_KEY` | SDK Key to access your feature flags and configurations. Get it from ConfigCat Dashboard. | *required* |
+| `CONFIGCAT_DATA_GOVERNANCE` | Describes the location of your feature flag and setting data within the ConfigCat CDN. This parameter needs to be in sync with your Data Governance preferences. Read more at https://configcat.com/docs/advanced/data-governance. Available options: `Global`, `EuOnly`. | `Global` |
+| `CONFIGCAT_POLLING_MODE` | The ConfigCat SDK supports 3 different polling mechanisms to acquire the setting values from ConfigCat. Read more at https://configcat.com/docs/sdk-reference/node/#polling-modes. Available options: `AutoPoll`, `LazyLoad`, `ManualPoll`. | `AutoPoll` |
+| `CONFIGCAT_REQUEST_TIMEOUT_MS` | The amount of milliseconds the SDK waits for a response from the ConfigCat servers before returning values from the cache. | `30000` |
+| `CONFIGCAT_AUTOPOLL_POLL_INTERVAL_SECONDS` | Polling interval. Range: 1 - Number.MAX_SAFE_INTEGER. Only available for the `AutoPoll` mode. | `60` |
+| `CONFIGCAT_AUTOPOLL_MAX_INIT_WAIT_TIME_SECONDS` | Maximum waiting time between the client initialization and the first config acquisition in seconds. Only available for the `AutoPoll` mode. | `5` |
+| `CONFIGCAT_LAZYLOAD_CACHE_TIME_TO_LIVE_SECONDS` | Maximum waiting time between the client initialization and the first config acquisition in seconds. Only available for the `LazyLoad` mode. | `60` |
 
 ## Usage
 Avaiable endpoints:
