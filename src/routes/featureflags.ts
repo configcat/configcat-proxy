@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-misused-promises */
+
 import StatusCodes from 'http-status-codes';
 import { Request, Response, Router } from 'express';
 import configCatClient from "@shared/ConfigCatClient";
