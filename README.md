@@ -28,6 +28,7 @@ docker run \
 ```bash
 curl http://localhost:4224/health  -I
 ```
+
 ### Configuration
 Configuration is available through environment variables.
 | Name | Description | Default value |
@@ -44,24 +45,153 @@ Configuration is available through environment variables.
 Avaiable endpoints:
 
 ### `getValue`
-Method: `POST`
+Method: `POST`  
 Evaluates a setting by the parameters and returns the value.
+```bash
+curl -X POST http://localhost:4224/getValue \
+  -H 'Content-Type: application/json' \
+  -d '##BODY##'
+```
+
+#### Request Body
+##### Easy way
+Request Body:
+```json
+{
+    "key": "isMyAwesomeFeatureEnabled",
+    "defaultValue": false
+}
+```
+
+##### Simple user targeting
+Request Body:
+```json
+{
+    "key": "isMyAwesomeFeatureEnabled",
+    "defaultValue": false,
+    "user":
+    {
+        "identifier": "##SOME-USER-IDENTIFIER##"
+    }
+}
+```
+
+##### Advanced user targeting
+Request Body:
+```json
+{
+    "key": "isMyAwesomeFeatureEnabled",
+    "defaultValue": false,
+    "user":
+    {
+        "identifier": "##SOME-USER-IDENTIFIER##",
+        "email": "jane@example.com",
+        "country": "Awesomnia",
+        "custom":
+        {
+            "SubscriptionType": "Pro",
+            "UserRole": "Knight of Awesomnia"
+        }
+    }
+}
+```
+
+#### Response
+```json
+{
+    "value": false
+}
+```
 
 ### `getAllValues`
-Method: `POST`
+Method: `POST`  
 Evaluates all of the settings by the parameters and returns the values.
+```bash
+curl -X POST http://localhost:4224/getAllValues \
+  -H 'Content-Type: application/json' \
+  -d '##BODY##'
+```
+
+#### Request Body
+##### Easy way
+Request Body:
+```json
+{}
+```
+
+##### Simple user targeting
+Request Body:
+```json
+{
+    "user":
+    {
+        "identifier": "##SOME-USER-IDENTIFIER##"
+    }
+}
+```
+
+##### Advanced user targeting
+Request Body:
+```json
+{
+    "user":
+    {
+        "identifier": "##SOME-USER-IDENTIFIER##",
+        "email": "jane@example.com",
+        "country": "Awesomnia",
+        "custom":
+        {
+            "SubscriptionType": "Pro",
+            "UserRole": "Knight of Awesomnia"
+        }
+    }
+}
+```
+
+#### Response
+```json
+[
+    {
+        "settingKey": "isMyAwesomeFeatureEnabled",
+        "settingValue": false
+    },
+    {
+        "settingKey": "isMySecondAwesomeFeatureEnabled",
+        "settingValue": false
+    }
+]
+```
 
 ### `getAllKeys`
-Method: `POST`
+Method: `POST`  
 Returns all of the setting keys.
 
+```bash
+curl -X POST http://localhost:4224/getAllValues \
+  -H 'Content-Type: application/json' \
+  -d '##BODY##'
+```
+```json
+[
+    "isMyAwesomeFeatureEnabled",
+    "isMySecondAwesomeFeatureEnabled"
+]
+```
+#### Response
+
 ### `forceRefresh`
-Method: `POST`
+Method: `POST`  
 Refreshes the ConfigCatClient cache. Especially useful for `Manual Poll` mode combined with (https://configcat.com/docs/advanced/notifications-webhooks)[ConfigCat Webhooks].
+```bash
+curl -X POST http://localhost:4224/forceRefresh
+```
 
 ### `health`
 Method: `GET`
 Returns a success response if the service is up and running.
+```bash
+curl http://localhost:4224/health  -I
+```
 
 ## Need help?
 https://configcat.com/support
