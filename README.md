@@ -5,5 +5,21 @@ ConfigCat is a feature flag and configuration management service that lets you s
 
 ConfigCat is a <a href="https://configcat.com" target="_blank">hosted feature flag service</a>. Manage feature toggles across frontend, backend, mobile, desktop apps. <a href="https://configcat.com" target="_blank">Alternative to LaunchDarkly</a>. Management app + feature flag SDKs.
 
-## Getting started
-The ConfigCat Proxy provides a secure layer between your frontend or native applications and ConfigCat.
+The ConfigCat Proxy provides a secure layer between your frontend, mobile or desktop applications and ConfigCat.
+
+## Getting Started
+
+### Installation
+1. Pull docker image
+```bash
+docker pull configcat/configcat-proxy
+```
+2. Run the docker image
+```bash
+docker run \
+   -e CONFIGCAT_SDK_KEY=##YOURSDKKEY## \
+   -p 8081:8081 \
+   configcat/configcat-proxy
+```
+
+### Usage

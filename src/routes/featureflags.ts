@@ -1,14 +1,12 @@
-/* eslint-disable @typescript-eslint/no-misused-promises */
-
 import StatusCodes from 'http-status-codes';
-import { Request, Response, Router } from 'express';
+import { Request, Response } from 'express';
 import configCatClient from "@shared/ConfigCatClient";
 
 /**
  * Get Feature Flag value.
  * req:
  */
-async function getValue(req: Request, res: Response) {
+export async function getValue(req: Request, res: Response) {
     const { key, defaultValue, user }: {
         key: string, defaultValue: any, user?: {
             identifier: string,
@@ -38,7 +36,7 @@ async function getValue(req: Request, res: Response) {
 /**
  * Get all Feature Flag keys.
  */
-async function getAllKeys(req: Request, res: Response) {
+export async function getAllKeys(req: Request, res: Response) {
     const allkeys = await configCatClient.getAllKeysAsync();
     return res.status(StatusCodes.OK).json(allkeys).end();
 }
@@ -46,7 +44,7 @@ async function getAllKeys(req: Request, res: Response) {
 /**
  * Get all Feature Flag values.
  */
-async function getAllValues(req: Request, res: Response) {
+export async function getAllValues(req: Request, res: Response) {
     const { user }: {
         user?: {
             identifier: string,
@@ -62,17 +60,7 @@ async function getAllValues(req: Request, res: Response) {
 /**
  * Force refresh the ConfigCatClient cache.
  */
-async function forceRefresh(req: Request, res: Response) {
+export async function forceRefresh(req: Request, res: Response) {
     await configCatClient.forceRefreshAsync();
     return res.status(StatusCodes.OK).end();
 }
-
-
-// Route
-const FeatureFlagRouter = Router();
-FeatureFlagRouter.post('/getValue', getValue);
-FeatureFlagRouter.post('/getAllKeys', getAllKeys);
-FeatureFlagRouter.post('/getAllValues', getAllValues);
-FeatureFlagRouter.post('/forceRefresh', forceRefresh);
-
-export default FeatureFlagRouter;

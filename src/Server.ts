@@ -1,12 +1,14 @@
+/* eslint-disable @typescript-eslint/no-misused-promises */
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 
-import express, { NextFunction, Request, Response } from 'express';
+import express, { NextFunction, Request, Response, Router } from 'express';
 import StatusCodes from 'http-status-codes';
 import 'express-async-errors';
 
 import logger from '@shared/Logger';
-import FeatureFlagRouter from './routes/featureflags';
+import { getValue, getAllValues, getAllKeys, forceRefresh } from './routes/featureflags';
+import { health } from './routes/health';
 
 const app = express();
 const { BAD_REQUEST } = StatusCodes;
@@ -18,7 +20,16 @@ app.use(cookieParser());
 app.use(helmet());
 
 // Add routes
-app.use('/', FeatureFlagRouter);
+const router = Router();
+
+router.get('/health', health);
+router.post('/getValue', getValue);
+router.post('/getAllKeys', getAllKeys);
+router.post('/getAllValues', getAllValues);
+router.post('/forceRefresh', forceRefresh);
+
+app.use('/', router);
+
 
 // Print API errors
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -32,3 +43,4 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 
 // Export express instance
 export default app;
+
