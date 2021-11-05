@@ -5,9 +5,7 @@
     "build": "./node_modules/.bin/ts-node build.ts",
     "lint": "eslint . --ext .ts",
     "start": "node -r module-alias/register ./dist --env=production",
-    "start:dev": "nodemon",
-    "test": "nodemon --config ./spec/nodemon.json",
-    "test:no-reloading": "./node_modules/.bin/ts-node -r tsconfig-paths/register ./spec"
+    "start:dev": "nodemon"
   },
   "nodemonConfig": {
     "watch": [
@@ -20,9 +18,6 @@
     "exec": "./node_modules/.bin/ts-node -r tsconfig-paths/register ./src"
   },
   "_moduleAliases": {
-    "@daos": "dist/daos",
-    "@entities": "dist/entities",
-    "@shared": "dist/shared",
     "@server": "dist/Server"
   },
   "eslintConfig": {
@@ -61,6 +56,7 @@
   ],
   "dependencies": {
     "command-line-args": "^5.2.0",
+    "configcat-node": "^6.6.0",
     "cookie-parser": "^1.4.5",
     "dotenv": "^10.0.0",
     "express": "^4.17.1",
