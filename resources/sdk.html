@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <title>ConfigCat client sample</title>
+    <meta charset="utf-8">
+
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/configcat-js@latest/dist/configcat.min.js"></script>
+
+    <script type="text/javascript">
+        // Setting log level to Info to show detailed feature flag evaluation
+        var logger = configcat.createConsoleLogger(configcat.LogLevel.Info);
+
+        var userObject = {
+            identifier: "09c63c8ad682",
+        };
+
+        var configCatClient = configcat.getClient('proxy', configcat.PollingMode.AutoPoll, {
+            baseUrl: "http://localhost:8050",
+            pollIntervalSeconds: 2,
+            logger: logger,
+            configChanged: function () {
+                configCatClient.getValue("awesomeFeature", false, function (value) {
+                        console.log("awesomeFeature: " + value);
+                    },
+                    userObject
+                );
+            }
+        });
+    </script>
+</head>
+
+<body>
+Open Console (F12) to see the results!
+</body>
+
+</html>

@@ -1,0 +1,32 @@
+sdk:
+  base_url: "https://test-cdn-global.configcat.com"
+  key: "XxPbCKmzIUGORk4vsufpzw/iC_KABprDEueeQs3yovVnQ"
+  poll_interval: 300
+  log:
+    level: "error"
+  offline:
+    enabled: true
+    local:
+      file_path: "./resources/local.json"
+
+log:
+  level: "debug"
+
+grpc:
+  enabled: true
+  port: 50052
+
+http:
+  port: 8090
+  webhook:
+    enabled: true
+    signing_key: "configcat_whsk_Dj59sEWxRmm+84izQ8Cbn9o4Pnjz7E+/hxcmyfEVT+A="
+  cdn_proxy:
+    enabled: true
+  api:
+    enabled: true
+
+
+metrics:
+  enabled: true
+  port: 8091

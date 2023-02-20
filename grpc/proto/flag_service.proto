@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+option go_package = "github.com/configcat/configcat-proxy/grpc/proto";
+
+package configcat;
+
+service FlagService {
+  rpc EvalFlag(Request) returns (stream Payload) {}
+}
+
+message Request {
+  string key = 1;
+  map<string, string> user = 2;
+}
+
+message Payload {
+  string variationId = 1;
+  oneof value {
+    int32 whole_number = 2;
+    double decimal_number = 3;
+    string text = 4;
+    bool flag = 5;
+  }
+}
