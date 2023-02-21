@@ -3,6 +3,7 @@ version: "3.4"
 volumes:
   prometheus:
   grafana:
+  redis_insight:
 
 configs:
   prometheus_3:
@@ -24,6 +25,8 @@ services:
       - CONFIGCAT_SDK_KEY=XxPbCKmzIUGORk4vsufpzw/iC_KABprDEueeQs3yovVnQ
       - CONFIGCAT_SDK_POLL_INTERVAL=300
       - CONFIGCAT_HTTP_WEBHOOK_SIGNING_KEY=configcat_whsk_Dj59sEWxRmm+84izQ8Cbn9o4Pnjz7E+/hxcmyfEVT+A=
+      - CONFIGCAT_SDK_CACHE_REDIS_ENABLED=true
+      - CONFIGCAT_SDK_CACHE_REDIS_ADDRESSES=["redis:6379"]
     ports:
       - "8050:8050"
       - "8051:8051"
@@ -52,3 +55,8 @@ services:
         target: /etc/grafana/provisioning/dashboards/dashboards.yml
       - source: grafana_dashboard_1
         target: /etc/grafana/provisioning/dashboards/proxy/proxy_dashboard.json
+
+  redis:
+    image: redis:7.0.8-alpine3.17
+    ports:
+      - "6379:6379"
