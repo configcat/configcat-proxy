@@ -52,6 +52,42 @@ func TestSdk_Signal(t *testing.T) {
 	assert.Equal(t, fmt.Sprintf("W/\"%x\"", sha1.Sum(j.CachedJson)), j.Etag)
 }
 
+func TestSdk_Ready_Online(t *testing.T) {
+	key := configcattest.RandomSDKKey()
+	var h configcattest.Handler
+	_ = h.SetFlags(key, map[string]*configcattest.Flag{
+		"flag": {
+			Default: true,
+		},
+	})
+	srv := httptest.NewServer(&h)
+	defer srv.Close()
+
+	opts := config.SDKConfig{BaseUrl: srv.URL, Key: key}
+	client := NewClient(opts, log.NewNullLogger())
+	defer client.Close()
+	utils.WithTimeout(2*time.Second, func() {
+		<-client.Ready()
+	})
+	j := client.GetCachedJson()
+	assert.Equal(t, `{"f":{"flag":{"i":"v_flag","v":true,"t":0,"r":[],"p":null}},"p":null}`, string(j.CachedJson))
+	assert.Equal(t, fmt.Sprintf("W/\"%x\"", sha1.Sum(j.CachedJson)), j.Etag)
+}
+
+func TestSdk_Ready_Offline(t *testing.T) {
+	utils.UseTempFile(`{"f":{"flag":{"i":"","v":true,"t":0,"r":[],"p":[]}}}`, func(path string) {
+		opts := config.SDKConfig{Key: "key", Offline: config.OfflineConfig{Enabled: true, Local: config.LocalConfig{FilePath: path}}}
+		client := NewClient(opts, log.NewNullLogger())
+		defer client.Close()
+		utils.WithTimeout(2*time.Second, func() {
+			<-client.Ready()
+		})
+		j := client.GetCachedJson()
+		assert.Equal(t, `{"f":{"flag":{"i":"","v":true,"t":0,"r":[],"p":[]}}}`, string(j.CachedJson))
+		assert.Equal(t, fmt.Sprintf("W/\"%x\"", sha1.Sum(j.CachedJson)), j.Etag)
+	})
+}
+
 func TestSdk_Signal_Refresh(t *testing.T) {
 	key := configcattest.RandomSDKKey()
 	var h configcattest.Handler
@@ -79,7 +115,7 @@ func TestSdk_Signal_Refresh(t *testing.T) {
 			Default: false,
 		},
 	})
-	client.Refresh()
+	_ = client.Refresh()
 	utils.WithTimeout(2*time.Second, func() {
 		<-sub
 	})

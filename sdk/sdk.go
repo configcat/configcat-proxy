@@ -19,6 +19,7 @@ type Client interface {
 	Keys() []string
 	GetCachedJson() *store.EntryWithEtag
 	SubConfigChanged(id string) <-chan struct{}
+	Ready() <-chan struct{}
 	UnsubConfigChanged(id string)
 	Refresh() error
 	Close()
@@ -85,6 +86,7 @@ func NewClient(conf config.SDKConfig, log log.Logger) Client {
 		}
 	} else {
 		clientConfig.PollingMode = configcat.Manual
+		close(client.ready) // in OFFLINE mode we are ready immediately
 	}
 	if conf.DataGovernance == "eu" {
 		clientConfig.DataGovernance = configcat.EUOnly
@@ -156,11 +158,9 @@ func (c *client) Keys() []string {
 
 func (c *client) GetCachedJson() *store.EntryWithEtag {
 	c.readyOnce.Do(func() {
-		if !c.conf.Offline.Enabled {
-			select {
-			case <-c.ready:
-			case <-c.ctx.Done():
-			}
+		select {
+		case <-c.ready:
+		case <-c.ctx.Done():
 		}
 	})
 	return c.cache.GetLatestJson()
@@ -187,6 +187,10 @@ func (c *client) UnsubConfigChanged(id string) {
 
 func (c *client) Refresh() error {
 	return c.configCatClient.Refresh(c.ctx)
+}
+
+func (c *client) Ready() <-chan struct{} {
+	return c.ready
 }
 
 func (c *client) Close() {

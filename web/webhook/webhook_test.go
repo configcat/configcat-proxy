@@ -72,7 +72,9 @@ func TestWebhook_Signature_Ok(t *testing.T) {
 		req.Header.Set("X-ConfigCat-Webhook-ID", id)
 		req.Header.Set("X-ConfigCat-Webhook-Timestamp", timestamp)
 		sub := client.SubConfigChanged("hook1")
-		time.Sleep(200 * time.Millisecond) // let the SDK do the initialization
+		utils.WithTimeout(2*time.Second, func() {
+			<-client.Ready()
+		}) // wait for the SDK to do the initialization
 		_ = h.SetFlags(key, map[string]*configcattest.Flag{"flag": {Default: false}})
 		srv.ServeHTTP(res, req)
 		utils.WithTimeout(2*time.Second, func() {
@@ -100,7 +102,9 @@ func TestWebhook_Signature_Ok(t *testing.T) {
 		req.Header.Set("X-ConfigCat-Webhook-ID", id)
 		req.Header.Set("X-ConfigCat-Webhook-Timestamp", timestamp)
 		sub := client.SubConfigChanged("hook1")
-		time.Sleep(200 * time.Millisecond) // let the SDK do the initialization
+		utils.WithTimeout(2*time.Second, func() {
+			<-client.Ready()
+		}) // wait for the SDK to do the initialization
 		_ = h.SetFlags(key, map[string]*configcattest.Flag{"flag": {Default: false}})
 		srv.ServeHTTP(res, req)
 		utils.WithTimeout(2*time.Second, func() {
