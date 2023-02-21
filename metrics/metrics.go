@@ -21,9 +21,9 @@ type Handler interface {
 }
 
 type handler struct {
-	registry        *prometheus.Registry
-	responseTime    *prometheus.HistogramVec
-	connectionCount *prometheus.GaugeVec
+	registry     *prometheus.Registry
+	responseTime *prometheus.HistogramVec
+	connections  *prometheus.GaugeVec
 }
 
 type Server struct {
@@ -58,27 +58,27 @@ func NewHandler() Handler {
 	respTime := prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Namespace: "configcat",
 		Name:      "http_request_duration_seconds",
-		Help:      "Histogram of HTTP response time in seconds",
+		Help:      "Histogram of HTTP response time in seconds.",
 		Buckets:   prometheus.ExponentialBuckets(0.1, 1.5, 5),
 	}, []string{"route", "method", "status"})
 
-	connCount := prometheus.NewGaugeVec(prometheus.GaugeOpts{
+	connections := prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: "configcat",
-		Name:      "stream_connection_count",
-		Help:      "Count of connected clients per stream",
+		Name:      "stream_connections",
+		Help:      "Number of active client connections per stream.",
 	}, []string{"type", "stream"})
 
 	reg.MustRegister(
 		collectors.NewGoCollector(),
 		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
 		respTime,
-		connCount,
+		connections,
 	)
 
 	return &handler{
-		registry:        reg,
-		responseTime:    respTime,
-		connectionCount: connCount,
+		registry:     reg,
+		responseTime: respTime,
+		connections:  connections,
 	}
 }
 
@@ -112,9 +112,9 @@ func (h *handler) HttpHandler() http.Handler {
 }
 
 func (h *handler) IncrementConnection(streamType string, streamName string) {
-	h.connectionCount.WithLabelValues(streamType, streamName).Inc()
+	h.connections.WithLabelValues(streamType, streamName).Inc()
 }
 
 func (h *handler) DecrementConnection(streamType string, streamName string) {
-	h.connectionCount.WithLabelValues(streamType, streamName).Dec()
+	h.connections.WithLabelValues(streamType, streamName).Dec()
 }

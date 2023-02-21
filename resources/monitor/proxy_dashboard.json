@@ -24,7 +24,6 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 1,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -334,100 +333,6 @@
             },
             "lineInterpolation": "linear",
             "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "decimals": 0,
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "none"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 8,
-        "x": 0,
-        "y": 8
-      },
-      "id": 12,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "builder",
-          "expr": "increase(configcat_http_request_duration_seconds_count{instance=\"configcat_proxy:8051\"}[$__rate_interval]) > 0",
-          "legendFormat": "{{route}} - {{method}} - {{status}}",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Request Count",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
             "pointSize": 7,
             "scaleDistribution": {
               "type": "linear"
@@ -463,8 +368,8 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 8,
-        "x": 8,
+        "w": 12,
+        "x": 0,
         "y": 8
       },
       "id": 6,
@@ -489,7 +394,7 @@
           },
           "editorMode": "builder",
           "exemplar": false,
-          "expr": "configcat_stream_connection_count{type=\"sse\", instance=\"configcat_proxy:8051\"} > 0",
+          "expr": "configcat_stream_connections{type=\"sse\", instance=\"configcat_proxy:8051\"} > 0",
           "legendFormat": "{{stream}}",
           "range": true,
           "refId": "A"
@@ -560,8 +465,8 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 8,
-        "x": 16,
+        "w": 12,
+        "x": 12,
         "y": 8
       },
       "id": 25,
@@ -584,9 +489,9 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "editorMode": "builder",
+          "editorMode": "code",
           "exemplar": false,
-          "expr": "configcat_stream_connection_count{type=\"grpc\", instance=\"configcat_proxy:8051\"} > 0",
+          "expr": "configcat_stream_connections{type=\"grpc\", instance=\"configcat_proxy:8051\"} > 0",
           "legendFormat": "{{stream}}",
           "range": true,
           "refId": "A"
@@ -594,6 +499,100 @@
       ],
       "title": "GRPC Connections",
       "transformations": [],
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "id": 12,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "builder",
+          "expr": "increase(configcat_http_request_duration_seconds_count{instance=\"configcat_proxy:8051\"}[$__rate_interval]) > 0",
+          "legendFormat": "{{route}} - {{method}} - {{status}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Request Count",
       "type": "timeseries"
     },
     {
@@ -655,9 +654,9 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 9,
-        "w": 24,
-        "x": 0,
+        "h": 8,
+        "w": 12,
+        "x": 12,
         "y": 16
       },
       "id": 8,
@@ -751,7 +750,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 25
+        "y": 24
       },
       "id": 22,
       "options": {
@@ -844,7 +843,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 25
+        "y": 24
       },
       "id": 16,
       "options": {
@@ -937,7 +936,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 25
+        "y": 24
       },
       "id": 24,
       "options": {
@@ -984,6 +983,6 @@
   "timezone": "",
   "title": "Proxy",
   "uid": "s3Vj4B14k",
-  "version": 22,
+  "version": 1,
   "weekStart": ""
 }
