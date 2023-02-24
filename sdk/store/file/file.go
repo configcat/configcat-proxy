@@ -58,20 +58,20 @@ func NewFileStorage(conf config.LocalConfig, log log.Logger) store.Storage {
 }
 
 func (f *fileStorage) run() {
-	go func(fst *fileStorage) {
+	go func() {
 		for {
 			select {
-			case <-fst.watcher.Modified():
-				if fst.reload() {
-					fst.Notify()
+			case <-f.watcher.Modified():
+				if f.reload() {
+					f.Notify()
 				}
-			case <-fst.closed:
-				fst.watcher.Close()
-				fst.log.Reportf("shutdown complete")
+			case <-f.closed:
+				f.watcher.Close()
+				f.log.Reportf("shutdown complete")
 				return
 			}
 		}
-	}(f)
+	}()
 }
 
 func (f *fileStorage) reload() bool {

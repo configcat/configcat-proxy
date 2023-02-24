@@ -38,22 +38,22 @@ func NewNotifyingRedisStorage(sdkKey string, conf config.SDKConfig, log log.Logg
 }
 
 func (n *notifyingRedisStorage) run() {
-	go func(nr *notifyingRedisStorage) {
+	go func() {
 		for {
 			select {
-			case <-nr.poller.C:
-				if nr.reload() {
-					nr.Notify()
+			case <-n.poller.C:
+				if n.reload() {
+					n.Notify()
 				}
-			case <-nr.closed:
-				nr.ctxCancel()
-				nr.poller.Stop()
-				nr.redisStorage.Close()
-				nr.log.Reportf("shutdown complete")
+			case <-n.closed:
+				n.ctxCancel()
+				n.poller.Stop()
+				n.redisStorage.Close()
+				n.log.Reportf("shutdown complete")
 				return
 			}
 		}
-	}(n)
+	}()
 }
 
 func (n *notifyingRedisStorage) reload() bool {

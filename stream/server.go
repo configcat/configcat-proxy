@@ -40,19 +40,19 @@ func NewServer(sdkClient sdk.Client, metrics metrics.Handler, log log.Logger, se
 }
 
 func (s *server) run() {
-	go func(sr *server) {
+	go func() {
 		for {
 			select {
-			case <-sr.cleanup.C:
-				sr.teardownStaleStreams()
-			case <-sr.closed:
-				sr.cleanup.Stop()
-				sr.teardownAllStreams()
-				sr.log.Reportf("shutdown complete")
+			case <-s.cleanup.C:
+				s.teardownStaleStreams()
+			case <-s.closed:
+				s.cleanup.Stop()
+				s.teardownAllStreams()
+				s.log.Reportf("shutdown complete")
 				return
 			}
 		}
-	}(s)
+	}()
 }
 
 func (s *server) GetOrCreateStream(key string) Stream {

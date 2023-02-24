@@ -47,27 +47,27 @@ func newPollWatcher(conf config.LocalConfig, log log.Logger) (*pollWatcher, erro
 }
 
 func (p *pollWatcher) run() {
-	go func(pw *pollWatcher) {
+	go func() {
 		for {
 			select {
-			case <-pw.poller.C:
-				stat, err := os.Stat(pw.realFilePath)
+			case <-p.poller.C:
+				stat, err := os.Stat(p.realFilePath)
 				if err != nil {
-					pw.log.Errorf("failed to read stat on %s: %s", pw.realFilePath, err)
+					p.log.Errorf("failed to read stat on %s: %s", p.realFilePath, err)
 					continue
 				}
-				if stat.ModTime() != pw.lastModifiedDate || stat.Size() != pw.lastSize {
-					pw.lastModifiedDate = stat.ModTime()
-					pw.lastSize = stat.Size()
-					pw.modified <- struct{}{}
+				if stat.ModTime() != p.lastModifiedDate || stat.Size() != p.lastSize {
+					p.lastModifiedDate = stat.ModTime()
+					p.lastSize = stat.Size()
+					p.modified <- struct{}{}
 				}
-			case <-pw.closed:
-				pw.poller.Stop()
-				pw.log.Reportf("shutdown complete")
+			case <-p.closed:
+				p.poller.Stop()
+				p.log.Reportf("shutdown complete")
 				return
 			}
 		}
-	}(p)
+	}()
 }
 
 func (p *pollWatcher) Modified() <-chan struct{} {

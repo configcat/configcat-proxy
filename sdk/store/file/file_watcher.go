@@ -54,22 +54,22 @@ func newFileWatcher(conf config.LocalConfig, log log.Logger) (*fileWatcher, erro
 }
 
 func (f *fileWatcher) run() {
-	go func(fw *fileWatcher) {
+	go func() {
 		for {
 			select {
-			case event := <-fw.watch.Events:
-				if event.Name == fw.realFilePath && event.Has(fsnotify.Write) {
-					fw.modified <- struct{}{}
+			case event := <-f.watch.Events:
+				if event.Name == f.realFilePath && event.Has(fsnotify.Write) {
+					f.modified <- struct{}{}
 				}
-			case err := <-fw.watch.Errors:
-				fw.log.Errorf("%s", err)
-			case <-fw.closed:
-				_ = fw.watch.Close()
-				fw.log.Reportf("shutdown complete")
+			case err := <-f.watch.Errors:
+				f.log.Errorf("%s", err)
+			case <-f.closed:
+				_ = f.watch.Close()
+				f.log.Reportf("shutdown complete")
 				return
 			}
 		}
-	}(f)
+	}()
 }
 
 func (f *fileWatcher) Modified() <-chan struct{} {

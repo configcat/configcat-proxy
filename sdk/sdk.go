@@ -103,20 +103,20 @@ func NewClient(conf config.SDKConfig, log log.Logger) Client {
 }
 
 func (c *client) run() {
-	go func(cl *client) {
+	go func() {
 		for {
 			select {
-			case <-cl.cache.Modified():
-				cl.signal()
-			case <-cl.closed:
+			case <-c.cache.Modified():
+				c.signal()
+			case <-c.closed:
 				c.ctxCancel()
-				cl.cache.Close()
-				cl.configCatClient.Close()
-				cl.log.Reportf("shutdown complete")
+				c.cache.Close()
+				c.configCatClient.Close()
+				c.log.Reportf("shutdown complete")
 				return
 			}
 		}
-	}(c)
+	}()
 }
 
 func (c *client) signal() {

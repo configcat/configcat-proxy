@@ -17,7 +17,7 @@ var defaultConnectionDiscriminator = "no-user"
 
 type channel struct {
 	connections []*connection
-	lastPayload atomic.Pointer[model.ResponsePayload]
+	lastPayload *model.ResponsePayload
 	user        *sdk.UserAttrs
 }
 
@@ -62,34 +62,34 @@ func newStream(key string, serverType string, sdkClient sdk.Client, metrics metr
 }
 
 func (s *stream) run() {
-	go func(str *stream) {
+	go func() {
 		for {
 			select {
-			case established := <-str.connectionEstablished:
-				str.addConnection(established)
-				str.log.Debugf("#%s: connection established, all connections: %d", str.key, atomic.AddInt64(&str.connectionCount, 1))
-				if str.metrics != nil {
-					str.metrics.IncrementConnection(str.serverType, str.key)
+			case established := <-s.connectionEstablished:
+				s.addConnection(established)
+				s.log.Debugf("#%s: connection established, all connections: %d", s.key, atomic.AddInt64(&s.connectionCount, 1))
+				if s.metrics != nil {
+					s.metrics.IncrementConnection(s.serverType, s.key)
 				}
 
-			case connection := <-str.connectionClosed:
-				str.removeConnection(connection)
-				str.log.Debugf("#%s: connection closed, all connections: %d", str.key, atomic.AddInt64(&str.connectionCount, -1))
-				if str.metrics != nil {
-					str.metrics.DecrementConnection(str.serverType, str.key)
+			case connection := <-s.connectionClosed:
+				s.removeConnection(connection)
+				s.log.Debugf("#%s: connection closed, all connections: %d", s.key, atomic.AddInt64(&s.connectionCount, -1))
+				if s.metrics != nil {
+					s.metrics.DecrementConnection(s.serverType, s.key)
 				}
 
-			case <-str.sdkConfigChanged:
-				str.log.Debugf("#%s: sending payload to %d connection(s)", str.key, atomic.LoadInt64(&str.connectionCount))
-				str.notifyConnections()
+			case <-s.sdkConfigChanged:
+				s.log.Debugf("#%s: sending payload to %d connection(s)", s.key, atomic.LoadInt64(&s.connectionCount))
+				s.notifyConnections()
 
-			case <-str.closed:
-				str.tearDown()
-				str.log.Infof("#%s: stream closed", str.key)
+			case <-s.closed:
+				s.tearDown()
+				s.log.Infof("#%s: stream closed", s.key)
 				return
 			}
 		}
-	}(s)
+	}()
 }
 
 func (s *stream) CreateConnection(user *sdk.UserAttrs) Connection {
@@ -118,12 +118,11 @@ func (s *stream) addConnection(established *connEstablished) {
 		val, _ := s.sdkClient.Eval(s.key, established.user)
 		ch = &channel{user: established.user}
 		payload := model.PayloadFromEvalData(&val)
-		ch.lastPayload.Store(&payload)
+		ch.lastPayload = &payload
 		s.channels[discriminator] = ch
 	}
 	ch.connections = append(ch.connections, established.connection)
-	payload := ch.lastPayload.Load()
-	established.connection.receive <- payload
+	established.connection.receive <- ch.lastPayload
 }
 
 func (s *stream) removeConnection(connection *connection) {
@@ -154,15 +153,17 @@ func (s *stream) removeConnection(connection *connection) {
 }
 
 func (s *stream) notifyConnections() {
-	for _, b := range s.channels {
-		val, err := s.sdkClient.Eval(s.key, b.user)
+	for _, ch := range s.channels {
+		val, err := s.sdkClient.Eval(s.key, ch.user)
 		if err != nil {
 			continue
 		}
-		payload := model.PayloadFromEvalData(&val)
-		b.lastPayload.Store(&payload)
-		for _, conn := range b.connections {
-			conn.receive <- &payload
+		if val.Value != ch.lastPayload.Value {
+			payload := model.PayloadFromEvalData(&val)
+			ch.lastPayload = &payload
+			for _, conn := range ch.connections {
+				conn.receive <- &payload
+			}
 		}
 	}
 }

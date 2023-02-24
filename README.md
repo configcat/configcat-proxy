@@ -1,1 +1,1 @@
-# configcat-proxy
+# ConfigCat Proxy [WIP]
