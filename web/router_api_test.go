@@ -7,6 +7,7 @@ import (
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/sdk"
+	"github.com/configcat/configcat-proxy/status"
 	"github.com/configcat/go-sdk/v7/configcattest"
 	"github.com/stretchr/testify/assert"
 	"io"
@@ -452,10 +453,10 @@ func newAPIRouter(t *testing.T, conf config.ApiConfig) *HttpRouter {
 	})
 	srv := httptest.NewServer(&h)
 	opts := config.SDKConfig{BaseUrl: srv.URL, Key: key}
-	client := sdk.NewClient(opts, log.NewNullLogger())
+	client := sdk.NewClient(opts, nil, status.NewNullReporter(), log.NewNullLogger())
 	t.Cleanup(func() {
 		srv.Close()
 		client.Close()
 	})
-	return NewRouter(client, nil, config.HttpConfig{Api: conf}, log.NewNullLogger())
+	return NewRouter(client, nil, status.NewNullReporter(), config.HttpConfig{Api: conf}, log.NewNullLogger())
 }

@@ -1,13 +1,13 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/grpc"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/metrics"
 	"github.com/configcat/configcat-proxy/sdk"
+	"github.com/configcat/configcat-proxy/status"
 	"github.com/configcat/configcat-proxy/web"
 	"os"
 	"os/signal"
@@ -34,11 +34,6 @@ func main() {
 
 	logger = logger.WithLevel(conf.Log.GetLevel())
 
-	j, err := json.Marshal(conf)
-	logger.Reportf("%s", j)
-
-	sdkClient := sdk.NewClient(conf.SDK, logger)
-
 	errorChan := make(chan error)
 
 	var metric metrics.Handler
@@ -49,7 +44,9 @@ func main() {
 		metricServer.Listen()
 	}
 
-	router := web.NewRouter(sdkClient, metric, conf.Http, logger)
+	statusReporter := status.NewReporter(conf)
+	sdkClient := sdk.NewClient(conf.SDK, metric, statusReporter, logger)
+	router := web.NewRouter(sdkClient, metric, statusReporter, conf.Http, logger)
 
 	httpServer := web.NewServer(router.Handler(), logger, conf, errorChan)
 	httpServer.Listen()

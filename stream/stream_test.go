@@ -6,6 +6,7 @@ import (
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/sdk"
+	"github.com/configcat/configcat-proxy/status"
 	"github.com/configcat/go-sdk/v7/configcattest"
 	"github.com/stretchr/testify/assert"
 	"net/http/httptest"
@@ -104,7 +105,7 @@ func newClient(t *testing.T, h *configcattest.Handler, key string) sdk.Client {
 	defer srv.Close()
 
 	opts := config.SDKConfig{BaseUrl: srv.URL, Key: key}
-	client := sdk.NewClient(opts, log.NewNullLogger())
+	client := sdk.NewClient(opts, nil, status.NewNullReporter(), log.NewNullLogger())
 	defer client.Close()
 	t.Cleanup(func() {
 		srv.Close()

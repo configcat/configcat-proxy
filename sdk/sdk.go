@@ -4,10 +4,13 @@ import (
 	"context"
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/log"
+	"github.com/configcat/configcat-proxy/metrics"
 	"github.com/configcat/configcat-proxy/sdk/store"
 	"github.com/configcat/configcat-proxy/sdk/store/file"
 	"github.com/configcat/configcat-proxy/sdk/store/redis"
+	"github.com/configcat/configcat-proxy/status"
 	"github.com/configcat/go-sdk/v7"
+	"net/http"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -46,16 +49,16 @@ type client struct {
 	ctxCancel       func()
 }
 
-func NewClient(conf config.SDKConfig, log log.Logger) Client {
+func NewClient(conf config.SDKConfig, metricsHandler metrics.Handler, reporter status.Reporter, log log.Logger) Client {
 	sdkLog := log.WithLevel(conf.Log.GetLevel()).WithPrefix("sdk")
 	var offline = conf.Offline.Enabled
 	var cache store.Storage
 	if offline && conf.Offline.Local.FilePath != "" {
-		cache = file.NewFileStorage(conf.Offline.Local, log.WithLevel(conf.Offline.Log.GetLevel()))
-	} else if offline && conf.Cache.Redis.Enabled {
-		cache = redis.NewNotifyingRedisStorage(conf.Key, conf, log.WithLevel(conf.Offline.Log.GetLevel()))
+		cache = file.NewFileStorage(conf.Offline.Local, reporter, log.WithLevel(conf.Offline.Log.GetLevel()))
+	} else if offline && conf.Offline.UseCache {
+		cache = redis.NewNotifyingRedisStorage(conf.Key, conf, reporter, log.WithLevel(conf.Offline.Log.GetLevel()))
 	} else if !offline && conf.Cache.Redis.Enabled {
-		cache = redis.NewRedisStorage(conf.Key, conf.Cache.Redis)
+		cache = redis.NewRedisStorage(conf.Key, conf.Cache.Redis, reporter)
 	} else {
 		cache = &store.InMemoryStorage{EntryStore: store.NewEntryStore()}
 	}
@@ -77,6 +80,7 @@ func NewClient(conf config.SDKConfig, log log.Logger) Client {
 		SDKKey:         conf.Key,
 		DataGovernance: configcat.Global,
 		Logger:         sdkLog,
+		Transport:      http.DefaultTransport,
 	}
 	if !conf.Offline.Enabled {
 		clientConfig.Hooks = &configcat.Hooks{
@@ -84,6 +88,10 @@ func NewClient(conf config.SDKConfig, log log.Logger) Client {
 				client.signal()
 			},
 		}
+		if metricsHandler != nil {
+			clientConfig.Transport = metrics.Intercept(metricsHandler, clientConfig.Transport)
+		}
+		clientConfig.Transport = status.Intercept(reporter, clientConfig.Transport)
 	} else {
 		clientConfig.PollingMode = configcat.Manual
 		close(client.ready) // in OFFLINE mode we are ready immediately

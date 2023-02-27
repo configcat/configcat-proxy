@@ -7,6 +7,7 @@ import (
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/sdk/store"
+	"github.com/configcat/configcat-proxy/status"
 	"sync"
 	"time"
 )
@@ -22,9 +23,9 @@ type notifyingRedisStorage struct {
 	redisStorage
 }
 
-func NewNotifyingRedisStorage(sdkKey string, conf config.SDKConfig, log log.Logger) store.Storage {
+func NewNotifyingRedisStorage(sdkKey string, conf config.SDKConfig, reporter status.Reporter, log log.Logger) store.Storage {
 	nrLogger := log.WithPrefix("redis-poll")
-	s := newRedisStorage(sdkKey, conf.Cache.Redis)
+	s := newRedisStorage(sdkKey, conf.Cache.Redis, reporter)
 	n := &notifyingRedisStorage{
 		redisStorage: s,
 		log:          nrLogger,
@@ -60,6 +61,7 @@ func (n *notifyingRedisStorage) reload() bool {
 	data, err := n.redisStorage.Get(n.ctx, n.cacheKey)
 	if err != nil {
 		n.log.Errorf("failed to read from redis: %s", err)
+		n.reporter.ReportError(status.SDK, err)
 		return false
 	}
 	if bytes.Equal(n.stored, data) {
@@ -69,12 +71,14 @@ func (n *notifyingRedisStorage) reload() bool {
 	var root store.RootNode
 	if err = json.Unmarshal(data, &root); err != nil {
 		n.log.Errorf("failed to parse JSON from redis: %s", err)
+		n.reporter.ReportError(status.SDK, err)
 		return false
 	}
 	n.stored = data
 	root.Fixup()
 	ser, _ := json.Marshal(root) // Re-serialize to enforce the JSON schema
 	n.StoreEntry(ser)
+	n.reporter.ReportOk(status.SDK, "reload from cache succeeded")
 	return true
 }
 

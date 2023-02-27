@@ -5,6 +5,7 @@ import (
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/sdk"
+	"github.com/configcat/configcat-proxy/status"
 	"github.com/configcat/go-sdk/v7/configcattest"
 	"net/http/httptest"
 	"testing"
@@ -22,7 +23,7 @@ func BenchmarkStream(b *testing.B) {
 	defer srv.Close()
 
 	opts := config.SDKConfig{BaseUrl: srv.URL, Key: key}
-	client := sdk.NewClient(opts, log.NewNullLogger())
+	client := sdk.NewClient(opts, nil, status.NewNullReporter(), log.NewNullLogger())
 	defer client.Close()
 
 	strServer := NewServer(client, nil, log.NewNullLogger(), "test").(*server)

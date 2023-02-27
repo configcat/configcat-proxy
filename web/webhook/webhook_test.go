@@ -8,6 +8,7 @@ import (
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/sdk"
+	"github.com/configcat/configcat-proxy/status"
 	"github.com/configcat/configcat-proxy/utils"
 	"github.com/configcat/go-sdk/v7/configcattest"
 	"github.com/stretchr/testify/assert"
@@ -141,7 +142,7 @@ func TestWebhook_Signature_Replay_Reject(t *testing.T) {
 func newClient(t *testing.T, h *configcattest.Handler, key string) sdk.Client {
 	srv := httptest.NewServer(h)
 	opts := config.SDKConfig{BaseUrl: srv.URL, Key: key}
-	client := sdk.NewClient(opts, log.NewNullLogger())
+	client := sdk.NewClient(opts, nil, status.NewNullReporter(), log.NewNullLogger())
 	t.Cleanup(func() {
 		srv.Close()
 		client.Close()

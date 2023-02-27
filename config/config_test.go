@@ -18,6 +18,9 @@ func TestConfig_Defaults(t *testing.T) {
 	assert.Equal(t, 50051, conf.Grpc.Port)
 	assert.True(t, conf.Grpc.Enabled)
 
+	assert.Equal(t, 8051, conf.Metrics.Port)
+	assert.True(t, conf.Metrics.Enabled)
+
 	assert.True(t, conf.Http.Sse.Enabled)
 	assert.True(t, conf.Http.Sse.AllowCORS)
 
@@ -33,8 +36,6 @@ func TestConfig_Defaults(t *testing.T) {
 	assert.Equal(t, 30, conf.SDK.PollInterval)
 	assert.Equal(t, 5, conf.SDK.Offline.Local.PollInterval)
 	assert.Equal(t, 5, conf.SDK.Offline.CachePollInterval)
-
-	assert.True(t, conf.Metrics.Enabled)
 
 	assert.Equal(t, 0, conf.SDK.Cache.Redis.DB)
 	assert.Equal(t, "localhost:6379", conf.SDK.Cache.Redis.Addresses[0])

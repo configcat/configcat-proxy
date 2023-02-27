@@ -4,13 +4,14 @@ import (
 	"context"
 	"github.com/alicebob/miniredis/v2"
 	"github.com/configcat/configcat-proxy/config"
+	"github.com/configcat/configcat-proxy/status"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
 func TestRedisStorage(t *testing.T) {
 	s := miniredis.RunT(t)
-	srv := NewRedisStorage("key", config.RedisConfig{Addresses: []string{s.Addr()}}).(*redisStorage)
+	srv := NewRedisStorage("key", config.RedisConfig{Addresses: []string{s.Addr()}}, status.NewNullReporter()).(*redisStorage)
 
 	err := srv.Set(context.Background(), "", []byte(`{"f":{"flag":{"i":"","v":false,"t":0,"r":[],"p":[]}}}`))
 	assert.NoError(t, err)
@@ -23,7 +24,7 @@ func TestRedisStorage(t *testing.T) {
 }
 
 func TestRedisStorage_Unavailable(t *testing.T) {
-	srv := NewRedisStorage("key", config.RedisConfig{Addresses: []string{"nonexisting"}}).(*redisStorage)
+	srv := NewRedisStorage("key", config.RedisConfig{Addresses: []string{"nonexisting"}}, status.NewNullReporter()).(*redisStorage)
 
 	err := srv.Set(context.Background(), "", []byte(`{"f":{"flag":{"i":"","v":false,"t":0,"r":[],"p":[]}}}`))
 	assert.Error(t, err)

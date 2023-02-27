@@ -5,6 +5,7 @@ import (
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/metrics"
 	"github.com/configcat/configcat-proxy/sdk"
+	"github.com/configcat/configcat-proxy/status"
 	"github.com/configcat/configcat-proxy/web/api"
 	"github.com/configcat/configcat-proxy/web/cdnproxy"
 	"github.com/configcat/configcat-proxy/web/mware"
@@ -23,7 +24,7 @@ type HttpRouter struct {
 	metrics        metrics.Handler
 }
 
-func NewRouter(sdkClient sdk.Client, metrics metrics.Handler, conf config.HttpConfig, log log.Logger) *HttpRouter {
+func NewRouter(sdkClient sdk.Client, metrics metrics.Handler, reporter status.Reporter, conf config.HttpConfig, log log.Logger) *HttpRouter {
 	httpLog := log.WithLevel(conf.Log.GetLevel()).WithPrefix("http")
 
 	r := &HttpRouter{
@@ -46,6 +47,7 @@ func NewRouter(sdkClient sdk.Client, metrics metrics.Handler, conf config.HttpCo
 	if conf.Api.Enabled {
 		r.setupAPIRoutes(conf.Api, sdkClient, httpLog)
 	}
+	r.setupStatusRoutes(reporter)
 	return r
 }
 
@@ -108,6 +110,16 @@ func (s *HttpRouter) setupCDNProxyRoutes(conf config.CdnProxyConfig, sdkClient s
 	s.router.HandlerFunc(http.MethodGet, path, handler)
 	s.router.HandlerFunc(http.MethodOptions, path, handler)
 	log.Reportf("CDN proxy enabled, accepting requests on path: %s", path)
+}
+
+func (s *HttpRouter) setupStatusRoutes(reporter status.Reporter) {
+	path := "/status"
+	handler := mware.AutoOptions(mware.GZip(reporter.HttpHandler()))
+	if s.metrics != nil {
+		handler = metrics.Measure(s.metrics, handler)
+	}
+	s.router.HandlerFunc(http.MethodGet, path, handler)
+	s.router.HandlerFunc(http.MethodOptions, path, handler)
 }
 
 type endpoint struct {

@@ -4,6 +4,7 @@ import (
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/sdk"
+	"github.com/configcat/configcat-proxy/status"
 	"github.com/configcat/configcat-proxy/utils"
 	"github.com/configcat/go-sdk/v7/configcattest"
 	"github.com/stretchr/testify/assert"
@@ -89,7 +90,7 @@ func newServer(t *testing.T, proxyConfig config.CdnProxyConfig) *Server {
 	})
 	srv := httptest.NewServer(&h)
 	opts := config.SDKConfig{BaseUrl: srv.URL, Key: key}
-	client := sdk.NewClient(opts, log.NewNullLogger())
+	client := sdk.NewClient(opts, nil, status.NewNullReporter(), log.NewNullLogger())
 	t.Cleanup(func() {
 		srv.Close()
 		client.Close()
@@ -102,7 +103,7 @@ func newErrorServer(t *testing.T, proxyConfig config.CdnProxyConfig) *Server {
 	var h configcattest.Handler
 	srv := httptest.NewServer(&h)
 	opts := config.SDKConfig{BaseUrl: srv.URL, Key: key}
-	client := sdk.NewClient(opts, log.NewNullLogger())
+	client := sdk.NewClient(opts, nil, status.NewNullReporter(), log.NewNullLogger())
 	t.Cleanup(func() {
 		srv.Close()
 		client.Close()
@@ -112,7 +113,7 @@ func newErrorServer(t *testing.T, proxyConfig config.CdnProxyConfig) *Server {
 
 func newOfflineServer(t *testing.T, path string, proxyConfig config.CdnProxyConfig) *Server {
 	opts := config.SDKConfig{Key: "local", Offline: config.OfflineConfig{Enabled: true, Local: config.LocalConfig{FilePath: path}}}
-	client := sdk.NewClient(opts, log.NewNullLogger())
+	client := sdk.NewClient(opts, nil, status.NewNullReporter(), log.NewNullLogger())
 	t.Cleanup(func() {
 		client.Close()
 	})

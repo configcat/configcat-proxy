@@ -21,9 +21,10 @@ type Handler interface {
 }
 
 type handler struct {
-	registry     *prometheus.Registry
-	responseTime *prometheus.HistogramVec
-	connections  *prometheus.GaugeVec
+	registry        *prometheus.Registry
+	responseTime    *prometheus.HistogramVec
+	sdkResponseTime *prometheus.HistogramVec
+	connections     *prometheus.GaugeVec
 }
 
 type Server struct {
@@ -62,6 +63,13 @@ func NewHandler() Handler {
 		Buckets:   prometheus.ExponentialBuckets(0.1, 1.5, 5),
 	}, []string{"route", "method", "status"})
 
+	sdkRespTime := prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Namespace: "configcat",
+		Name:      "sdk_http_request_duration_seconds",
+		Help:      "Histogram of ConfigCat CDN HTTP response time in seconds.",
+		Buckets:   prometheus.ExponentialBuckets(0.1, 1.5, 5),
+	}, []string{"route", "status"})
+
 	connections := prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: "configcat",
 		Name:      "stream_connections",
@@ -72,13 +80,15 @@ func NewHandler() Handler {
 		collectors.NewGoCollector(),
 		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
 		respTime,
+		sdkRespTime,
 		connections,
 	)
 
 	return &handler{
-		registry:     reg,
-		responseTime: respTime,
-		connections:  connections,
+		registry:        reg,
+		responseTime:    respTime,
+		sdkResponseTime: sdkRespTime,
+		connections:     connections,
 	}
 }
 
