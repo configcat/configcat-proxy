@@ -10,7 +10,7 @@ type clientInterceptor struct {
 	reporter Reporter
 }
 
-func Intercept(reporter Reporter, transport http.RoundTripper) http.RoundTripper {
+func InterceptSdk(reporter Reporter, transport http.RoundTripper) http.RoundTripper {
 	return &clientInterceptor{reporter: reporter, RoundTripper: transport}
 }
 

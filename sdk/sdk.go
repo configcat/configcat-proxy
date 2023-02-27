@@ -89,9 +89,9 @@ func NewClient(conf config.SDKConfig, metricsHandler metrics.Handler, reporter s
 			},
 		}
 		if metricsHandler != nil {
-			clientConfig.Transport = metrics.Intercept(metricsHandler, clientConfig.Transport)
+			clientConfig.Transport = metrics.InterceptSdk(metricsHandler, clientConfig.Transport)
 		}
-		clientConfig.Transport = status.Intercept(reporter, clientConfig.Transport)
+		clientConfig.Transport = status.InterceptSdk(reporter, clientConfig.Transport)
 	} else {
 		clientConfig.PollingMode = configcat.Manual
 		close(client.ready) // in OFFLINE mode we are ready immediately

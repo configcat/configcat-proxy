@@ -817,7 +817,7 @@
         "y": 19
       },
       "id": 26,
-      "interval": "30s",
+      "interval": "1m",
       "options": {
         "legend": {
           "calcs": [],
@@ -913,7 +913,7 @@
         "y": 19
       },
       "id": 27,
-      "interval": "30s",
+      "interval": "1m",
       "options": {
         "legend": {
           "calcs": [],
@@ -1238,6 +1238,6 @@
   "timezone": "",
   "title": "Proxy",
   "uid": "s3Vj4B14k",
-  "version": 11,
+  "version": 16,
   "weekStart": ""
 }

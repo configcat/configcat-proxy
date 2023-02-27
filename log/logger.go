@@ -45,8 +45,8 @@ func NewNullLogger() Logger {
 func NewLogger(err io.Writer, out io.Writer, level Level) Logger {
 	return &logger{
 		level:       level,
-		errorLogger: log.New(err, "", log.Ldate|log.Ltime),
-		outLogger:   log.New(out, "", log.Ldate|log.Ltime),
+		errorLogger: log.New(err, "", log.Ldate|log.Ltime|log.LUTC),
+		outLogger:   log.New(out, "", log.Ldate|log.Ltime|log.LUTC),
 	}
 }
 

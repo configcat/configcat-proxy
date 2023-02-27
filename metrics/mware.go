@@ -33,7 +33,7 @@ type clientInterceptor struct {
 	metricsHandler Handler
 }
 
-func Intercept(metricsHandler Handler, transport http.RoundTripper) http.RoundTripper {
+func InterceptSdk(metricsHandler Handler, transport http.RoundTripper) http.RoundTripper {
 	return &clientInterceptor{metricsHandler: metricsHandler, RoundTripper: transport}
 }
 
