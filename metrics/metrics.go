@@ -60,14 +60,14 @@ func NewHandler() Handler {
 		Namespace: "configcat",
 		Name:      "http_request_duration_seconds",
 		Help:      "Histogram of HTTP response time in seconds.",
-		Buckets:   prometheus.ExponentialBuckets(0.1, 1.5, 5),
+		Buckets:   prometheus.DefBuckets,
 	}, []string{"route", "method", "status"})
 
 	sdkRespTime := prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Namespace: "configcat",
 		Name:      "sdk_http_request_duration_seconds",
 		Help:      "Histogram of ConfigCat CDN HTTP response time in seconds.",
-		Buckets:   prometheus.ExponentialBuckets(0.1, 1.5, 5),
+		Buckets:   prometheus.DefBuckets,
 	}, []string{"route", "status"})
 
 	connections := prometheus.NewGaugeVec(prometheus.GaugeOpts{

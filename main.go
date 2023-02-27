@@ -53,7 +53,7 @@ func main() {
 
 	var grpcServer *grpc.Server
 	if conf.Grpc.Enabled {
-		grpcServer := grpc.NewServer(sdkClient, metric, conf, logger, errorChan)
+		grpcServer = grpc.NewServer(sdkClient, metric, conf, logger, errorChan)
 		grpcServer.Listen()
 	}
 
