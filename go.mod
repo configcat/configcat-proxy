@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/alicebob/miniredis/v2 v2.30.0
-	github.com/configcat/go-sdk/v7 v7.8.2
+	github.com/configcat/go-sdk/v7 v7.8.3
 	github.com/fsnotify/fsnotify v1.6.0
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/prometheus/client_golang v1.14.0

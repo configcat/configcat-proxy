@@ -118,6 +118,74 @@ func TestReporter_Offline(t *testing.T) {
 	})
 }
 
+func TestReporter_StatusCopy(t *testing.T) {
+	reporter := NewReporter(config.Config{}).(*reporter)
+	reporter.ReportError(SDK, fmt.Errorf(""))
+	stat := reporter.getStatus()
+
+	assert.Equal(t, Healthy, reporter.status.Status)
+	assert.Equal(t, Degraded, stat.Status)
+}
+
+func TestReporter_Degraded_Calc(t *testing.T) {
+	t.Run("1 record, 1 error", func(t *testing.T) {
+		reporter := NewReporter(config.Config{}).(*reporter)
+		reporter.ReportError(SDK, fmt.Errorf(""))
+		stat := reporter.getStatus()
+
+		assert.Equal(t, Degraded, stat.Status)
+		assert.Equal(t, Degraded, stat.SDK.Source.Status)
+	})
+	t.Run("2 records, 1 error then 1 ok", func(t *testing.T) {
+		reporter := NewReporter(config.Config{}).(*reporter)
+		reporter.ReportError(SDK, fmt.Errorf(""))
+		reporter.ReportOk(SDK, "")
+		stat := reporter.getStatus()
+
+		assert.Equal(t, Healthy, stat.Status)
+		assert.Equal(t, Healthy, stat.SDK.Source.Status)
+	})
+	t.Run("2 records, 1 ok then 1 error", func(t *testing.T) {
+		reporter := NewReporter(config.Config{}).(*reporter)
+		reporter.ReportOk(SDK, "")
+		reporter.ReportError(SDK, fmt.Errorf(""))
+		stat := reporter.getStatus()
+
+		assert.Equal(t, Healthy, stat.Status)
+		assert.Equal(t, Healthy, stat.SDK.Source.Status)
+	})
+	t.Run("3 records, 1 ok then 2 errors", func(t *testing.T) {
+		reporter := NewReporter(config.Config{}).(*reporter)
+		reporter.ReportOk(SDK, "")
+		reporter.ReportError(SDK, fmt.Errorf(""))
+		reporter.ReportError(SDK, fmt.Errorf(""))
+		stat := reporter.getStatus()
+
+		assert.Equal(t, Degraded, stat.Status)
+		assert.Equal(t, Degraded, stat.SDK.Source.Status)
+	})
+	t.Run("3 records, 1 ok then 1 error then 1 ok", func(t *testing.T) {
+		reporter := NewReporter(config.Config{}).(*reporter)
+		reporter.ReportOk(SDK, "")
+		reporter.ReportError(SDK, fmt.Errorf(""))
+		reporter.ReportOk(SDK, "")
+		stat := reporter.getStatus()
+
+		assert.Equal(t, Healthy, stat.Status)
+		assert.Equal(t, Healthy, stat.SDK.Source.Status)
+	})
+	t.Run("3 records, 1 error then 1 ok then 1 error", func(t *testing.T) {
+		reporter := NewReporter(config.Config{}).(*reporter)
+		reporter.ReportError(SDK, fmt.Errorf(""))
+		reporter.ReportOk(SDK, "")
+		reporter.ReportError(SDK, fmt.Errorf(""))
+		stat := reporter.getStatus()
+
+		assert.Equal(t, Healthy, stat.Status)
+		assert.Equal(t, Healthy, stat.SDK.Source.Status)
+	})
+}
+
 func readStatus(url string) Status {
 	client := http.Client{}
 	req, _ := http.NewRequest(http.MethodGet, url, http.NoBody)

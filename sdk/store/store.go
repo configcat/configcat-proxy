@@ -14,8 +14,13 @@ type Storage interface {
 	Close()
 }
 
+type CacheStorage interface {
+	EntryStore
+	Storage
+}
+
 type InMemoryStorage struct {
-	*EntryStore
+	EntryStore
 }
 
 func (r *InMemoryStorage) Get(_ context.Context, _ string) ([]byte, error) {

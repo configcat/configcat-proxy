@@ -15,15 +15,10 @@ type redisStorage struct {
 	redisDb  redis.UniversalClient
 	cacheKey string
 	reporter status.Reporter
-	*store.EntryStore
+	store.EntryStore
 }
 
-func NewRedisStorage(sdkKey string, conf config.RedisConfig, reporter status.Reporter) store.Storage {
-	r := newRedisStorage(sdkKey, conf, reporter)
-	return &r
-}
-
-func newRedisStorage(sdkKey string, conf config.RedisConfig, reporter status.Reporter) redisStorage {
+func NewRedisStorage(sdkKey string, conf config.RedisConfig, reporter status.Reporter) store.CacheStorage {
 	opts := &redis.UniversalOptions{
 		Addrs:    conf.Addresses,
 		Password: conf.Password,
@@ -41,7 +36,7 @@ func newRedisStorage(sdkKey string, conf config.RedisConfig, reporter status.Rep
 		}
 		opts.TLSConfig = t
 	}
-	return redisStorage{
+	return &redisStorage{
 		redisDb:    redis.NewUniversalClient(opts),
 		cacheKey:   fmt.Sprintf("%x", sha1.Sum([]byte(fmt.Sprintf("%s_%s", sdkKey, "config_v5")))),
 		EntryStore: store.NewEntryStore(),

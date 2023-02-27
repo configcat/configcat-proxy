@@ -54,18 +54,26 @@ func (r *RootNode) Fixup() {
 	}
 }
 
+type EntryStore interface {
+	LoadEntry() *EntryWithEtag
+	StoreEntry(data []byte)
+	Notify()
+	GetLatestJson() *EntryWithEtag
+	Modified() <-chan struct{}
+}
+
 type EntryWithEtag struct {
 	CachedJson []byte
 	Etag       string
 }
 
-type EntryStore struct {
+type entryStore struct {
 	entry    atomic.Pointer[EntryWithEtag]
 	modified chan struct{}
 }
 
-func NewEntryStore() *EntryStore {
-	e := EntryStore{
+func NewEntryStore() EntryStore {
+	e := entryStore{
 		modified: make(chan struct{}, 1),
 	}
 	root := RootNode{}
@@ -75,23 +83,23 @@ func NewEntryStore() *EntryStore {
 	return &e
 }
 
-func (e *EntryStore) LoadEntry() *EntryWithEtag {
+func (e *entryStore) LoadEntry() *EntryWithEtag {
 	return e.entry.Load()
 }
 
-func (e *EntryStore) StoreEntry(data []byte) {
+func (e *entryStore) StoreEntry(data []byte) {
 	e.entry.Store(parseEntryWithEtag(data))
 }
 
-func (e *EntryStore) Notify() {
+func (e *entryStore) Notify() {
 	e.modified <- struct{}{}
 }
 
-func (e *EntryStore) GetLatestJson() *EntryWithEtag {
+func (e *entryStore) GetLatestJson() *EntryWithEtag {
 	return e.LoadEntry()
 }
 
-func (e *EntryStore) Modified() <-chan struct{} {
+func (e *entryStore) Modified() <-chan struct{} {
 	return e.modified
 }
 

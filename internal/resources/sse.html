@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<script>
+    const user = {
+        key: "awesomeFeature",
+        user: {
+            Identifier: "09c63c8ad682"
+        }
+    }
+    const data = btoa(JSON.stringify(user))
+    const evtSource = new EventSource("http://localhost:8050/sse/" + data);
+    evtSource.onmessage = (event) => {
+        console.log(event.data);
+    };
+</script>
+</body>
+</html>

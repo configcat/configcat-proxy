@@ -2,10 +2,10 @@ package stream
 
 import (
 	"github.com/configcat/configcat-proxy/config"
+	utils2 "github.com/configcat/configcat-proxy/internal/utils"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/sdk"
 	"github.com/configcat/configcat-proxy/status"
-	"github.com/configcat/configcat-proxy/utils"
 	"github.com/configcat/go-sdk/v7/configcattest"
 	"github.com/stretchr/testify/assert"
 	"net/http/httptest"
@@ -36,7 +36,7 @@ func TestServer_Receive(t *testing.T) {
 	assert.Same(t, stream, strServer.GetOrCreateStream("flag"))
 
 	conn := stream.CreateConnection(nil)
-	utils.WithTimeout(2*time.Second, func() {
+	utils2.WithTimeout(2*time.Second, func() {
 		pyl := <-conn.Receive()
 		assert.True(t, pyl.Value.(bool))
 	})
@@ -46,14 +46,14 @@ func TestServer_Receive(t *testing.T) {
 		},
 	})
 	_ = client.Refresh()
-	utils.WithTimeout(2*time.Second, func() {
+	utils2.WithTimeout(2*time.Second, func() {
 		pyl := <-conn.Receive()
 		assert.False(t, pyl.Value.(bool))
 	})
 }
 
 func TestServer_Offline_Receive(t *testing.T) {
-	utils.UseTempFile(`{"f":{"flag":{"i":"","v":true,"t":0,"r":[],"p":[]}}}`, func(path string) {
+	utils2.UseTempFile(`{"f":{"flag":{"i":"","v":true,"t":0,"r":[],"p":[]}}}`, func(path string) {
 		opts := config.SDKConfig{Key: "key", Offline: config.OfflineConfig{Enabled: true, Local: config.LocalConfig{FilePath: path}}}
 		client := sdk.NewClient(opts, nil, status.NewNullReporter(), log.NewNullLogger())
 		defer client.Close()
@@ -65,12 +65,12 @@ func TestServer_Offline_Receive(t *testing.T) {
 		assert.Same(t, stream, srv.GetOrCreateStream("flag"))
 
 		conn := stream.CreateConnection(nil)
-		utils.WithTimeout(2*time.Second, func() {
+		utils2.WithTimeout(2*time.Second, func() {
 			pyl := <-conn.Receive()
 			assert.True(t, pyl.Value.(bool))
 		})
-		utils.WriteIntoFile(path, `{"f":{"flag":{"i":"","v":false,"t":0,"r":[],"p":[]}}}`)
-		utils.WithTimeout(2*time.Second, func() {
+		utils2.WriteIntoFile(path, `{"f":{"flag":{"i":"","v":false,"t":0,"r":[],"p":[]}}}`)
+		utils2.WithTimeout(2*time.Second, func() {
 			pyl := <-conn.Receive()
 			assert.False(t, pyl.Value.(bool))
 		})
@@ -97,7 +97,7 @@ func TestServer_Stream_Stale_Close(t *testing.T) {
 	stream := strServer.GetOrCreateStream("flag").(*stream)
 
 	conn := stream.CreateConnection(nil)
-	utils.WithTimeout(2*time.Second, func() {
+	utils2.WithTimeout(2*time.Second, func() {
 		pyl := <-conn.Receive()
 		assert.True(t, pyl.Value.(bool))
 	})
@@ -129,7 +129,7 @@ func TestServer_Stream_NotStale(t *testing.T) {
 	stream := strServer.GetOrCreateStream("flag").(*stream)
 
 	conn := stream.CreateConnection(nil)
-	utils.WithTimeout(2*time.Second, func() {
+	utils2.WithTimeout(2*time.Second, func() {
 		pyl := <-conn.Receive()
 		assert.True(t, pyl.Value.(bool))
 	})
@@ -158,7 +158,7 @@ func TestServer_Stream_TearDown_All(t *testing.T) {
 	stream := strServer.GetOrCreateStream("flag").(*stream)
 
 	conn := stream.CreateConnection(nil)
-	utils.WithTimeout(2*time.Second, func() {
+	utils2.WithTimeout(2*time.Second, func() {
 		pyl := <-conn.Receive()
 		assert.True(t, pyl.Value.(bool))
 	})

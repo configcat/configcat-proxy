@@ -29,7 +29,7 @@ type fileStorage struct {
 	closed     chan struct{}
 	closedOnce sync.Once
 	reporter   status.Reporter
-	*store.EntryStore
+	store.EntryStore
 }
 
 func NewFileStorage(conf config.LocalConfig, reporter status.Reporter, log log.Logger) store.Storage {
@@ -85,6 +85,7 @@ func (f *fileStorage) reload() bool {
 		return false
 	}
 	if bytes.Equal(f.stored, data) {
+		f.reporter.ReportOk(status.SDK, "config from file not modified")
 		return false
 	}
 	f.log.Debugf("local JSON (%s) modified, reloading", f.conf.FilePath)

@@ -3,10 +3,10 @@ package stream
 import (
 	"fmt"
 	"github.com/configcat/configcat-proxy/config"
+	"github.com/configcat/configcat-proxy/internal/utils"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/sdk"
 	"github.com/configcat/configcat-proxy/status"
-	"github.com/configcat/configcat-proxy/utils"
 	"github.com/configcat/go-sdk/v7/configcattest"
 	"github.com/stretchr/testify/assert"
 	"net/http/httptest"

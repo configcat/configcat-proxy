@@ -6,7 +6,11 @@
 </head>
 <body>
 <script>
-    const evtSource = new EventSource("http://localhost:8050/sse/textsetting");
+    const user = {
+        key: "textsetting",
+    }
+    const data = btoa(JSON.stringify(user))
+    const evtSource = new EventSource("http://localhost:8050/sse/" + data);
     evtSource.onmessage = (event) => {
         console.log(event.data);
     };

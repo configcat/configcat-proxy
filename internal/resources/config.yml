@@ -6,8 +6,13 @@ sdk:
     level: "error"
   offline:
     enabled: true
+    use_cache: false
     local:
-      file_path: "./resources/local.json"
+      file_path: "./internal/resources/local.json"
+      polling: true
+  cache:
+    redis:
+      enabled: false
 
 log:
   level: "debug"

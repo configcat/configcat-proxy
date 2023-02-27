@@ -1,6 +1,7 @@
 package web
 
 import (
+	"encoding/base64"
 	"fmt"
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/log"
@@ -17,7 +18,8 @@ func TestSSE_Options_CORS(t *testing.T) {
 	router := newSSERouter(t, config.SseConfig{Enabled: true, AllowCORS: true, Headers: map[string]string{"h1": "v1"}})
 	srv := httptest.NewServer(router.Handler())
 	client := http.Client{}
-	req, _ := http.NewRequest(http.MethodOptions, fmt.Sprintf("%s/sse/flag", srv.URL), http.NoBody)
+	data := base64.URLEncoding.EncodeToString([]byte(`{"key":"flag"}`))
+	req, _ := http.NewRequest(http.MethodOptions, fmt.Sprintf("%s/sse/%s", srv.URL, data), http.NoBody)
 	resp, _ := client.Do(req)
 	assert.Equal(t, http.StatusNoContent, resp.StatusCode)
 
@@ -34,7 +36,8 @@ func TestSSE_GET_CORS(t *testing.T) {
 	router := newSSERouter(t, config.SseConfig{Enabled: true, AllowCORS: true, Headers: map[string]string{"h1": "v1"}})
 	srv := httptest.NewServer(router.Handler())
 	client := http.Client{}
-	req, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/sse/flag", srv.URL), http.NoBody)
+	data := base64.URLEncoding.EncodeToString([]byte(`{"key":"flag"}`))
+	req, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/sse/%s", srv.URL, data), http.NoBody)
 	resp, _ := client.Do(req)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -50,24 +53,25 @@ func TestSSE_Not_Allowed_Methods(t *testing.T) {
 	router := newSSERouter(t, config.SseConfig{Enabled: true, AllowCORS: true})
 	srv := httptest.NewServer(router.Handler())
 	client := http.Client{}
+	data := base64.URLEncoding.EncodeToString([]byte(`{"key":"flag"}`))
 
 	t.Run("put", func(t *testing.T) {
-		req, _ := http.NewRequest(http.MethodPut, fmt.Sprintf("%s/sse/flag", srv.URL), http.NoBody)
+		req, _ := http.NewRequest(http.MethodPut, fmt.Sprintf("%s/sse/%s", srv.URL, data), http.NoBody)
 		resp, _ := client.Do(req)
 		assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
 	})
 	t.Run("post", func(t *testing.T) {
-		req, _ := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/sse/flag", srv.URL), http.NoBody)
+		req, _ := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/sse/%s", srv.URL, data), http.NoBody)
 		resp, _ := client.Do(req)
 		assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
 	})
 	t.Run("delete", func(t *testing.T) {
-		req, _ := http.NewRequest(http.MethodDelete, fmt.Sprintf("%s/sse/flag", srv.URL), http.NoBody)
+		req, _ := http.NewRequest(http.MethodDelete, fmt.Sprintf("%s/sse/%s", srv.URL, data), http.NoBody)
 		resp, _ := client.Do(req)
 		assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
 	})
 	t.Run("patch", func(t *testing.T) {
-		req, _ := http.NewRequest(http.MethodPatch, fmt.Sprintf("%s/sse/flag", srv.URL), http.NoBody)
+		req, _ := http.NewRequest(http.MethodPatch, fmt.Sprintf("%s/sse/%s", srv.URL, data), http.NoBody)
 		resp, _ := client.Do(req)
 		assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
 	})

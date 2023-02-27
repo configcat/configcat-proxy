@@ -1,7 +1,7 @@
 package config
 
 import (
-	"github.com/configcat/configcat-proxy/utils"
+	"github.com/configcat/configcat-proxy/internal/utils"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
@@ -28,6 +28,10 @@ func TestConfig_Validate(t *testing.T) {
 	t.Run("offline enabled without file and cache", func(t *testing.T) {
 		conf := Config{SDK: SDKConfig{Key: "Key", Offline: OfflineConfig{Enabled: true}}}
 		require.ErrorContains(t, conf.Validate(), "sdk: offline mode requires either a configured cache or a local file")
+	})
+	t.Run("offline both local file and cache", func(t *testing.T) {
+		conf := Config{SDK: SDKConfig{Key: "Key", Offline: OfflineConfig{Enabled: true, UseCache: true, Local: LocalConfig{FilePath: "file"}}}}
+		require.ErrorContains(t, conf.Validate(), "sdk: can't use both local file and cache for offline mode")
 	})
 	t.Run("offline cache without redis", func(t *testing.T) {
 		conf := Config{SDK: SDKConfig{Key: "Key", Offline: OfflineConfig{Enabled: true, UseCache: true}}}

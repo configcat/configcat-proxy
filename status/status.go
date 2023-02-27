@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/configcat/configcat-proxy/config"
+	"github.com/configcat/configcat-proxy/internal/utils"
 	"net/http"
 	"sync"
 	"time"
@@ -164,9 +165,9 @@ func (r *reporter) checkStatus(records []record, targetRecords *[]string, status
 				errorCount--
 			}
 		}
-		if errorCount >= maxLastErrorsMeaningDegraded {
-			*status = Degraded
-		}
+	}
+	if errorCount > 0 && errorCount >= utils.Min(maxLastErrorsMeaningDegraded, length) {
+		*status = Degraded
 	}
 }
 

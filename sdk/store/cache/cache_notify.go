@@ -1,4 +1,4 @@
-package redis
+package cache
 
 import (
 	"bytes"
@@ -12,25 +12,26 @@ import (
 	"time"
 )
 
-type notifyingRedisStorage struct {
+type notifyingCacheStorage struct {
 	poller     *time.Ticker
 	closed     chan struct{}
 	stored     []byte
 	closedOnce sync.Once
 	log        log.Logger
+	reporter   status.Reporter
 	ctx        context.Context
 	ctxCancel  func()
-	redisStorage
+	store.CacheStorage
 }
 
-func NewNotifyingRedisStorage(sdkKey string, conf config.SDKConfig, reporter status.Reporter, log log.Logger) store.Storage {
-	nrLogger := log.WithPrefix("redis-poll")
-	s := newRedisStorage(sdkKey, conf.Cache.Redis, reporter)
-	n := &notifyingRedisStorage{
-		redisStorage: s,
+func NewNotifyingCacheStorage(cache store.CacheStorage, conf config.OfflineConfig, reporter status.Reporter, log log.Logger) store.Storage {
+	nrLogger := log.WithPrefix("cache-poll")
+	n := &notifyingCacheStorage{
+		CacheStorage: cache,
+		reporter:     reporter,
 		log:          nrLogger,
 		closed:       make(chan struct{}),
-		poller:       time.NewTicker(time.Duration(conf.Offline.CachePollInterval) * time.Second),
+		poller:       time.NewTicker(time.Duration(conf.CachePollInterval) * time.Second),
 	}
 	n.ctx, n.ctxCancel = context.WithCancel(context.Background())
 	n.reload()
@@ -38,7 +39,7 @@ func NewNotifyingRedisStorage(sdkKey string, conf config.SDKConfig, reporter sta
 	return n
 }
 
-func (n *notifyingRedisStorage) run() {
+func (n *notifyingCacheStorage) run() {
 	go func() {
 		for {
 			select {
@@ -49,7 +50,7 @@ func (n *notifyingRedisStorage) run() {
 			case <-n.closed:
 				n.ctxCancel()
 				n.poller.Stop()
-				n.redisStorage.Close()
+				n.CacheStorage.Close()
 				n.log.Reportf("shutdown complete")
 				return
 			}
@@ -57,14 +58,15 @@ func (n *notifyingRedisStorage) run() {
 	}()
 }
 
-func (n *notifyingRedisStorage) reload() bool {
-	data, err := n.redisStorage.Get(n.ctx, n.cacheKey)
+func (n *notifyingCacheStorage) reload() bool {
+	data, err := n.CacheStorage.Get(n.ctx, "")
 	if err != nil {
 		n.log.Errorf("failed to read from redis: %s", err)
 		n.reporter.ReportError(status.SDK, err)
 		return false
 	}
 	if bytes.Equal(n.stored, data) {
+		n.reporter.ReportOk(status.SDK, "config from cache not modified")
 		return false
 	}
 	n.log.Debugf("new JSON received from redis, reloading")
@@ -82,15 +84,15 @@ func (n *notifyingRedisStorage) reload() bool {
 	return true
 }
 
-func (n *notifyingRedisStorage) Get(_ context.Context, _ string) ([]byte, error) {
+func (n *notifyingCacheStorage) Get(_ context.Context, _ string) ([]byte, error) {
 	return n.LoadEntry().CachedJson, nil
 }
 
-func (n *notifyingRedisStorage) Set(_ context.Context, _ string, _ []byte) error {
+func (n *notifyingCacheStorage) Set(_ context.Context, _ string, _ []byte) error {
 	return nil // do nothing
 }
 
-func (n *notifyingRedisStorage) Close() {
+func (n *notifyingCacheStorage) Close() {
 	n.closedOnce.Do(func() {
 		close(n.closed)
 	})

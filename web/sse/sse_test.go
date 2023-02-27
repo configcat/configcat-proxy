@@ -2,6 +2,7 @@ package sse
 
 import (
 	"context"
+	"encoding/base64"
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/sdk"
@@ -25,7 +26,8 @@ func TestSSE_Get(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
-	params := httprouter.Params{httprouter.Param{Key: "key", Value: "flag"}}
+	data := base64.URLEncoding.EncodeToString([]byte(`{"key":"flag"}`))
+	params := httprouter.Params{httprouter.Param{Key: streamDataName, Value: data}}
 	ctx = context.WithValue(ctx, httprouter.ParamsKey, params)
 	req = req.WithContext(ctx)
 	srv.ServeHTTP(res, req)
@@ -57,12 +59,10 @@ func TestSSE_Get_User(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
-	params := httprouter.Params{httprouter.Param{Key: "key", Value: "flag"}}
+	data := base64.URLEncoding.EncodeToString([]byte(`{"key":"flag","user":{"Identifier":"test"}}`))
+	params := httprouter.Params{httprouter.Param{Key: streamDataName, Value: data}}
 	ctx = context.WithValue(ctx, httprouter.ParamsKey, params)
 	req = req.WithContext(ctx)
-	q := req.URL.Query()
-	q.Add("Identifier", "test")
-	req.URL.RawQuery = q.Encode()
 	srv.ServeHTTP(res, req)
 
 	assert.Equal(t, http.StatusOK, res.Code)

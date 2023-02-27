@@ -10,11 +10,6 @@ import (
 	"net/http"
 )
 
-type evalRequest struct {
-	Key  string            `json:"key"`
-	User map[string]string `json:"user"`
-}
-
 type keysResponse struct {
 	Keys []string `json:"keys"`
 }
@@ -37,20 +32,20 @@ func NewServer(client sdk.Client, config config.ApiConfig, log log.Logger) *Serv
 func (s *Server) Eval(w http.ResponseWriter, r *http.Request) {
 	reqBody, err := io.ReadAll(r.Body)
 	if err != nil {
-		http.Error(w, "failed to read request body", http.StatusBadRequest)
+		http.Error(w, "Failed to read request body", http.StatusBadRequest)
 		return
 	}
-	var evalReq evalRequest
+	var evalReq model.EvalRequest
 	err = json.Unmarshal(reqBody, &evalReq)
 	if err != nil {
-		http.Error(w, "failed to parse JSON body", http.StatusBadRequest)
+		http.Error(w, "Failed to parse JSON body", http.StatusBadRequest)
 		return
 	}
-	var userAttrs sdk.UserAttrs
+	var userAttrs *sdk.UserAttrs
 	if evalReq.User != nil {
-		userAttrs = sdk.UserAttrs{Attrs: evalReq.User}
+		userAttrs = &sdk.UserAttrs{Attrs: evalReq.User}
 	}
-	eval, err := s.sdkClient.Eval(evalReq.Key, &userAttrs)
+	eval, err := s.sdkClient.Eval(evalReq.Key, userAttrs)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -68,20 +63,20 @@ func (s *Server) Eval(w http.ResponseWriter, r *http.Request) {
 func (s *Server) EvalAll(w http.ResponseWriter, r *http.Request) {
 	reqBody, err := io.ReadAll(r.Body)
 	if err != nil {
-		http.Error(w, "failed to read request body", http.StatusBadRequest)
+		http.Error(w, "Failed to read request body", http.StatusBadRequest)
 		return
 	}
-	var evalReq evalRequest
+	var evalReq model.EvalRequest
 	err = json.Unmarshal(reqBody, &evalReq)
 	if err != nil {
-		http.Error(w, "failed to parse JSON body", http.StatusBadRequest)
+		http.Error(w, "Failed to parse JSON body", http.StatusBadRequest)
 		return
 	}
-	var userAttrs sdk.UserAttrs
+	var userAttrs *sdk.UserAttrs
 	if evalReq.User != nil {
-		userAttrs = sdk.UserAttrs{Attrs: evalReq.User}
+		userAttrs = &sdk.UserAttrs{Attrs: evalReq.User}
 	}
-	details := s.sdkClient.EvalAll(&userAttrs)
+	details := s.sdkClient.EvalAll(userAttrs)
 	res := make(map[string]model.ResponsePayload, len(details))
 	for key, detail := range details {
 		res[key] = model.PayloadFromEvalData(&detail)

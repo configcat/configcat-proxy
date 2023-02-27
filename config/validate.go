@@ -52,13 +52,16 @@ func (o *OfflineConfig) validate(c *CacheConfig) error {
 	if !o.Enabled {
 		return nil
 	}
+	if o.Local.FilePath == "" && !o.UseCache {
+		return fmt.Errorf("sdk: offline mode requires either a configured cache or a local file")
+	}
+	if o.Local.FilePath != "" && o.UseCache {
+		return fmt.Errorf("sdk: can't use both local file and cache for offline mode")
+	}
 	if o.Local.FilePath != "" {
 		if err := o.Local.validate(); err != nil {
 			return err
 		}
-	}
-	if o.Local.FilePath == "" && !o.UseCache {
-		return fmt.Errorf("sdk: offline mode requires either a configured cache or a local file")
 	}
 	if o.UseCache && !c.Redis.Enabled {
 		return fmt.Errorf("sdk: offline mode enabled with cache, but no cache is configured")

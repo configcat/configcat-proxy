@@ -4,17 +4,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/configcat/configcat-proxy/config"
+	"github.com/configcat/configcat-proxy/internal/utils"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/metrics"
+	"github.com/configcat/configcat-proxy/model"
 	"github.com/configcat/configcat-proxy/sdk"
 	"github.com/configcat/configcat-proxy/stream"
 	"github.com/julienschmidt/httprouter"
 	"net/http"
-	"net/url"
 	"sync"
 )
 
-const streamKeyName = "key"
+const streamDataName = "data"
 
 type Server struct {
 	streamServer stream.Server
@@ -49,16 +50,34 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("X-Accel-Buffering", "no")
 
 	vars := httprouter.ParamsFromContext(r.Context())
-	streamKey := vars.ByName("key")
-	if streamKey == "" {
-		http.Error(w, fmt.Sprintf("'%s' must be set", streamKeyName), http.StatusBadRequest)
+	streamData := vars.ByName("data")
+	if streamData == "" {
+		http.Error(w, fmt.Sprintf("'%s' must be set", streamDataName), http.StatusBadRequest)
+		return
+	}
+	streamContext, err := utils.Base64URLDecode(streamData)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to decode incoming '%s'", streamDataName), http.StatusBadRequest)
+		return
+	}
+	var evalReq model.EvalRequest
+	err = json.Unmarshal(streamContext, &evalReq)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to deserialize incoming '%s'", streamDataName), http.StatusBadRequest)
+		return
+	}
+	if evalReq.Key == "" {
+		http.Error(w, "'key' must be set", http.StatusBadRequest)
 		return
 	}
 
-	user := parseUserFromQuery(r.URL.Query())
+	var userAttrs *sdk.UserAttrs
+	if evalReq.User != nil {
+		userAttrs = &sdk.UserAttrs{Attrs: evalReq.User}
+	}
 
-	str := s.streamServer.GetOrCreateStream(streamKey)
-	conn := str.CreateConnection(user)
+	str := s.streamServer.GetOrCreateStream(evalReq.Key)
+	conn := str.CreateConnection(userAttrs)
 
 	w.WriteHeader(http.StatusOK)
 	flusher.Flush()
@@ -91,21 +110,4 @@ func (s *Server) Close() {
 		close(s.closed)
 	})
 	s.streamServer.Close()
-}
-
-func parseUserFromQuery(query url.Values) *sdk.UserAttrs {
-	query.Del(streamKeyName)
-	if len(query) == 0 {
-		return nil
-	}
-	attrMap := make(map[string]string, len(query))
-	for k, v := range query {
-		if len(v) != 0 {
-			attrMap[k] = v[0]
-		}
-	}
-	if len(attrMap) == 0 {
-		return nil
-	}
-	return &sdk.UserAttrs{Attrs: attrMap}
 }

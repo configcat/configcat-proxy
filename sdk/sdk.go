@@ -6,8 +6,9 @@ import (
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/metrics"
 	"github.com/configcat/configcat-proxy/sdk/store"
+	"github.com/configcat/configcat-proxy/sdk/store/cache"
+	"github.com/configcat/configcat-proxy/sdk/store/cache/redis"
 	"github.com/configcat/configcat-proxy/sdk/store/file"
-	"github.com/configcat/configcat-proxy/sdk/store/redis"
 	"github.com/configcat/configcat-proxy/status"
 	"github.com/configcat/go-sdk/v7"
 	"net/http"
@@ -52,22 +53,23 @@ type client struct {
 func NewClient(conf config.SDKConfig, metricsHandler metrics.Handler, reporter status.Reporter, log log.Logger) Client {
 	sdkLog := log.WithLevel(conf.Log.GetLevel()).WithPrefix("sdk")
 	var offline = conf.Offline.Enabled
-	var cache store.Storage
+	var storage store.Storage
 	if offline && conf.Offline.Local.FilePath != "" {
-		cache = file.NewFileStorage(conf.Offline.Local, reporter, log.WithLevel(conf.Offline.Log.GetLevel()))
-	} else if offline && conf.Offline.UseCache {
-		cache = redis.NewNotifyingRedisStorage(conf.Key, conf, reporter, log.WithLevel(conf.Offline.Log.GetLevel()))
+		storage = file.NewFileStorage(conf.Offline.Local, reporter, log.WithLevel(conf.Offline.Log.GetLevel()))
+	} else if offline && conf.Offline.UseCache && conf.Cache.Redis.Enabled {
+		redisStore := redis.NewRedisStorage(conf.Key, conf.Cache.Redis, reporter)
+		storage = cache.NewNotifyingCacheStorage(redisStore, conf.Offline, reporter, log.WithLevel(conf.Offline.Log.GetLevel()))
 	} else if !offline && conf.Cache.Redis.Enabled {
-		cache = redis.NewRedisStorage(conf.Key, conf.Cache.Redis, reporter)
+		storage = redis.NewRedisStorage(conf.Key, conf.Cache.Redis, reporter)
 	} else {
-		cache = &store.InMemoryStorage{EntryStore: store.NewEntryStore()}
+		storage = &store.InMemoryStorage{EntryStore: store.NewEntryStore()}
 	}
 	client := &client{
 		log:           sdkLog,
 		subscriptions: make(map[string]chan struct{}),
 		closed:        make(chan struct{}),
 		ready:         make(chan struct{}),
-		cache:         cache,
+		cache:         storage,
 		conf:          conf,
 	}
 	client.ctx, client.ctxCancel = context.WithCancel(context.Background())
@@ -76,7 +78,7 @@ func NewClient(conf config.SDKConfig, metricsHandler metrics.Handler, reporter s
 		PollInterval:   time.Duration(conf.PollInterval) * time.Second,
 		Offline:        offline,
 		BaseURL:        conf.BaseUrl,
-		Cache:          cache,
+		Cache:          storage,
 		SDKKey:         conf.Key,
 		DataGovernance: configcat.Global,
 		Logger:         sdkLog,

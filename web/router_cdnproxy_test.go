@@ -141,7 +141,6 @@ func TestCDNProxy_Get_Body_GZip(t *testing.T) {
 	_ = wr.Flush()
 	assert.Equal(t, buf.Bytes(), body)
 	assert.Equal(t, "v1", resp.Header.Get("h1"))
-
 }
 
 func newCDNProxyRouter(t *testing.T, conf config.CdnProxyConfig) *HttpRouter {
