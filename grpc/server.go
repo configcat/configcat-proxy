@@ -13,6 +13,8 @@ import (
 	"net"
 )
 
+import _ "google.golang.org/grpc/encoding/gzip"
+
 type Server struct {
 	flagService  *flagService
 	grpcServer   *grpc.Server
