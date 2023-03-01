@@ -58,7 +58,7 @@ func TestGrpc(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	assert.True(t, payload.GetFlag())
+	assert.True(t, payload.GetBoolValue())
 }
 
 func newClient(t *testing.T, h *configcattest.Handler, key string) sdk.Client {

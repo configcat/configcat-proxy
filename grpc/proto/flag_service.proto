@@ -14,11 +14,11 @@ message Request {
 }
 
 message Payload {
-  string variationId = 1;
+  string variation_id = 1;
   oneof value {
-    int32 whole_number = 2;
-    double decimal_number = 3;
-    string text = 4;
-    bool flag = 5;
+    int32 int_value = 2;
+    double double_value = 3;
+    string string_value = 4;
+    bool bool_value = 5;
   }
 }

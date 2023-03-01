@@ -46,14 +46,14 @@ func (s *flagService) EvalFlag(req *proto.Request, stream proto.FlagService_Eval
 		select {
 		case msg := <-conn.Receive():
 			payload := proto.Payload{VariationId: msg.VariationId}
-			if flag, ok := msg.Value.(bool); ok {
-				payload.Value = &proto.Payload_Flag{Flag: flag}
-			} else if whole, ok := msg.Value.(int); ok {
-				payload.Value = &proto.Payload_WholeNumber{WholeNumber: int32(whole)}
-			} else if decimal, ok := msg.Value.(float64); ok {
-				payload.Value = &proto.Payload_DecimalNumber{DecimalNumber: decimal}
-			} else if text, ok := msg.Value.(string); ok {
-				payload.Value = &proto.Payload_Text{Text: text}
+			if boolVal, ok := msg.Value.(bool); ok {
+				payload.Value = &proto.Payload_BoolValue{BoolValue: boolVal}
+			} else if intVal, ok := msg.Value.(int); ok {
+				payload.Value = &proto.Payload_IntValue{IntValue: int32(intVal)}
+			} else if floatVal, ok := msg.Value.(float64); ok {
+				payload.Value = &proto.Payload_DoubleValue{DoubleValue: floatVal}
+			} else if stringVal, ok := msg.Value.(string); ok {
+				payload.Value = &proto.Payload_StringValue{StringValue: stringVal}
 			} else {
 				s.log.Errorf("couldn't determine the type of '%s' for broadcasting", msg.Value)
 			}
