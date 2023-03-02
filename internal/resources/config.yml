@@ -18,7 +18,7 @@ log:
   level: "debug"
 
 grpc:
-  enabled: true
+  enabled: false
   port: 50052
 
 http:
@@ -31,6 +31,12 @@ http:
   api:
     enabled: true
 
+tls:
+  enabled: true
+  min_version: 1.3
+  certificates:
+    - cert: "./internal/resources/cert/localhost.crt"
+      key: "./internal/resources/cert/localhost.key"
 
 metrics:
   enabled: true

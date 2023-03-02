@@ -96,6 +96,6 @@ func (s *server) teardownStaleStreams() {
 			delete(s.streams, id)
 			count++
 		}
-		s.log.Debugf("scheduled cleanup closed %d stale stream(s)", count)
 	}
+	s.log.Debugf("scheduled cleanup closed %d stale stream(s)", count)
 }

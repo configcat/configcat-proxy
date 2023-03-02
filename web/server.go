@@ -35,7 +35,7 @@ func NewServer(handler http.Handler, log log.Logger, conf config.Config, errorCh
 			}
 		}
 		httpServer.TLSConfig = t
-		httpLog.Reportf("using TLS version: %s", conf.Tls.MinVersion)
+		httpLog.Reportf("using TLS version: %.1f", conf.Tls.MinVersion)
 	}
 	srv := &Server{
 		log:          httpLog,
@@ -50,7 +50,12 @@ func (s *Server) Listen() {
 	s.log.Reportf("HTTP server listening on port: %d", s.conf.Http.Port)
 
 	go func() {
-		httpErr := s.httpServer.ListenAndServe()
+		var httpErr error
+		if s.conf.Tls.Enabled {
+			httpErr = s.httpServer.ListenAndServeTLS("", "")
+		} else {
+			httpErr = s.httpServer.ListenAndServe()
+		}
 
 		if !errors.Is(httpErr, http.ErrServerClosed) {
 			s.errorChannel <- fmt.Errorf("error starting HTTP server on port: %d  %s", s.conf.Http.Port, httpErr)

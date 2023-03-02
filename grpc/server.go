@@ -37,7 +37,7 @@ func NewServer(sdkClient sdk.Client, metrics metrics.Handler, conf config.Config
 			}
 		}
 		opts = append(opts, grpc.Creds(credentials.NewTLS(t)))
-		grpcLog.Reportf("using TLS version: %s", conf.Tls.MinVersion)
+		grpcLog.Reportf("using TLS version: %.1f", conf.Tls.MinVersion)
 	}
 
 	flagService := newFlagService(sdkClient, metrics, grpcLog)

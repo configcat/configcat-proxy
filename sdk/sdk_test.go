@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/alicebob/miniredis/v2"
 	"github.com/configcat/configcat-proxy/config"
-	utils2 "github.com/configcat/configcat-proxy/internal/utils"
+	"github.com/configcat/configcat-proxy/internal/utils"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/status"
 	"github.com/configcat/go-sdk/v7/configcattest"
@@ -42,7 +42,7 @@ func TestSdk_Signal(t *testing.T) {
 			Default: false,
 		},
 	})
-	utils2.WithTimeout(2*time.Second, func() {
+	utils.WithTimeout(2*time.Second, func() {
 		<-sub
 	})
 	data, err = client.Eval("flag", nil)
@@ -67,7 +67,7 @@ func TestSdk_Ready_Online(t *testing.T) {
 	opts := config.SDKConfig{BaseUrl: srv.URL, Key: key}
 	client := NewClient(opts, nil, status.NewNullReporter(), log.NewNullLogger())
 	defer client.Close()
-	utils2.WithTimeout(2*time.Second, func() {
+	utils.WithTimeout(2*time.Second, func() {
 		<-client.Ready()
 	})
 	j := client.GetCachedJson()
@@ -76,11 +76,11 @@ func TestSdk_Ready_Online(t *testing.T) {
 }
 
 func TestSdk_Ready_Offline(t *testing.T) {
-	utils2.UseTempFile(`{"f":{"flag":{"i":"","v":true,"t":0,"r":[],"p":[]}}}`, func(path string) {
+	utils.UseTempFile(`{"f":{"flag":{"i":"","v":true,"t":0,"r":[],"p":[]}}}`, func(path string) {
 		opts := config.SDKConfig{Key: "key", Offline: config.OfflineConfig{Enabled: true, Local: config.LocalConfig{FilePath: path}}}
 		client := NewClient(opts, nil, status.NewNullReporter(), log.NewNullLogger())
 		defer client.Close()
-		utils2.WithTimeout(2*time.Second, func() {
+		utils.WithTimeout(2*time.Second, func() {
 			<-client.Ready()
 		})
 		j := client.GetCachedJson()
@@ -117,7 +117,7 @@ func TestSdk_Signal_Refresh(t *testing.T) {
 		},
 	})
 	_ = client.Refresh()
-	utils2.WithTimeout(2*time.Second, func() {
+	utils.WithTimeout(2*time.Second, func() {
 		<-sub
 	})
 	data, err = client.Eval("flag", nil)
@@ -167,7 +167,7 @@ func TestSdk_BadConfig_WithCache(t *testing.T) {
 }
 
 func TestSdk_Signal_Offline_File_Watch(t *testing.T) {
-	utils2.UseTempFile(`{"f":{"flag":{"i":"","v":true,"t":0,"r":[],"p":[]}}}`, func(path string) {
+	utils.UseTempFile(`{"f":{"flag":{"i":"","v":true,"t":0,"r":[],"p":[]}}}`, func(path string) {
 		opts := config.SDKConfig{Key: "key", Offline: config.OfflineConfig{Enabled: true, Local: config.LocalConfig{FilePath: path}}}
 		client := NewClient(opts, nil, status.NewNullReporter(), log.NewNullLogger())
 		defer client.Close()
@@ -179,8 +179,8 @@ func TestSdk_Signal_Offline_File_Watch(t *testing.T) {
 		assert.Equal(t, `{"f":{"flag":{"i":"","v":true,"t":0,"r":[],"p":[]}}}`, string(j.CachedJson))
 		assert.Equal(t, fmt.Sprintf("W/\"%x\"", sha1.Sum(j.CachedJson)), j.Etag)
 
-		utils2.WriteIntoFile(path, `{"f":{"flag":{"i":"","v":false,"t":0,"r":[],"p":[]}}}`)
-		utils2.WithTimeout(2*time.Second, func() {
+		utils.WriteIntoFile(path, `{"f":{"flag":{"i":"","v":false,"t":0,"r":[],"p":[]}}}`)
+		utils.WithTimeout(2*time.Second, func() {
 			<-sub
 		})
 		data, err = client.Eval("flag", nil)
@@ -193,7 +193,7 @@ func TestSdk_Signal_Offline_File_Watch(t *testing.T) {
 }
 
 func TestSdk_Signal_Offline_Poll_Watch(t *testing.T) {
-	utils2.UseTempFile(`{"f":{"flag":{"i":"","v":true,"t":0,"r":[],"p":[]}}}`, func(path string) {
+	utils.UseTempFile(`{"f":{"flag":{"i":"","v":true,"t":0,"r":[],"p":[]}}}`, func(path string) {
 		opts := config.SDKConfig{Key: "key", Offline: config.OfflineConfig{Enabled: true, Local: config.LocalConfig{FilePath: path, Polling: true, PollInterval: 1}}}
 		client := NewClient(opts, nil, status.NewNullReporter(), log.NewNullLogger())
 		defer client.Close()
@@ -205,8 +205,8 @@ func TestSdk_Signal_Offline_Poll_Watch(t *testing.T) {
 		assert.Equal(t, `{"f":{"flag":{"i":"","v":true,"t":0,"r":[],"p":[]}}}`, string(j.CachedJson))
 		assert.Equal(t, fmt.Sprintf("W/\"%x\"", sha1.Sum(j.CachedJson)), j.Etag)
 
-		utils2.WriteIntoFile(path, `{"f":{"flag":{"i":"","v":false,"t":0,"r":[],"p":[]}}}`)
-		utils2.WithTimeout(2*time.Second, func() {
+		utils.WriteIntoFile(path, `{"f":{"flag":{"i":"","v":false,"t":0,"r":[],"p":[]}}}`)
+		utils.WithTimeout(2*time.Second, func() {
 			<-sub
 		})
 		data, err = client.Eval("flag", nil)
@@ -240,7 +240,7 @@ func TestSdk_Signal_Offline_Redis_Watch(t *testing.T) {
 	assert.Equal(t, fmt.Sprintf("W/\"%x\"", sha1.Sum(j.CachedJson)), j.Etag)
 
 	_ = s.Set(cacheKey, `{"f":{"flag":{"i":"","v":false,"t":0,"r":[],"p":[]}}}`)
-	utils2.WithTimeout(2*time.Second, func() {
+	utils.WithTimeout(2*time.Second, func() {
 		<-sub
 	})
 	data, err = client.Eval("flag", nil)
