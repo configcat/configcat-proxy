@@ -39,8 +39,7 @@ func (s *flagService) EvalFlag(req *proto.Request, stream proto.FlagService_Eval
 		user = &sdk.UserAttrs{Attrs: req.GetUser()}
 	}
 
-	sr := s.streamServer.GetOrCreateStream(req.GetKey())
-	conn := sr.CreateConnection(user)
+	conn := s.streamServer.CreateConnection(req.GetKey(), user)
 
 	for {
 		select {
@@ -64,7 +63,7 @@ func (s *flagService) EvalFlag(req *proto.Request, stream proto.FlagService_Eval
 				}
 			}
 		case <-stream.Context().Done():
-			conn.Close()
+			s.streamServer.CloseConnection(conn, req.GetKey())
 			return stream.Context().Err()
 		case <-s.closed:
 			return status.Error(codes.Aborted, "server down")

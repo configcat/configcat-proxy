@@ -12,7 +12,6 @@ import (
 	"github.com/configcat/configcat-proxy/stream"
 	"github.com/julienschmidt/httprouter"
 	"net/http"
-	"sync"
 )
 
 const streamDataName = "data"
@@ -22,8 +21,7 @@ type Server struct {
 	config       config.SseConfig
 	logger       log.Logger
 	sdkClient    sdk.Client
-	closed       chan struct{}
-	closedOnce   sync.Once
+	stop         chan struct{}
 }
 
 func NewServer(sdkClient sdk.Client, metrics metrics.Handler, conf config.SseConfig, logger log.Logger) *Server {
@@ -33,7 +31,7 @@ func NewServer(sdkClient sdk.Client, metrics metrics.Handler, conf config.SseCon
 		logger:       sseLog,
 		config:       conf,
 		sdkClient:    sdkClient,
-		closed:       make(chan struct{}),
+		stop:         make(chan struct{}),
 	}
 }
 
@@ -76,8 +74,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		userAttrs = &sdk.UserAttrs{Attrs: evalReq.User}
 	}
 
-	str := s.streamServer.GetOrCreateStream(evalReq.Key)
-	conn := str.CreateConnection(userAttrs)
+	conn := s.streamServer.CreateConnection(evalReq.Key, userAttrs)
 
 	w.WriteHeader(http.StatusOK)
 	flusher.Flush()
@@ -97,17 +94,15 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				s.logger.Errorf("%s", e)
 			}
 		case <-r.Context().Done():
-			conn.Close()
+			s.streamServer.CloseConnection(conn, evalReq.Key)
 			return
-		case <-s.closed:
+		case <-s.stop:
 			return
 		}
 	}
 }
 
 func (s *Server) Close() {
-	s.closedOnce.Do(func() {
-		close(s.closed)
-	})
+	close(s.stop)
 	s.streamServer.Close()
 }

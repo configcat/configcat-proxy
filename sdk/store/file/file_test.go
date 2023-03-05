@@ -113,7 +113,7 @@ func TestFileStore_Stop(t *testing.T) {
 		}()
 		utils.WithTimeout(2*time.Second, func() {
 			select {
-			case <-str.closed:
+			case <-str.stop:
 			case <-str.Modified():
 			}
 		})

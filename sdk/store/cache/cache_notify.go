@@ -8,19 +8,17 @@ import (
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/sdk/store"
 	"github.com/configcat/configcat-proxy/status"
-	"sync"
 	"time"
 )
 
 type notifyingCacheStorage struct {
-	poller     *time.Ticker
-	closed     chan struct{}
-	stored     []byte
-	closedOnce sync.Once
-	log        log.Logger
-	reporter   status.Reporter
-	ctx        context.Context
-	ctxCancel  func()
+	poller    *time.Ticker
+	stop      chan struct{}
+	stored    []byte
+	log       log.Logger
+	reporter  status.Reporter
+	ctx       context.Context
+	ctxCancel func()
 	store.CacheStorage
 }
 
@@ -30,7 +28,7 @@ func NewNotifyingCacheStorage(cache store.CacheStorage, conf config.OfflineConfi
 		CacheStorage: cache,
 		reporter:     reporter,
 		log:          nrLogger,
-		closed:       make(chan struct{}),
+		stop:         make(chan struct{}),
 		poller:       time.NewTicker(time.Duration(conf.CachePollInterval) * time.Second),
 	}
 	n.ctx, n.ctxCancel = context.WithCancel(context.Background())
@@ -47,11 +45,7 @@ func (n *notifyingCacheStorage) run() {
 				if n.reload() {
 					n.Notify()
 				}
-			case <-n.closed:
-				n.ctxCancel()
-				n.poller.Stop()
-				n.CacheStorage.Close()
-				n.log.Reportf("shutdown complete")
+			case <-n.stop:
 				return
 			}
 		}
@@ -93,7 +87,9 @@ func (n *notifyingCacheStorage) Set(_ context.Context, _ string, _ []byte) error
 }
 
 func (n *notifyingCacheStorage) Close() {
-	n.closedOnce.Do(func() {
-		close(n.closed)
-	})
+	close(n.stop)
+	n.ctxCancel()
+	n.poller.Stop()
+	n.CacheStorage.Close()
+	n.log.Reportf("shutdown complete")
 }

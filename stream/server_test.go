@@ -31,11 +31,8 @@ func TestServer_Receive(t *testing.T) {
 
 	strServer := NewServer(client, nil, log.NewNullLogger(), "test")
 	defer strServer.Close()
-	stream := strServer.GetOrCreateStream("flag")
 
-	assert.Same(t, stream, strServer.GetOrCreateStream("flag"))
-
-	conn := stream.CreateConnection(nil)
+	conn := strServer.CreateConnection("flag", nil)
 	utils.WithTimeout(2*time.Second, func() {
 		pyl := <-conn.Receive()
 		assert.True(t, pyl.Value.(bool))
@@ -60,11 +57,8 @@ func TestServer_Offline_Receive(t *testing.T) {
 
 		srv := NewServer(client, nil, log.NewNullLogger(), "test")
 		defer srv.Close()
-		stream := srv.GetOrCreateStream("flag")
 
-		assert.Same(t, stream, srv.GetOrCreateStream("flag"))
-
-		conn := stream.CreateConnection(nil)
+		conn := srv.CreateConnection("flag", nil)
 		utils.WithTimeout(2*time.Second, func() {
 			pyl := <-conn.Receive()
 			assert.True(t, pyl.Value.(bool))
@@ -77,7 +71,7 @@ func TestServer_Offline_Receive(t *testing.T) {
 	})
 }
 
-func TestServer_Stream_Stale_Close(t *testing.T) {
+func TestServer_Stream_Close(t *testing.T) {
 	key := configcattest.RandomSDKKey()
 	var h configcattest.Handler
 	_ = h.SetFlags(key, map[string]*configcattest.Flag{
@@ -93,78 +87,13 @@ func TestServer_Stream_Stale_Close(t *testing.T) {
 	defer client.Close()
 
 	strServer := NewServer(client, nil, log.NewNullLogger(), "test").(*server)
-	defer strServer.Close()
-	stream := strServer.GetOrCreateStream("flag").(*stream)
-
-	conn := stream.CreateConnection(nil)
+	conn := strServer.CreateConnection("flag", nil)
 	utils.WithTimeout(2*time.Second, func() {
 		pyl := <-conn.Receive()
 		assert.True(t, pyl.Value.(bool))
 	})
-	conn.Close()
-	time.Sleep(100 * time.Millisecond)
-	assert.True(t, stream.markedForClose.Load())
-	strServer.teardownStaleStreams()
-
-	assert.Empty(t, strServer.streams)
-}
-
-func TestServer_Stream_NotStale(t *testing.T) {
-	key := configcattest.RandomSDKKey()
-	var h configcattest.Handler
-	_ = h.SetFlags(key, map[string]*configcattest.Flag{
-		"flag": {
-			Default: true,
-		},
-	})
-	srv := httptest.NewServer(&h)
-	defer srv.Close()
-
-	opts := config.SDKConfig{BaseUrl: srv.URL, Key: key}
-	client := sdk.NewClient(opts, nil, status.NewNullReporter(), log.NewNullLogger())
-	defer client.Close()
-
-	strServer := NewServer(client, nil, log.NewNullLogger(), "test").(*server)
-	defer strServer.Close()
-	stream := strServer.GetOrCreateStream("flag").(*stream)
-
-	conn := stream.CreateConnection(nil)
-	utils.WithTimeout(2*time.Second, func() {
-		pyl := <-conn.Receive()
-		assert.True(t, pyl.Value.(bool))
-	})
-	strServer.teardownStaleStreams()
-
-	assert.NotEmpty(t, strServer.streams)
-}
-
-func TestServer_Stream_TearDown_All(t *testing.T) {
-	key := configcattest.RandomSDKKey()
-	var h configcattest.Handler
-	_ = h.SetFlags(key, map[string]*configcattest.Flag{
-		"flag": {
-			Default: true,
-		},
-	})
-	srv := httptest.NewServer(&h)
-	defer srv.Close()
-
-	opts := config.SDKConfig{BaseUrl: srv.URL, Key: key}
-	client := sdk.NewClient(opts, nil, status.NewNullReporter(), log.NewNullLogger())
-	defer client.Close()
-
-	strServer := NewServer(client, nil, log.NewNullLogger(), "test").(*server)
-	defer strServer.Close()
-	stream := strServer.GetOrCreateStream("flag").(*stream)
-
-	conn := stream.CreateConnection(nil)
-	utils.WithTimeout(2*time.Second, func() {
-		pyl := <-conn.Receive()
-		assert.True(t, pyl.Value.(bool))
-	})
-	strServer.teardownAllStreams()
-
-	assert.Empty(t, strServer.streams)
+	strServer.Close()
+	assert.Empty(t, strServer.channels)
 }
 
 func TestServer_Goroutines(t *testing.T) {
@@ -188,29 +117,23 @@ func TestServer_Goroutines(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 	count := runtime.NumGoroutine()
 
-	stream := strServer.GetOrCreateStream("flag")
-	stream = strServer.GetOrCreateStream("flag")
-	stream = strServer.GetOrCreateStream("flag")
-	stream = strServer.GetOrCreateStream("flag")
-	stream = strServer.GetOrCreateStream("flag")
-	stream = strServer.GetOrCreateStream("flag")
-	conn1 := stream.CreateConnection(nil)
-	conn2 := stream.CreateConnection(&sdk.UserAttrs{Attrs: map[string]string{"id": "1"}})
-	conn3 := stream.CreateConnection(&sdk.UserAttrs{Attrs: map[string]string{"id": "1"}})
-	conn4 := stream.CreateConnection(&sdk.UserAttrs{Attrs: map[string]string{"id": "2"}})
-	conn5 := stream.CreateConnection(nil)
-	conn6 := stream.CreateConnection(nil)
+	conn1 := strServer.CreateConnection("flag", nil)
+	conn2 := strServer.CreateConnection("flag", &sdk.UserAttrs{Attrs: map[string]string{"id": "1"}})
+	conn3 := strServer.CreateConnection("flag", &sdk.UserAttrs{Attrs: map[string]string{"id": "1"}})
+	conn4 := strServer.CreateConnection("flag", &sdk.UserAttrs{Attrs: map[string]string{"id": "2"}})
+	conn5 := strServer.CreateConnection("flag", nil)
+	conn6 := strServer.CreateConnection("flag", nil)
 
 	defer func() {
-		conn1.Close()
-		conn2.Close()
-		conn3.Close()
-		conn4.Close()
-		conn5.Close()
-		conn6.Close()
+		strServer.CloseConnection(conn1, "flag")
+		strServer.CloseConnection(conn2, "flag")
+		strServer.CloseConnection(conn3, "flag")
+		strServer.CloseConnection(conn4, "flag")
+		strServer.CloseConnection(conn5, "flag")
+		strServer.CloseConnection(conn6, "flag")
 	}()
 
 	time.Sleep(100 * time.Millisecond)
 
-	assert.Equal(t, count+1, runtime.NumGoroutine())
+	assert.Equal(t, count, runtime.NumGoroutine())
 }

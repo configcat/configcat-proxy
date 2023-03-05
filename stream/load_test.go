@@ -14,14 +14,13 @@ import (
 	"time"
 )
 
-var streamCount = 10
-var connCount = 50
+var connCount = 1000
 
 func TestStreamServer_Load(t *testing.T) {
 	key := configcattest.RandomSDKKey()
 	var h configcattest.Handler
 	flags := make(map[string]*configcattest.Flag)
-	for i := 0; i < streamCount; i++ {
+	for i := 0; i < connCount; i++ {
 		flags[fmt.Sprintf("flag%d", i)] = &configcattest.Flag{Default: false}
 	}
 	_ = h.SetFlags(key, flags)
@@ -33,53 +32,37 @@ func TestStreamServer_Load(t *testing.T) {
 	defer client.Close()
 
 	strServer := NewServer(client, nil, log.NewNullLogger(), "test").(*server)
-	defer strServer.Close()
 
 	t.Run("init", func(t *testing.T) {
-		for i := 0; i < streamCount; i++ {
+		for i := 0; i < connCount; i++ {
 			fName := fmt.Sprintf("flag%d", i)
 			t.Run(fName, func(t *testing.T) {
 				t.Parallel()
-				runStreamTest(t, fName, strServer)
+				runConnectionTest(t, fName, strServer)
 			})
 		}
 	})
-	for i := 0; i < streamCount; i++ {
+	for i := 0; i < connCount; i++ {
 		flags[fmt.Sprintf("flag%d", i)] = &configcattest.Flag{Default: true}
 	}
 	_ = h.SetFlags(key, flags)
 	_ = client.Refresh()
 	t.Run("check refresh", func(t *testing.T) {
-		for i := 0; i < streamCount; i++ {
-			fName := fmt.Sprintf("flag%d", i)
-			str := strServer.streams[fName]
-			t.Run(fName, func(t *testing.T) {
-				t.Parallel()
-				checkStream(t, str)
-			})
-		}
+		checkConnections(t, strServer)
 	})
+	strServer.Close()
+	assert.Empty(t, strServer.channels)
 }
 
-func runStreamTest(t *testing.T, fName string, strServer Server) {
-	str := strServer.GetOrCreateStream(fName).(*stream)
-	for i := 0; i < connCount; i++ {
-		t.Run(fmt.Sprintf("conn%d", i), func(t *testing.T) {
-			t.Parallel()
-			runConnectionTest(t, str)
-		})
-	}
-}
-
-func runConnectionTest(t *testing.T, str *stream) {
-	conn := str.CreateConnection(nil)
+func runConnectionTest(t *testing.T, fName string, str *server) {
+	conn := str.CreateConnection(fName, nil)
 	utils.WithTimeout(2*time.Second, func() {
 		payload := <-conn.Receive()
 		assert.False(t, payload.Value.(bool))
 	})
 }
 
-func checkStream(t *testing.T, str *stream) {
+func checkConnections(t *testing.T, str *server) {
 	for id, c := range str.channels {
 		ch := c
 		t.Run(fmt.Sprintf("chan-%s", id), func(t *testing.T) {
@@ -92,7 +75,6 @@ func checkStream(t *testing.T, str *stream) {
 						payload := <-connect.Receive()
 						assert.True(t, payload.Value.(bool))
 					})
-					connect.Close()
 				})
 			}
 		})

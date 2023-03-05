@@ -6,14 +6,12 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"os"
 	"path/filepath"
-	"sync"
 )
 
 type fileWatcher struct {
 	watch        *fsnotify.Watcher
 	log          log.Logger
-	closed       chan struct{}
-	closedOnce   sync.Once
+	stop         chan struct{}
 	modified     chan struct{}
 	realFilePath string
 }
@@ -44,7 +42,7 @@ func newFileWatcher(conf config.LocalConfig, log log.Logger) (*fileWatcher, erro
 	f := &fileWatcher{
 		watch:        w,
 		log:          fsLog,
-		closed:       make(chan struct{}),
+		stop:         make(chan struct{}),
 		modified:     make(chan struct{}),
 		realFilePath: filepath.Join(realPath, filepath.Base(conf.FilePath)),
 	}
@@ -63,9 +61,7 @@ func (f *fileWatcher) run() {
 				}
 			case err := <-f.watch.Errors:
 				f.log.Errorf("%s", err)
-			case <-f.closed:
-				_ = f.watch.Close()
-				f.log.Reportf("shutdown complete")
+			case <-f.stop:
 				return
 			}
 		}
@@ -77,7 +73,7 @@ func (f *fileWatcher) Modified() <-chan struct{} {
 }
 
 func (f *fileWatcher) Close() {
-	f.closedOnce.Do(func() {
-		close(f.closed)
-	})
+	close(f.stop)
+	_ = f.watch.Close()
+	f.log.Reportf("shutdown complete")
 }

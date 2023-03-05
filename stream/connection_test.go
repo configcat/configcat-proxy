@@ -7,19 +7,12 @@ import (
 )
 
 func TestConnection(t *testing.T) {
-	cl := make(chan *connection)
-	conn := newConnection(cl, "test")
+	conn := newConnection("test")
 	pl := &model.ResponsePayload{}
 	go func() {
-		conn.receive <- pl
+		conn.Publish(pl)
 	}()
 	rec := <-conn.Receive()
 	assert.Equal(t, pl, rec)
-
-	go func() {
-		conn.Close()
-	}()
-	c := <-cl
-	rec = <-conn.Receive()
-	assert.Same(t, conn, c)
+	assert.Equal(t, "test", conn.GetExtraAttrs())
 }

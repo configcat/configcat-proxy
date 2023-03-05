@@ -32,12 +32,11 @@ func BenchmarkStream(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		sKey := fmt.Sprintf("flag%d", i)
-		str := strServer.GetOrCreateStream(sKey)
 		for j := 0; j < 100; j++ {
 			user := sdk.UserAttrs{Attrs: map[string]string{"id": fmt.Sprintf("user%d", j)}}
-			conn := str.CreateConnection(&user)
+			conn := strServer.CreateConnection(sKey, &user)
 			<-conn.Receive()
-			conn.Close()
+			strServer.CloseConnection(conn, sKey)
 		}
 	}
 }

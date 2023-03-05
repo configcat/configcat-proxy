@@ -6,28 +6,30 @@ import (
 
 type Connection interface {
 	Receive() <-chan *model.ResponsePayload
-	Close()
+	Publish(payload *model.ResponsePayload)
+	GetExtraAttrs() string
 }
 
 type connection struct {
-	receive       chan *model.ResponsePayload
-	closeNotifier chan *connection
-	discriminator string
+	receive    chan *model.ResponsePayload
+	extraAttrs string
 }
 
-func newConnection(closeNotifier chan *connection, discriminator string) *connection {
+func newConnection(extraAttrs string) Connection {
 	return &connection{
-		receive:       make(chan *model.ResponsePayload, 128),
-		closeNotifier: closeNotifier,
-		discriminator: discriminator,
+		receive:    make(chan *model.ResponsePayload, 64),
+		extraAttrs: extraAttrs,
 	}
+}
+
+func (conn *connection) Publish(payload *model.ResponsePayload) {
+	conn.receive <- payload
 }
 
 func (conn *connection) Receive() <-chan *model.ResponsePayload {
 	return conn.receive
 }
 
-func (conn *connection) Close() {
-	conn.closeNotifier <- conn
-	close(conn.receive)
+func (conn *connection) GetExtraAttrs() string {
+	return conn.extraAttrs
 }

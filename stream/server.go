@@ -3,37 +3,59 @@ package stream
 import (
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/metrics"
+	"github.com/configcat/configcat-proxy/model"
 	"github.com/configcat/configcat-proxy/sdk"
-	"sync"
-	"time"
+	"sync/atomic"
 )
 
 type Server interface {
-	GetOrCreateStream(key string) Stream
+	CreateConnection(key string, user *sdk.UserAttrs) Connection
+	CloseConnection(conn Connection, key string)
 	Close()
 }
 
+type channel struct {
+	connections []Connection
+	lastPayload *model.ResponsePayload
+	user        *sdk.UserAttrs
+	key         string
+}
+
+type connEstablished struct {
+	conn Connection
+	user *sdk.UserAttrs
+	key  string
+}
+
+type connClosed struct {
+	conn Connection
+	key  string
+}
+
 type server struct {
-	streams    map[string]*stream
-	sdkClient  sdk.Client
-	cleanup    *time.Ticker
-	closed     chan struct{}
-	closedOnce sync.Once
-	log        log.Logger
-	serverType string
-	mu         sync.Mutex
-	metrics    metrics.Handler
+	sdkClient        sdk.Client
+	sdkConfigChanged <-chan struct{}
+	stop             chan struct{}
+	log              log.Logger
+	serverType       string
+	metrics          metrics.Handler
+	channels         map[string]*channel
+	connEstablished  chan *connEstablished
+	connClosed       chan *connClosed
+	connCount        int64
 }
 
 func NewServer(sdkClient sdk.Client, metrics metrics.Handler, log log.Logger, serverType string) Server {
 	s := &server{
-		streams:    make(map[string]*stream),
-		cleanup:    time.NewTicker(30 * time.Second),
-		closed:     make(chan struct{}),
-		sdkClient:  sdkClient,
-		log:        log.WithPrefix("stream-server"),
-		serverType: serverType,
-		metrics:    metrics,
+		channels:         make(map[string]*channel),
+		connEstablished:  make(chan *connEstablished),
+		connClosed:       make(chan *connClosed),
+		stop:             make(chan struct{}),
+		sdkConfigChanged: sdkClient.SubConfigChanged(serverType),
+		sdkClient:        sdkClient,
+		log:              log.WithPrefix("stream-server"),
+		serverType:       serverType,
+		metrics:          metrics,
 	}
 	s.run()
 	return s
@@ -43,59 +65,98 @@ func (s *server) run() {
 	go func() {
 		for {
 			select {
-			case <-s.cleanup.C:
-				s.teardownStaleStreams()
-			case <-s.closed:
-				s.cleanup.Stop()
-				s.teardownAllStreams()
-				s.log.Reportf("shutdown complete")
+			case established := <-s.connEstablished:
+				s.addConnection(established)
+				s.log.Debugf("connection established, all connections: %d", atomic.AddInt64(&s.connCount, 1))
+				if s.metrics != nil {
+					s.metrics.IncrementConnection(s.serverType, established.key)
+				}
+
+			case closed := <-s.connClosed:
+				s.removeConnection(closed)
+				s.log.Debugf("connection closed, all connections: %d", atomic.AddInt64(&s.connCount, -1))
+				if s.metrics != nil {
+					s.metrics.DecrementConnection(s.serverType, closed.key)
+				}
+
+			case <-s.sdkConfigChanged:
+				s.log.Debugf("sending payload to %d connection(s)", atomic.LoadInt64(&s.connCount))
+				s.notifyConnections()
+
+			case <-s.stop:
 				return
 			}
 		}
 	}()
 }
 
-func (s *server) GetOrCreateStream(key string) Stream {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	r := s.streams[key]
-	if r != nil {
-		r.markedForClose.Store(false)
-		return r
+func (s *server) CreateConnection(key string, user *sdk.UserAttrs) Connection {
+	var extra = ""
+	if user != nil {
+		extra = user.Discriminator()
 	}
-	st := newStream(key, s.serverType, s.sdkClient, s.metrics, s.log)
-	s.streams[key] = st
-	return st
+	conn := newConnection(extra)
+	s.connEstablished <- &connEstablished{conn: conn, user: user, key: key}
+	return conn
+}
+
+func (s *server) CloseConnection(conn Connection, key string) {
+	s.connClosed <- &connClosed{conn: conn, key: key}
 }
 
 func (s *server) Close() {
-	s.closedOnce.Do(func() {
-		close(s.closed)
-	})
+	s.sdkClient.UnsubConfigChanged(s.serverType)
+	close(s.stop)
+	s.log.Reportf("shutdown complete")
 }
 
-func (s *server) teardownAllStreams() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	for id, str := range s.streams {
-		str.close()
-		delete(s.streams, id)
+func (s *server) addConnection(established *connEstablished) {
+	id := established.key + established.conn.GetExtraAttrs()
+	ch, ok := s.channels[id]
+	if !ok {
+		val, _ := s.sdkClient.Eval(established.key, established.user)
+		ch = &channel{user: established.user, key: established.key}
+		payload := model.PayloadFromEvalData(&val)
+		ch.lastPayload = &payload
+		s.channels[id] = ch
 	}
+	ch.connections = append(ch.connections, established.conn)
+	established.conn.Publish(ch.lastPayload)
 }
 
-func (s *server) teardownStaleStreams() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	count := 0
-	for id, str := range s.streams {
-		if str.markedForClose.Load() {
-			str.close()
-			delete(s.streams, id)
-			count++
+func (s *server) removeConnection(closed *connClosed) {
+	id := closed.key + closed.conn.GetExtraAttrs()
+	ch, ok := s.channels[id]
+	if !ok {
+		return
+	}
+	index := -1
+	for i := range ch.connections {
+		if ch.connections[i] == closed.conn {
+			index = i
+			break
 		}
 	}
-	s.log.Debugf("scheduled cleanup closed %d stale stream(s)", count)
+	if index != -1 {
+		ch.connections = append(ch.connections[:index], ch.connections[index+1:]...)
+	}
+	if len(ch.connections) == 0 {
+		delete(s.channels, id)
+	}
+}
+
+func (s *server) notifyConnections() {
+	for _, ch := range s.channels {
+		val, err := s.sdkClient.Eval(ch.key, ch.user)
+		if err != nil {
+			continue
+		}
+		if val.Value != ch.lastPayload.Value {
+			payload := model.PayloadFromEvalData(&val)
+			ch.lastPayload = &payload
+			for _, conn := range ch.connections {
+				conn.Publish(&payload)
+			}
+		}
+	}
 }

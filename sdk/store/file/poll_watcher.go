@@ -5,15 +5,13 @@ import (
 	"github.com/configcat/configcat-proxy/log"
 	"os"
 	"path/filepath"
-	"sync"
 	"time"
 )
 
 type pollWatcher struct {
 	log              log.Logger
 	poller           *time.Ticker
-	closed           chan struct{}
-	closedOnce       sync.Once
+	stop             chan struct{}
 	modified         chan struct{}
 	realFilePath     string
 	lastModifiedDate time.Time
@@ -36,7 +34,7 @@ func newPollWatcher(conf config.LocalConfig, log log.Logger) (*pollWatcher, erro
 		poller:           time.NewTicker(time.Duration(conf.PollInterval) * time.Second),
 		log:              fsLog,
 		modified:         make(chan struct{}),
-		closed:           make(chan struct{}),
+		stop:             make(chan struct{}),
 		realFilePath:     realPath,
 		lastModifiedDate: stat.ModTime(),
 		lastSize:         stat.Size(),
@@ -61,9 +59,7 @@ func (p *pollWatcher) run() {
 					p.lastSize = stat.Size()
 					p.modified <- struct{}{}
 				}
-			case <-p.closed:
-				p.poller.Stop()
-				p.log.Reportf("shutdown complete")
+			case <-p.stop:
 				return
 			}
 		}
@@ -75,7 +71,7 @@ func (p *pollWatcher) Modified() <-chan struct{} {
 }
 
 func (p *pollWatcher) Close() {
-	p.closedOnce.Do(func() {
-		close(p.closed)
-	})
+	close(p.stop)
+	p.poller.Stop()
+	p.log.Reportf("shutdown complete")
 }

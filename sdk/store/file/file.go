@@ -9,7 +9,6 @@ import (
 	"github.com/configcat/configcat-proxy/sdk/store"
 	"github.com/configcat/configcat-proxy/status"
 	"os"
-	"sync"
 )
 
 type watcher interface {
@@ -22,13 +21,12 @@ type nullWatcher struct {
 }
 
 type fileStorage struct {
-	watcher    watcher
-	log        log.Logger
-	conf       config.LocalConfig
-	stored     []byte
-	closed     chan struct{}
-	closedOnce sync.Once
-	reporter   status.Reporter
+	watcher  watcher
+	log      log.Logger
+	conf     config.LocalConfig
+	stored   []byte
+	stop     chan struct{}
+	reporter status.Reporter
 	store.EntryStore
 }
 
@@ -52,7 +50,7 @@ func NewFileStorage(conf config.LocalConfig, reporter status.Reporter, log log.L
 		log:        fileLogger,
 		conf:       conf,
 		reporter:   reporter,
-		closed:     make(chan struct{}),
+		stop:       make(chan struct{}),
 		EntryStore: store.NewEntryStore(),
 	}
 	f.reload()
@@ -68,9 +66,7 @@ func (f *fileStorage) run() {
 				if f.reload() {
 					f.Notify()
 				}
-			case <-f.closed:
-				f.watcher.Close()
-				f.log.Reportf("shutdown complete")
+			case <-f.stop:
 				return
 			}
 		}
@@ -112,9 +108,9 @@ func (f *fileStorage) Set(_ context.Context, _ string, _ []byte) error {
 }
 
 func (f *fileStorage) Close() {
-	f.closedOnce.Do(func() {
-		close(f.closed)
-	})
+	close(f.stop)
+	f.watcher.Close()
+	f.log.Reportf("shutdown complete")
 }
 
 func (f *nullWatcher) Close() {

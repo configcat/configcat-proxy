@@ -37,8 +37,7 @@ type EvalData struct {
 type client struct {
 	configCatClient *configcat.Client
 	subscriptions   map[string]chan struct{}
-	closed          chan struct{}
-	closedOnce      sync.Once
+	stop            chan struct{}
 	ready           chan struct{}
 	readyOnce       sync.Once
 	log             log.Logger
@@ -67,7 +66,7 @@ func NewClient(conf config.SDKConfig, metricsHandler metrics.Handler, reporter s
 	client := &client{
 		log:           sdkLog,
 		subscriptions: make(map[string]chan struct{}),
-		closed:        make(chan struct{}),
+		stop:          make(chan struct{}),
 		ready:         make(chan struct{}),
 		cache:         storage,
 		conf:          conf,
@@ -118,11 +117,7 @@ func (c *client) run() {
 			select {
 			case <-c.cache.Modified():
 				c.signal()
-			case <-c.closed:
-				c.ctxCancel()
-				c.cache.Close()
-				c.configCatClient.Close()
-				c.log.Reportf("shutdown complete")
+			case <-c.stop:
 				return
 			}
 		}
@@ -204,7 +199,9 @@ func (c *client) Ready() <-chan struct{} {
 }
 
 func (c *client) Close() {
-	c.closedOnce.Do(func() {
-		close(c.closed)
-	})
+	close(c.stop)
+	c.ctxCancel()
+	c.cache.Close()
+	c.configCatClient.Close()
+	c.log.Reportf("shutdown complete")
 }
