@@ -9,7 +9,7 @@ sdk:
     use_cache: false
     local:
       file_path: "./internal/resources/local.json"
-      polling: true
+      polling: false
   cache:
     redis:
       enabled: false

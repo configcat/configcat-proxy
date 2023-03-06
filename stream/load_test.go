@@ -32,6 +32,7 @@ func TestStreamServer_Load(t *testing.T) {
 	defer client.Close()
 
 	strServer := NewServer(client, nil, log.NewNullLogger(), "test").(*server)
+	defer strServer.Close()
 
 	t.Run("init", func(t *testing.T) {
 		for i := 0; i < connCount; i++ {
@@ -50,7 +51,6 @@ func TestStreamServer_Load(t *testing.T) {
 	t.Run("check refresh", func(t *testing.T) {
 		checkConnections(t, strServer)
 	})
-	strServer.Close()
 }
 
 func runConnectionTest(t *testing.T, fName string, str *server) {
@@ -68,7 +68,8 @@ func checkConnections(t *testing.T, str *server) {
 			t.Parallel()
 			for i, conn := range ch.connections {
 				connect := conn
-				t.Run(fmt.Sprintf("conn%d", i), func(t *testing.T) {
+				cId := i
+				t.Run(fmt.Sprintf("conn%d", cId), func(t *testing.T) {
 					t.Parallel()
 					utils.WithTimeout(2*time.Second, func() {
 						payload := <-connect.Receive()

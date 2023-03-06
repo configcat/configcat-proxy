@@ -23,8 +23,8 @@ type Client interface {
 	Keys() []string
 	GetCachedJson() *store.EntryWithEtag
 	SubConfigChanged(id string) <-chan struct{}
-	Ready() <-chan struct{}
 	UnsubConfigChanged(id string)
+	Ready() <-chan struct{}
 	Refresh() error
 	Close()
 }

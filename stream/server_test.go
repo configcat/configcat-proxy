@@ -71,7 +71,7 @@ func TestServer_Offline_Receive(t *testing.T) {
 	})
 }
 
-func TestServer_Stream_Close(t *testing.T) {
+func TestServer_Receive_Close(t *testing.T) {
 	key := configcattest.RandomSDKKey()
 	var h configcattest.Handler
 	_ = h.SetFlags(key, map[string]*configcattest.Flag{
@@ -93,6 +93,8 @@ func TestServer_Stream_Close(t *testing.T) {
 		assert.True(t, pyl.Value.(bool))
 	})
 	strServer.Close()
+	_ = strServer.CreateConnection("flag", nil)
+	_ = strServer.CreateConnection("flag", nil)
 }
 
 func TestServer_Goroutines(t *testing.T) {

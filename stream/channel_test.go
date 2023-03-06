@@ -95,12 +95,12 @@ func TestServer_Close(t *testing.T) {
 	assert.Equal(t, 1, len(srv.channels["testidu2"].connections))
 
 	srv.Close()
+	_ = srv.CreateConnection("test", user1)
+	_ = srv.CreateConnection("test", user2)
 }
 
 func newClient(t *testing.T, h *configcattest.Handler, key string) sdk.Client {
 	srv := httptest.NewServer(h)
-	defer srv.Close()
-
 	opts := config.SDKConfig{BaseUrl: srv.URL, Key: key}
 	client := sdk.NewClient(opts, nil, status.NewNullReporter(), log.NewNullLogger())
 	t.Cleanup(func() {

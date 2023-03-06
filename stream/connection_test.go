@@ -10,9 +10,9 @@ func TestConnection(t *testing.T) {
 	conn := newConnection("test")
 	pl := &model.ResponsePayload{}
 	go func() {
-		conn.Publish(pl)
+		conn.receive <- pl
 	}()
 	rec := <-conn.Receive()
 	assert.Equal(t, pl, rec)
-	assert.Equal(t, "test", conn.GetExtraAttrs())
+	assert.Equal(t, "test", conn.extraAttrs)
 }

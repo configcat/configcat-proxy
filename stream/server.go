@@ -9,26 +9,26 @@ import (
 )
 
 type Server interface {
-	CreateConnection(key string, user *sdk.UserAttrs) Connection
-	CloseConnection(conn Connection, key string)
+	CreateConnection(key string, user *sdk.UserAttrs) *Connection
+	CloseConnection(conn *Connection, key string)
 	Close()
 }
 
 type channel struct {
-	connections []Connection
+	connections []*Connection
 	lastPayload *model.ResponsePayload
 	user        *sdk.UserAttrs
 	key         string
 }
 
 type connEstablished struct {
-	conn Connection
+	conn *Connection
 	user *sdk.UserAttrs
 	key  string
 }
 
 type connClosed struct {
-	conn Connection
+	conn *Connection
 	key  string
 }
 
@@ -48,8 +48,8 @@ type server struct {
 func NewServer(sdkClient sdk.Client, metrics metrics.Handler, log log.Logger, serverType string) Server {
 	s := &server{
 		channels:         make(map[string]*channel),
-		connEstablished:  make(chan *connEstablished),
-		connClosed:       make(chan *connClosed),
+		connEstablished:  make(chan *connEstablished, 1),
+		connClosed:       make(chan *connClosed, 1),
 		stop:             make(chan struct{}),
 		sdkConfigChanged: sdkClient.SubConfigChanged(serverType),
 		sdkClient:        sdkClient,
@@ -57,40 +57,38 @@ func NewServer(sdkClient sdk.Client, metrics metrics.Handler, log log.Logger, se
 		serverType:       serverType,
 		metrics:          metrics,
 	}
-	s.run()
+	go s.run()
 	return s
 }
 
 func (s *server) run() {
-	go func() {
-		for {
-			select {
-			case established := <-s.connEstablished:
-				s.addConnection(established)
-				s.log.Debugf("connection established, all connections: %d", atomic.AddInt64(&s.connCount, 1))
-				if s.metrics != nil {
-					s.metrics.IncrementConnection(s.serverType, established.key)
-				}
-
-			case closed := <-s.connClosed:
-				s.removeConnection(closed)
-				s.log.Debugf("connection closed, all connections: %d", atomic.AddInt64(&s.connCount, -1))
-				if s.metrics != nil {
-					s.metrics.DecrementConnection(s.serverType, closed.key)
-				}
-
-			case <-s.sdkConfigChanged:
-				s.log.Debugf("sending payload to %d connection(s)", atomic.LoadInt64(&s.connCount))
-				s.notifyConnections()
-
-			case <-s.stop:
-				return
+	for {
+		select {
+		case established := <-s.connEstablished:
+			s.addConnection(established)
+			s.log.Debugf("connection established, all connections: %d", atomic.AddInt64(&s.connCount, 1))
+			if s.metrics != nil {
+				s.metrics.IncrementConnection(s.serverType, established.key)
 			}
+
+		case closed := <-s.connClosed:
+			s.removeConnection(closed)
+			s.log.Debugf("connection closed, all connections: %d", atomic.AddInt64(&s.connCount, -1))
+			if s.metrics != nil {
+				s.metrics.DecrementConnection(s.serverType, closed.key)
+			}
+
+		case <-s.sdkConfigChanged:
+			s.log.Debugf("sending payload to %d connection(s)", atomic.LoadInt64(&s.connCount))
+			s.notifyConnections()
+
+		case <-s.stop:
+			return
 		}
-	}()
+	}
 }
 
-func (s *server) CreateConnection(key string, user *sdk.UserAttrs) Connection {
+func (s *server) CreateConnection(key string, user *sdk.UserAttrs) *Connection {
 	var extra = ""
 	if user != nil {
 		extra = user.Discriminator()
@@ -105,7 +103,7 @@ func (s *server) CreateConnection(key string, user *sdk.UserAttrs) Connection {
 	}
 }
 
-func (s *server) CloseConnection(conn Connection, key string) {
+func (s *server) CloseConnection(conn *Connection, key string) {
 	select {
 	case <-s.stop:
 		return
@@ -115,13 +113,13 @@ func (s *server) CloseConnection(conn Connection, key string) {
 }
 
 func (s *server) Close() {
-	close(s.stop)
 	s.sdkClient.UnsubConfigChanged(s.serverType)
+	close(s.stop)
 	s.log.Reportf("shutdown complete")
 }
 
 func (s *server) addConnection(established *connEstablished) {
-	id := established.key + established.conn.GetExtraAttrs()
+	id := established.key + established.conn.extraAttrs
 	ch, ok := s.channels[id]
 	if !ok {
 		val, _ := s.sdkClient.Eval(established.key, established.user)
@@ -131,11 +129,12 @@ func (s *server) addConnection(established *connEstablished) {
 		s.channels[id] = ch
 	}
 	ch.connections = append(ch.connections, established.conn)
-	established.conn.Publish(ch.lastPayload)
+	established.conn.receive <- ch.lastPayload
 }
 
 func (s *server) removeConnection(closed *connClosed) {
-	id := closed.key + closed.conn.GetExtraAttrs()
+	close(closed.conn.receive)
+	id := closed.key + closed.conn.extraAttrs
 	ch, ok := s.channels[id]
 	if !ok {
 		return
@@ -148,6 +147,7 @@ func (s *server) removeConnection(closed *connClosed) {
 		}
 	}
 	if index != -1 {
+		ch.connections[index] = nil
 		ch.connections = append(ch.connections[:index], ch.connections[index+1:]...)
 	}
 	if len(ch.connections) == 0 {
@@ -165,7 +165,7 @@ func (s *server) notifyConnections() {
 			payload := model.PayloadFromEvalData(&val)
 			ch.lastPayload = &payload
 			for _, conn := range ch.connections {
-				conn.Publish(&payload)
+				conn.receive <- &payload
 			}
 		}
 	}
