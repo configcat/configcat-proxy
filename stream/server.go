@@ -79,7 +79,6 @@ func (s *server) run() {
 			}
 
 		case <-s.sdkConfigChanged:
-			s.log.Debugf("sending payload to %d connection(s)", atomic.LoadInt64(&s.connCount))
 			s.notifyConnections()
 
 		case <-s.stop:
@@ -113,8 +112,8 @@ func (s *server) CloseConnection(conn *Connection, key string) {
 }
 
 func (s *server) Close() {
-	s.sdkClient.UnsubConfigChanged(s.serverType)
 	close(s.stop)
+	s.sdkClient.UnsubConfigChanged(s.serverType)
 	s.log.Reportf("shutdown complete")
 }
 
@@ -156,6 +155,7 @@ func (s *server) removeConnection(closed *connClosed) {
 }
 
 func (s *server) notifyConnections() {
+	sent := 0
 	for _, ch := range s.channels {
 		val, err := s.sdkClient.Eval(ch.key, ch.user)
 		if err != nil {
@@ -165,8 +165,12 @@ func (s *server) notifyConnections() {
 			payload := model.PayloadFromEvalData(&val)
 			ch.lastPayload = &payload
 			for _, conn := range ch.connections {
+				sent++
 				conn.receive <- &payload
 			}
 		}
+	}
+	if sent > 0 {
+		s.log.Debugf("payload sent to %d connection(s)", sent)
 	}
 }

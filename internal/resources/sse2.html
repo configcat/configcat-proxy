@@ -3,17 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <title>Title</title>
+    <style>
+        #main {
+            display: flex;
+            flex-wrap: wrap;
+        }
+    </style>
 </head>
 <body>
+<div id="main"></div>
 <script>
-    const user = {
-        key: "textsetting",
+    for (let i = 0; i < 50; i++) {
+        const user = {
+            key: "textsetting",
+            user: {
+                Identifier: "user" + i
+            }
+        }
+        const div = document.createElement("div");
+        div.style.width = "100px";
+        div.style.height = "100px";
+        div.style.margin = "5px";
+        div.style.background = "#000";
+
+        document.getElementById("main").appendChild(div);
+
+        const data = btoa(JSON.stringify(user))
+        const evtSource = new EventSource("https://localhost:8090/sse/" + data);
+        evtSource.onmessage = (event) => {
+            console.log(event.data);
+            const main = document.getElementById("main");
+            main.children[i].style.background = "#" + JSON.parse(event.data).value;
+        };
     }
-    const data = btoa(JSON.stringify(user))
-    const evtSource = new EventSource("http://localhost:8050/sse/" + data);
-    evtSource.onmessage = (event) => {
-        console.log(event.data);
-    };
 </script>
 </body>
 </html>

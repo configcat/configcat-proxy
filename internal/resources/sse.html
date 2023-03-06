@@ -13,7 +13,7 @@
         }
     }
     const data = btoa(JSON.stringify(user))
-    const evtSource = new EventSource("http://localhost:8050/sse/" + data);
+    const evtSource = new EventSource("https://localhost:8090/sse/" + data);
     evtSource.onmessage = (event) => {
         console.log(event.data);
     };
