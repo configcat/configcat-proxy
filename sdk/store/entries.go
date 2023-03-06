@@ -57,9 +57,7 @@ func (r *RootNode) Fixup() {
 type EntryStore interface {
 	LoadEntry() *EntryWithEtag
 	StoreEntry(data []byte)
-	Notify()
 	GetLatestJson() *EntryWithEtag
-	Modified() <-chan struct{}
 }
 
 type EntryWithEtag struct {
@@ -91,16 +89,8 @@ func (e *entryStore) StoreEntry(data []byte) {
 	e.entry.Store(parseEntryWithEtag(data))
 }
 
-func (e *entryStore) Notify() {
-	e.modified <- struct{}{}
-}
-
 func (e *entryStore) GetLatestJson() *EntryWithEtag {
 	return e.LoadEntry()
-}
-
-func (e *entryStore) Modified() <-chan struct{} {
-	return e.modified
 }
 
 func parseEntryWithEtag(data []byte) *EntryWithEtag {

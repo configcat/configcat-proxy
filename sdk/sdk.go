@@ -41,7 +41,7 @@ type client struct {
 	ready           chan struct{}
 	readyOnce       sync.Once
 	log             log.Logger
-	cache           store.Storage
+	cache           store.CacheStorage
 	conf            config.SDKConfig
 	mu              sync.RWMutex
 	initialized     atomic.Bool
@@ -52,7 +52,7 @@ type client struct {
 func NewClient(conf config.SDKConfig, metricsHandler metrics.Handler, reporter status.Reporter, log log.Logger) Client {
 	sdkLog := log.WithLevel(conf.Log.GetLevel()).WithPrefix("sdk")
 	var offline = conf.Offline.Enabled
-	var storage store.Storage
+	var storage store.CacheStorage
 	if offline && conf.Offline.Local.FilePath != "" {
 		storage = file.NewFileStorage(conf.Offline.Local, reporter, log.WithLevel(conf.Offline.Log.GetLevel()))
 	} else if offline && conf.Offline.UseCache && conf.Cache.Redis.Enabled {
@@ -61,7 +61,7 @@ func NewClient(conf config.SDKConfig, metricsHandler metrics.Handler, reporter s
 	} else if !offline && conf.Cache.Redis.Enabled {
 		storage = redis.NewRedisStorage(conf.Key, conf.Cache.Redis, reporter)
 	} else {
-		storage = &store.InMemoryStorage{EntryStore: store.NewEntryStore()}
+		storage = store.NewInMemoryStorage()
 	}
 	client := &client{
 		log:           sdkLog,
@@ -107,21 +107,21 @@ func NewClient(conf config.SDKConfig, metricsHandler metrics.Handler, reporter s
 		_ = client.Refresh()
 	}
 
-	client.run()
+	if notifier, ok := storage.(store.NotifyingStorage); ok {
+		go client.run(notifier)
+	}
 	return client
 }
 
-func (c *client) run() {
-	go func() {
-		for {
-			select {
-			case <-c.cache.Modified():
-				c.signal()
-			case <-c.stop:
-				return
-			}
+func (c *client) run(notifier store.NotifyingStorage) {
+	for {
+		select {
+		case <-notifier.Modified():
+			c.signal()
+		case <-c.stop:
+			return
 		}
-	}()
+	}
 }
 
 func (c *client) signal() {

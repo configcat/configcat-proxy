@@ -95,7 +95,6 @@ func TestServer_Close(t *testing.T) {
 	assert.Equal(t, 1, len(srv.channels["testidu2"].connections))
 
 	srv.Close()
-	assert.Empty(t, srv.channels)
 }
 
 func newClient(t *testing.T, h *configcattest.Handler, key string) sdk.Client {

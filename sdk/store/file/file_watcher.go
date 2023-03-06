@@ -3,16 +3,17 @@ package file
 import (
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/log"
+	"github.com/configcat/configcat-proxy/sdk/store"
 	"github.com/fsnotify/fsnotify"
 	"os"
 	"path/filepath"
 )
 
 type fileWatcher struct {
+	store.Notifier
+
 	watch        *fsnotify.Watcher
 	log          log.Logger
-	stop         chan struct{}
-	modified     chan struct{}
 	realFilePath string
 }
 
@@ -40,40 +41,33 @@ func newFileWatcher(conf config.LocalConfig, log log.Logger) (*fileWatcher, erro
 		return nil, err
 	}
 	f := &fileWatcher{
+		Notifier:     store.NewNotifier(),
 		watch:        w,
 		log:          fsLog,
-		stop:         make(chan struct{}),
-		modified:     make(chan struct{}),
 		realFilePath: filepath.Join(realPath, filepath.Base(conf.FilePath)),
 	}
 	fsLog.Reportf("started watching %s", f.realFilePath)
-	f.run()
+	go f.run()
 	return f, nil
 }
 
 func (f *fileWatcher) run() {
-	go func() {
-		for {
-			select {
-			case event := <-f.watch.Events:
-				if event.Name == f.realFilePath && event.Has(fsnotify.Write) {
-					f.modified <- struct{}{}
-				}
-			case err := <-f.watch.Errors:
-				f.log.Errorf("%s", err)
-			case <-f.stop:
-				return
+	for {
+		select {
+		case event := <-f.watch.Events:
+			if event.Name == f.realFilePath && event.Has(fsnotify.Write) {
+				f.Notify()
 			}
+		case err := <-f.watch.Errors:
+			f.log.Errorf("%s", err)
+		case <-f.Closed():
+			return
 		}
-	}()
-}
-
-func (f *fileWatcher) Modified() <-chan struct{} {
-	return f.modified
+	}
 }
 
 func (f *fileWatcher) Close() {
-	close(f.stop)
+	f.Notifier.Close()
 	_ = f.watch.Close()
 	f.log.Reportf("shutdown complete")
 }

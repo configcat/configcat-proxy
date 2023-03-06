@@ -12,10 +12,11 @@ import (
 )
 
 type redisStorage struct {
+	store.EntryStore
+
 	redisDb  redis.UniversalClient
 	cacheKey string
 	reporter status.Reporter
-	store.EntryStore
 }
 
 func NewRedisStorage(sdkKey string, conf config.RedisConfig, reporter status.Reporter) store.CacheStorage {

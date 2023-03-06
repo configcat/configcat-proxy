@@ -4,34 +4,36 @@ import (
 	"context"
 )
 
-type Storage interface {
+type CacheStorage interface {
+	EntryStore
+
 	Get(ctx context.Context, key string) ([]byte, error)
 	Set(ctx context.Context, key string, value []byte) error
-
-	GetLatestJson() *EntryWithEtag
-	Modified() <-chan struct{}
-
 	Close()
 }
 
-type CacheStorage interface {
-	EntryStore
-	Storage
+type NotifyingStorage interface {
+	CacheStorage
+	Notifier
 }
 
-type InMemoryStorage struct {
+type inMemoryStorage struct {
 	EntryStore
 }
 
-func (r *InMemoryStorage) Get(_ context.Context, _ string) ([]byte, error) {
+func NewInMemoryStorage() CacheStorage {
+	return &inMemoryStorage{EntryStore: NewEntryStore()}
+}
+
+func (r *inMemoryStorage) Get(_ context.Context, _ string) ([]byte, error) {
 	return r.LoadEntry().CachedJson, nil
 }
 
-func (r *InMemoryStorage) Set(_ context.Context, _ string, value []byte) error {
+func (r *inMemoryStorage) Set(_ context.Context, _ string, value []byte) error {
 	r.StoreEntry(value)
 	return nil
 }
 
-func (r *InMemoryStorage) Close() {
+func (r *inMemoryStorage) Close() {
 	// do nothing
 }

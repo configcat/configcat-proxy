@@ -120,8 +120,8 @@ func TestRedisNotify_Close(t *testing.T) {
 	}()
 	utils.WithTimeout(2*time.Second, func() {
 		select {
-		case <-srv.stop:
-		case <-srv.CacheStorage.Modified():
+		case <-srv.Closed():
+		case <-srv.Modified():
 		}
 	})
 }

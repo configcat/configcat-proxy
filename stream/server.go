@@ -96,17 +96,27 @@ func (s *server) CreateConnection(key string, user *sdk.UserAttrs) Connection {
 		extra = user.Discriminator()
 	}
 	conn := newConnection(extra)
-	s.connEstablished <- &connEstablished{conn: conn, user: user, key: key}
-	return conn
+	select {
+	case <-s.stop:
+		return conn
+	default:
+		s.connEstablished <- &connEstablished{conn: conn, user: user, key: key}
+		return conn
+	}
 }
 
 func (s *server) CloseConnection(conn Connection, key string) {
-	s.connClosed <- &connClosed{conn: conn, key: key}
+	select {
+	case <-s.stop:
+		return
+	default:
+		s.connClosed <- &connClosed{conn: conn, key: key}
+	}
 }
 
 func (s *server) Close() {
-	s.sdkClient.UnsubConfigChanged(s.serverType)
 	close(s.stop)
+	s.sdkClient.UnsubConfigChanged(s.serverType)
 	s.log.Reportf("shutdown complete")
 }
 

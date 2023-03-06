@@ -12,44 +12,43 @@ import (
 )
 
 type notifyingCacheStorage struct {
+	store.CacheStorage
+	store.Notifier
+
 	poller    *time.Ticker
-	stop      chan struct{}
 	stored    []byte
 	log       log.Logger
 	reporter  status.Reporter
 	ctx       context.Context
 	ctxCancel func()
-	store.CacheStorage
 }
 
-func NewNotifyingCacheStorage(cache store.CacheStorage, conf config.OfflineConfig, reporter status.Reporter, log log.Logger) store.Storage {
+func NewNotifyingCacheStorage(cache store.CacheStorage, conf config.OfflineConfig, reporter status.Reporter, log log.Logger) store.NotifyingStorage {
 	nrLogger := log.WithPrefix("cache-poll")
 	n := &notifyingCacheStorage{
 		CacheStorage: cache,
+		Notifier:     store.NewNotifier(),
 		reporter:     reporter,
 		log:          nrLogger,
-		stop:         make(chan struct{}),
 		poller:       time.NewTicker(time.Duration(conf.CachePollInterval) * time.Second),
 	}
 	n.ctx, n.ctxCancel = context.WithCancel(context.Background())
 	n.reload()
-	n.run()
+	go n.run()
 	return n
 }
 
 func (n *notifyingCacheStorage) run() {
-	go func() {
-		for {
-			select {
-			case <-n.poller.C:
-				if n.reload() {
-					n.Notify()
-				}
-			case <-n.stop:
-				return
+	for {
+		select {
+		case <-n.poller.C:
+			if n.reload() {
+				n.Notify()
 			}
+		case <-n.Closed():
+			return
 		}
-	}()
+	}
 }
 
 func (n *notifyingCacheStorage) reload() bool {
@@ -87,7 +86,7 @@ func (n *notifyingCacheStorage) Set(_ context.Context, _ string, _ []byte) error
 }
 
 func (n *notifyingCacheStorage) Close() {
-	close(n.stop)
+	n.Notifier.Close()
 	n.ctxCancel()
 	n.poller.Stop()
 	n.CacheStorage.Close()

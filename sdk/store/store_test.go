@@ -9,14 +9,14 @@ import (
 
 func TestInMemoryStore(t *testing.T) {
 	t.Run("load default", func(t *testing.T) {
-		e := InMemoryStorage{EntryStore: NewEntryStore()}
+		e := NewInMemoryStorage()
 		r, err := e.Get(context.Background(), "")
 		assert.NoError(t, err)
 		assert.NotNil(t, r)
 		assert.Equal(t, r, e.GetLatestJson().CachedJson)
 	})
 	t.Run("store, check etag", func(t *testing.T) {
-		e := InMemoryStorage{EntryStore: NewEntryStore()}
+		e := NewInMemoryStorage()
 		data := []byte("test")
 		etag := sha1.Sum(data)
 		err := e.Set(context.Background(), "", data)
@@ -25,12 +25,5 @@ func TestInMemoryStore(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, data, r)
 		assert.NotNil(t, etag, e.LoadEntry().Etag)
-	})
-	t.Run("modified channel", func(t *testing.T) {
-		e := InMemoryStorage{EntryStore: NewEntryStore()}
-		go func() {
-			e.Notify()
-		}()
-		<-e.Modified()
 	})
 }

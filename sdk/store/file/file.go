@@ -21,16 +21,18 @@ type nullWatcher struct {
 }
 
 type fileStorage struct {
+	store.EntryStore
+	store.Notifier
+
 	watcher  watcher
 	log      log.Logger
 	conf     config.LocalConfig
 	stored   []byte
-	stop     chan struct{}
+	done     chan struct{}
 	reporter status.Reporter
-	store.EntryStore
 }
 
-func NewFileStorage(conf config.LocalConfig, reporter status.Reporter, log log.Logger) store.Storage {
+func NewFileStorage(conf config.LocalConfig, reporter status.Reporter, log log.Logger) store.NotifyingStorage {
 	fileLogger := log.WithPrefix("file-store")
 	var watch watcher
 	var err error
@@ -46,31 +48,30 @@ func NewFileStorage(conf config.LocalConfig, reporter status.Reporter, log log.L
 		watch = &nullWatcher{modified: make(chan struct{})}
 	}
 	f := &fileStorage{
+		EntryStore: store.NewEntryStore(),
+		Notifier:   store.NewNotifier(),
 		watcher:    watch,
 		log:        fileLogger,
 		conf:       conf,
 		reporter:   reporter,
-		stop:       make(chan struct{}),
-		EntryStore: store.NewEntryStore(),
+		done:       make(chan struct{}),
 	}
 	f.reload()
-	f.run()
+	go f.run()
 	return f
 }
 
 func (f *fileStorage) run() {
-	go func() {
-		for {
-			select {
-			case <-f.watcher.Modified():
-				if f.reload() {
-					f.Notify()
-				}
-			case <-f.stop:
-				return
+	for {
+		select {
+		case <-f.watcher.Modified():
+			if f.reload() {
+				f.Notify()
 			}
+		case <-f.Closed():
+			return
 		}
-	}()
+	}
 }
 
 func (f *fileStorage) reload() bool {
@@ -108,7 +109,7 @@ func (f *fileStorage) Set(_ context.Context, _ string, _ []byte) error {
 }
 
 func (f *fileStorage) Close() {
-	close(f.stop)
+	f.Notifier.Close()
 	f.watcher.Close()
 	f.log.Reportf("shutdown complete")
 }

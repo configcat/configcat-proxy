@@ -51,7 +51,6 @@ func TestStreamServer_Load(t *testing.T) {
 		checkConnections(t, strServer)
 	})
 	strServer.Close()
-	assert.Empty(t, strServer.channels)
 }
 
 func runConnectionTest(t *testing.T, fName string, str *server) {

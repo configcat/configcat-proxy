@@ -20,11 +20,4 @@ func TestEntryStore(t *testing.T) {
 		assert.Equal(t, data, e.LoadEntry().CachedJson)
 		assert.NotNil(t, etag, e.LoadEntry().Etag)
 	})
-	t.Run("modified channel", func(t *testing.T) {
-		e := NewEntryStore()
-		go func() {
-			e.Notify()
-		}()
-		<-e.Modified()
-	})
 }
