@@ -98,9 +98,7 @@ type LogConfig struct {
 }
 
 type HttpProxyConfig struct {
-	Url      string `yaml:"url"`
-	User     string `yaml:"user"`
-	Password string `yaml:"password"`
+	Url string `yaml:"url"`
 }
 
 type AuthConfig struct {

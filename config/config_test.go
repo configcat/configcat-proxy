@@ -329,14 +329,10 @@ func TestHttpProxyConfig_YAML(t *testing.T) {
 	utils.UseTempFile(`
 http_proxy:
   url: "proxy-url"
-  user: "proxy-user"
-  password: "proxy-pass"
 `, func(file string) {
 		conf, err := LoadConfigFromFileAndEnvironment(file)
 		require.NoError(t, err)
 
 		assert.Equal(t, "proxy-url", conf.HttpProxy.Url)
-		assert.Equal(t, "proxy-user", conf.HttpProxy.User)
-		assert.Equal(t, "proxy-pass", conf.HttpProxy.Password)
 	})
 }

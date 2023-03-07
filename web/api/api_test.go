@@ -199,7 +199,7 @@ func newServer(t *testing.T, conf config.ApiConfig) *Server {
 	})
 	srv := httptest.NewServer(&h)
 	opts := config.SDKConfig{BaseUrl: srv.URL, Key: key}
-	client := sdk.NewClient(opts, nil, status.NewNullReporter(), log.NewNullLogger())
+	client := sdk.NewClient(opts, config.HttpProxyConfig{}, nil, status.NewNullReporter(), log.NewNullLogger())
 	t.Cleanup(func() {
 		srv.Close()
 		client.Close()
@@ -215,7 +215,7 @@ func newServerWithHandler(t *testing.T, h *configcattest.Handler, key string, co
 	})
 	srv := httptest.NewServer(h)
 	opts := config.SDKConfig{BaseUrl: srv.URL, Key: key}
-	client := sdk.NewClient(opts, nil, status.NewNullReporter(), log.NewNullLogger())
+	client := sdk.NewClient(opts, config.HttpProxyConfig{}, nil, status.NewNullReporter(), log.NewNullLogger())
 	t.Cleanup(func() {
 		srv.Close()
 		client.Close()
@@ -228,7 +228,7 @@ func newErrorServer(t *testing.T, conf config.ApiConfig) *Server {
 	var h configcattest.Handler
 	srv := httptest.NewServer(&h)
 	opts := config.SDKConfig{BaseUrl: srv.URL, Key: key}
-	client := sdk.NewClient(opts, nil, status.NewNullReporter(), log.NewNullLogger())
+	client := sdk.NewClient(opts, config.HttpProxyConfig{}, nil, status.NewNullReporter(), log.NewNullLogger())
 	t.Cleanup(func() {
 		srv.Close()
 		client.Close()
@@ -238,7 +238,7 @@ func newErrorServer(t *testing.T, conf config.ApiConfig) *Server {
 
 func newOfflineServer(t *testing.T, path string, conf config.ApiConfig) *Server {
 	opts := config.SDKConfig{Key: "local", Offline: config.OfflineConfig{Enabled: true, Local: config.LocalConfig{FilePath: path, Polling: true, PollInterval: 30}}}
-	client := sdk.NewClient(opts, nil, status.NewNullReporter(), log.NewNullLogger())
+	client := sdk.NewClient(opts, config.HttpProxyConfig{}, nil, status.NewNullReporter(), log.NewNullLogger())
 	t.Cleanup(func() {
 		client.Close()
 	})

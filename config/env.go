@@ -74,8 +74,6 @@ func (g *GrpcConfig) loadEnv(prefix string) {
 
 func (h *HttpProxyConfig) loadEnv(prefix string) {
 	prefix = concatPrefix(prefix, "HTTP_PROXY")
-	readEnvString(prefix, "USER", &h.User)
-	readEnvString(prefix, "PASSWORD", &h.Password)
 	readEnvString(prefix, "URL", &h.Url)
 }
 

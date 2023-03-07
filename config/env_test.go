@@ -169,13 +169,9 @@ func TestGrpcConfig_ENV(t *testing.T) {
 
 func TestHttpProxyConfig_ENV(t *testing.T) {
 	t.Setenv("CONFIGCAT_HTTP_PROXY_URL", "proxy-url")
-	t.Setenv("CONFIGCAT_HTTP_PROXY_USER", "proxy-user")
-	t.Setenv("CONFIGCAT_HTTP_PROXY_PASSWORD", "proxy-pass")
 
 	conf, err := LoadConfigFromFileAndEnvironment("")
 	require.NoError(t, err)
 
 	assert.Equal(t, "proxy-url", conf.HttpProxy.Url)
-	assert.Equal(t, "proxy-user", conf.HttpProxy.User)
-	assert.Equal(t, "proxy-pass", conf.HttpProxy.Password)
 }

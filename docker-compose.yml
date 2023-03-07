@@ -25,11 +25,13 @@ services:
       - CONFIGCAT_SDK_BASE_URL=https://test-cdn-global.configcat.com
       - CONFIGCAT_SDK_KEY=XxPbCKmzIUGORk4vsufpzw/iC_KABprDEueeQs3yovVnQ
       - CONFIGCAT_SDK_POLL_INTERVAL=300
+      - CONFIGCAT_SDK_LOG_LEVEL=error
       - CONFIGCAT_HTTP_WEBHOOK_SIGNING_KEY=configcat_whsk_Dj59sEWxRmm+84izQ8Cbn9o4Pnjz7E+/hxcmyfEVT+A=
       - CONFIGCAT_SDK_CACHE_REDIS_ENABLED=true
       - CONFIGCAT_SDK_CACHE_REDIS_ADDRESSES=["redis:6379"]
       - CONFIGCAT_TLS_ENABLED=true
       - CONFIGCAT_TLS_CERTIFICATES=[{"key":"./cert/localhost.key","cert":"./cert/localhost.crt"}]
+      - CONFIGCAT_HTTP_PROXY_URL=http://squid:3128
     ports:
       - "8050:8050"
       - "8051:8051"
@@ -63,3 +65,8 @@ services:
     image: redis:7.0.8-alpine3.17
     ports:
       - "6379:6379"
+
+  squid:
+    image: ubuntu/squid
+    ports:
+      - "3128:3128"

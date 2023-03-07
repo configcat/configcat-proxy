@@ -45,7 +45,7 @@ func main() {
 	}
 
 	statusReporter := status.NewReporter(conf)
-	sdkClient := sdk.NewClient(conf.SDK, metric, statusReporter, logger)
+	sdkClient := sdk.NewClient(conf.SDK, conf.HttpProxy, metric, statusReporter, logger)
 	router := web.NewRouter(sdkClient, metric, statusReporter, conf.Http, logger)
 
 	httpServer := web.NewServer(router.Handler(), logger, conf, errorChan)

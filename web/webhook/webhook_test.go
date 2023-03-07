@@ -142,7 +142,7 @@ func TestWebhook_Signature_Replay_Reject(t *testing.T) {
 func newClient(t *testing.T, h *configcattest.Handler, key string) sdk.Client {
 	srv := httptest.NewServer(h)
 	opts := config.SDKConfig{BaseUrl: srv.URL, Key: key}
-	client := sdk.NewClient(opts, nil, status.NewNullReporter(), log.NewNullLogger())
+	client := sdk.NewClient(opts, config.HttpProxyConfig{}, nil, status.NewNullReporter(), log.NewNullLogger())
 	t.Cleanup(func() {
 		srv.Close()
 		client.Close()

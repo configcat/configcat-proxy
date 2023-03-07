@@ -23,7 +23,7 @@ func BenchmarkStream(b *testing.B) {
 	defer srv.Close()
 
 	opts := config.SDKConfig{BaseUrl: srv.URL, Key: key}
-	client := sdk.NewClient(opts, nil, status.NewNullReporter(), log.NewNullLogger())
+	client := sdk.NewClient(opts, config.HttpProxyConfig{}, nil, status.NewNullReporter(), log.NewNullLogger())
 	defer client.Close()
 
 	strServer := NewServer(client, nil, log.NewNullLogger(), "test").(*server)

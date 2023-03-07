@@ -86,7 +86,7 @@ func newStatusRouter(t *testing.T) *HttpRouter {
 	srv := httptest.NewServer(&h)
 	opts := config.SDKConfig{BaseUrl: srv.URL, Key: key}
 	reporter := status.NewReporter(config.Config{SDK: opts})
-	client := sdk.NewClient(opts, nil, reporter, log.NewNullLogger())
+	client := sdk.NewClient(opts, config.HttpProxyConfig{}, nil, reporter, log.NewNullLogger())
 	utils.WithTimeout(2*time.Second, func() {
 		<-client.Ready()
 	})

@@ -12,6 +12,7 @@ import (
 	"github.com/configcat/configcat-proxy/status"
 	"github.com/configcat/go-sdk/v7"
 	"net/http"
+	"net/url"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -49,7 +50,7 @@ type client struct {
 	ctxCancel       func()
 }
 
-func NewClient(conf config.SDKConfig, metricsHandler metrics.Handler, reporter status.Reporter, log log.Logger) Client {
+func NewClient(conf config.SDKConfig, proxyConf config.HttpProxyConfig, metricsHandler metrics.Handler, reporter status.Reporter, log log.Logger) Client {
 	sdkLog := log.WithLevel(conf.Log.GetLevel()).WithPrefix("sdk")
 	var offline = conf.Offline.Enabled
 	var storage store.CacheStorage
@@ -72,6 +73,16 @@ func NewClient(conf config.SDKConfig, metricsHandler metrics.Handler, reporter s
 		conf:          conf,
 	}
 	client.ctx, client.ctxCancel = context.WithCancel(context.Background())
+	var transport = http.DefaultTransport.(*http.Transport)
+	if proxyConf.Url != "" {
+		proxyUrl, err := url.Parse(proxyConf.Url)
+		if err != nil {
+			sdkLog.Errorf("failed to parse proxy url: %s", proxyConf.Url)
+		} else {
+			transport.Proxy = http.ProxyURL(proxyUrl)
+			sdkLog.Reportf("using HTTP proxy: %s", proxyConf.Url)
+		}
+	}
 	clientConfig := configcat.Config{
 		PollingMode:    configcat.AutoPoll,
 		PollInterval:   time.Duration(conf.PollInterval) * time.Second,
@@ -81,7 +92,7 @@ func NewClient(conf config.SDKConfig, metricsHandler metrics.Handler, reporter s
 		SDKKey:         conf.Key,
 		DataGovernance: configcat.Global,
 		Logger:         sdkLog,
-		Transport:      http.DefaultTransport,
+		Transport:      transport,
 	}
 	if !conf.Offline.Enabled {
 		clientConfig.Hooks = &configcat.Hooks{
