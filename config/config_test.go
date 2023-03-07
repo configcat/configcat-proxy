@@ -39,6 +39,12 @@ func TestConfig_Defaults(t *testing.T) {
 
 	assert.Equal(t, 0, conf.SDK.Cache.Redis.DB)
 	assert.Equal(t, "localhost:6379", conf.SDK.Cache.Redis.Addresses[0])
+
+	assert.Equal(t, 1.2, conf.Tls.MinVersion)
+	assert.Equal(t, 1.2, conf.SDK.Cache.Redis.Tls.MinVersion)
+
+	assert.Equal(t, uint16(tls.VersionTLS12), conf.Tls.GetVersion())
+	assert.Equal(t, uint16(tls.VersionTLS12), conf.SDK.Cache.Redis.Tls.GetVersion())
 }
 
 func TestConfig_LogLevelFixup(t *testing.T) {
