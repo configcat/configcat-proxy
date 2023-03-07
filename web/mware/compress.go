@@ -15,9 +15,10 @@ var pool = sync.Pool{
 }
 
 type gzipWriter struct {
+	http.ResponseWriter
+
 	writer      *gzip.Writer
 	headersDone bool
-	http.ResponseWriter
 }
 
 func GZip(next http.HandlerFunc) http.HandlerFunc {
@@ -28,7 +29,7 @@ func GZip(next http.HandlerFunc) http.HandlerFunc {
 			writer := pool.Get().(*gzip.Writer)
 			writer.Reset(w)
 			gz := gzipWriter{writer: writer, ResponseWriter: w}
-			defer gz.TearDown()
+			defer gz.close()
 			next(&gz, r)
 		} else {
 			next(w, r)
@@ -57,7 +58,7 @@ func (w *gzipWriter) Flush() {
 	}
 }
 
-func (w *gzipWriter) TearDown() {
+func (w *gzipWriter) close() {
 	w.writer.Reset(io.Discard)
 	pool.Put(w.writer)
 }

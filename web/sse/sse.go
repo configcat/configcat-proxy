@@ -75,7 +75,6 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	conn := s.streamServer.CreateConnection(evalReq.Key, userAttrs)
-
 	w.WriteHeader(http.StatusOK)
 	flusher.Flush()
 
@@ -84,7 +83,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		case payload := <-conn.Receive():
 			data, e := json.Marshal(payload)
 			if e == nil {
-				_, e = fmt.Fprintf(w, "data: %s\n\n", string(data))
+				_, e = w.Write(formatSseMsg(data))
 				if e == nil {
 					flusher.Flush()
 				} else {
@@ -105,4 +104,12 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (s *Server) Close() {
 	close(s.stop)
 	s.streamServer.Close()
+}
+
+func formatSseMsg(b []byte) []byte {
+	r := make([]byte, 0, len(b)+8)
+	r = append(r, "data: "...)
+	r = append(r, b...)
+	r = append(r, '\n', '\n')
+	return r
 }

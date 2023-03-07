@@ -175,6 +175,7 @@ func LoadConfigFromFileAndEnvironment(filePath string) (Config, error) {
 		config.Log.Level = "warn"
 	}
 	config.fixupLogLevels(config.Log.Level)
+	config.fixupTlsMinVersions(1.2)
 	return config, nil
 }
 
@@ -186,10 +187,7 @@ func (l *LogConfig) GetLevel() log.Level {
 }
 
 func (t *TlsConfig) GetVersion() uint16 {
-	if ver, ok := allowedTlsVersions[t.MinVersion]; ok {
-		return ver
-	}
-	return tls.VersionTLS12
+	return allowedTlsVersions[t.MinVersion]
 }
 
 func (c *Config) setDefaults() {
@@ -236,5 +234,14 @@ func (c *Config) fixupLogLevels(defLevel string) {
 	}
 	if c.Grpc.Log.GetLevel() == log.None {
 		c.Grpc.Log.Level = defLevel
+	}
+}
+
+func (c *Config) fixupTlsMinVersions(defVersion float64) {
+	if _, ok := allowedTlsVersions[c.Tls.MinVersion]; !ok {
+		c.Tls.MinVersion = defVersion
+	}
+	if _, ok := allowedTlsVersions[c.SDK.Cache.Redis.Tls.MinVersion]; !ok {
+		c.SDK.Cache.Redis.Tls.MinVersion = defVersion
 	}
 }

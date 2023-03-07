@@ -19,6 +19,8 @@ services:
     build:
       context: .
       dockerfile: ./Dockerfile
+    volumes:
+      - ./internal/resources/cert:/cert
     environment:
       - CONFIGCAT_SDK_BASE_URL=https://test-cdn-global.configcat.com
       - CONFIGCAT_SDK_KEY=XxPbCKmzIUGORk4vsufpzw/iC_KABprDEueeQs3yovVnQ
@@ -26,6 +28,8 @@ services:
       - CONFIGCAT_HTTP_WEBHOOK_SIGNING_KEY=configcat_whsk_Dj59sEWxRmm+84izQ8Cbn9o4Pnjz7E+/hxcmyfEVT+A=
       - CONFIGCAT_SDK_CACHE_REDIS_ENABLED=true
       - CONFIGCAT_SDK_CACHE_REDIS_ADDRESSES=["redis:6379"]
+      - CONFIGCAT_TLS_ENABLED=true
+      - CONFIGCAT_TLS_CERTIFICATES=[{"key":"./cert/localhost.key","cert":"./cert/localhost.crt"}]
     ports:
       - "8050:8050"
       - "8051:8051"

@@ -64,7 +64,7 @@ func (s *HttpRouter) Close() {
 func (s *HttpRouter) setupSSERoutes(conf config.SseConfig, sdkClient sdk.Client, log log.Logger) {
 	s.sseServer = sse.NewServer(sdkClient, s.metrics, conf, log)
 	path := "/sse/:data"
-	handler := mware.AutoOptions(mware.GZip(s.sseServer.ServeHTTP))
+	handler := mware.AutoOptions(s.sseServer.ServeHTTP)
 	if len(conf.Headers) > 0 {
 		handler = mware.ExtraHeaders(conf.Headers, handler)
 	}

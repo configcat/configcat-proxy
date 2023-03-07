@@ -48,8 +48,8 @@ type server struct {
 func NewServer(sdkClient sdk.Client, metrics metrics.Handler, log log.Logger, serverType string) Server {
 	s := &server{
 		channels:         make(map[string]*channel),
-		connEstablished:  make(chan *connEstablished, 1),
-		connClosed:       make(chan *connClosed, 1),
+		connEstablished:  make(chan *connEstablished),
+		connClosed:       make(chan *connClosed),
 		stop:             make(chan struct{}),
 		sdkConfigChanged: sdkClient.SubConfigChanged(serverType),
 		sdkClient:        sdkClient,
