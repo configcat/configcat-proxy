@@ -38,7 +38,6 @@ type EvalData struct {
 type client struct {
 	configCatClient *configcat.Client
 	subscriptions   map[string]chan struct{}
-	stop            chan struct{}
 	ready           chan struct{}
 	readyOnce       sync.Once
 	log             log.Logger
@@ -67,7 +66,6 @@ func NewClient(conf config.SDKConfig, proxyConf config.HttpProxyConfig, metricsH
 	client := &client{
 		log:           sdkLog,
 		subscriptions: make(map[string]chan struct{}),
-		stop:          make(chan struct{}),
 		ready:         make(chan struct{}),
 		cache:         storage,
 		conf:          conf,
@@ -129,7 +127,7 @@ func (c *client) run(notifier store.NotifyingStorage) {
 		select {
 		case <-notifier.Modified():
 			c.signal()
-		case <-c.stop:
+		case <-c.ctx.Done():
 			return
 		}
 	}
@@ -210,7 +208,6 @@ func (c *client) Ready() <-chan struct{} {
 }
 
 func (c *client) Close() {
-	close(c.stop)
 	c.ctxCancel()
 	c.cache.Close()
 	c.configCatClient.Close()
