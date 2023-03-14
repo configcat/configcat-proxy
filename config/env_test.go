@@ -14,6 +14,7 @@ func TestSDKConfig_ENV(t *testing.T) {
 	t.Setenv("CONFIGCAT_SDK_POLL_INTERVAL", "300")
 	t.Setenv("CONFIGCAT_SDK_DATA_GOVERNANCE", "eu")
 	t.Setenv("CONFIGCAT_SDK_LOG_LEVEL", "error")
+
 	t.Setenv("CONFIGCAT_SDK_OFFLINE_ENABLED", "true")
 	t.Setenv("CONFIGCAT_SDK_OFFLINE_LOG_LEVEL", "debug")
 	t.Setenv("CONFIGCAT_SDK_OFFLINE_LOCAL_FILE_PATH", "./local.json")
@@ -21,6 +22,7 @@ func TestSDKConfig_ENV(t *testing.T) {
 	t.Setenv("CONFIGCAT_SDK_OFFLINE_LOCAL_POLL_INTERVAL", "100")
 	t.Setenv("CONFIGCAT_SDK_OFFLINE_USE_CACHE", "true")
 	t.Setenv("CONFIGCAT_SDK_OFFLINE_CACHE_POLL_INTERVAL", "200")
+
 	t.Setenv("CONFIGCAT_SDK_CACHE_REDIS_ENABLED", "true")
 	t.Setenv("CONFIGCAT_SDK_CACHE_REDIS_DB", "1")
 	t.Setenv("CONFIGCAT_SDK_CACHE_REDIS_PASSWORD", "pass")
@@ -29,6 +31,16 @@ func TestSDKConfig_ENV(t *testing.T) {
 	t.Setenv("CONFIGCAT_SDK_CACHE_REDIS_TLS_MIN_VERSION", "1.1")
 	t.Setenv("CONFIGCAT_SDK_CACHE_REDIS_TLS_SERVER_NAME", "serv")
 	t.Setenv("CONFIGCAT_SDK_CACHE_REDIS_TLS_CERTIFICATES", `[{"key":"./key1","cert":"./cert1"},{"key":"./key2","cert":"./cert2"}]`)
+
+	t.Setenv("CONFIGCAT_SDK_EVAL_STATS_INFLUX_DB_ENABLED", "true")
+	t.Setenv("CONFIGCAT_SDK_EVAL_STATS_INFLUX_DB_URL", "https://localhost:8086")
+	t.Setenv("CONFIGCAT_SDK_EVAL_STATS_INFLUX_DB_ORGANIZATION", "org")
+	t.Setenv("CONFIGCAT_SDK_EVAL_STATS_INFLUX_DB_AUTH_TOKEN", "auth")
+	t.Setenv("CONFIGCAT_SDK_EVAL_STATS_INFLUX_DB_BUCKET", "bucket")
+	t.Setenv("CONFIGCAT_SDK_EVAL_STATS_INFLUX_DB_TLS_ENABLED", "true")
+	t.Setenv("CONFIGCAT_SDK_EVAL_STATS_INFLUX_DB_TLS_MIN_VERSION", "1.1")
+	t.Setenv("CONFIGCAT_SDK_EVAL_STATS_INFLUX_DB_TLS_SERVER_NAME", "serv")
+	t.Setenv("CONFIGCAT_SDK_EVAL_STATS_INFLUX_DB_TLS_CERTIFICATES", `[{"key":"./key1","cert":"./cert1"},{"key":"./key2","cert":"./cert2"}]`)
 
 	conf, err := LoadConfigFromFileAndEnvironment("")
 	require.NoError(t, err)
@@ -59,6 +71,19 @@ func TestSDKConfig_ENV(t *testing.T) {
 	assert.Equal(t, "./key1", conf.SDK.Cache.Redis.Tls.Certificates[0].Key)
 	assert.Equal(t, "./cert2", conf.SDK.Cache.Redis.Tls.Certificates[1].Cert)
 	assert.Equal(t, "./key2", conf.SDK.Cache.Redis.Tls.Certificates[1].Key)
+
+	assert.True(t, conf.SDK.EvalStats.InfluxDb.Enabled)
+	assert.Equal(t, "https://localhost:8086", conf.SDK.EvalStats.InfluxDb.Url)
+	assert.Equal(t, "org", conf.SDK.EvalStats.InfluxDb.Organization)
+	assert.Equal(t, "bucket", conf.SDK.EvalStats.InfluxDb.Bucket)
+	assert.Equal(t, "auth", conf.SDK.EvalStats.InfluxDb.AuthToken)
+	assert.True(t, conf.SDK.EvalStats.InfluxDb.Tls.Enabled)
+	assert.Equal(t, tls.VersionTLS11, int(conf.SDK.EvalStats.InfluxDb.Tls.GetVersion()))
+	assert.Equal(t, "serv", conf.SDK.EvalStats.InfluxDb.Tls.ServerName)
+	assert.Equal(t, "./cert1", conf.SDK.EvalStats.InfluxDb.Tls.Certificates[0].Cert)
+	assert.Equal(t, "./key1", conf.SDK.EvalStats.InfluxDb.Tls.Certificates[0].Key)
+	assert.Equal(t, "./cert2", conf.SDK.EvalStats.InfluxDb.Tls.Certificates[1].Cert)
+	assert.Equal(t, "./key2", conf.SDK.EvalStats.InfluxDb.Tls.Certificates[1].Key)
 }
 
 func TestTlsConfig_ENV(t *testing.T) {

@@ -13,6 +13,13 @@ sdk:
   cache:
     redis:
       enabled: false
+  eval_stats:
+    influx_db:
+      enabled: true
+      url: http://localhost:8086
+      organization: configcat
+      bucket: flag_eval_stats
+      auth_token: PLfpriAlpdKHkZ6iFRKtrpSdyV6b92U3fAzVU4OtxYmqEtgKg2CpdDrubN1WP3ll38WK47s_BfIEn4eBXqM74Q==
 
 log:
   level: "debug"

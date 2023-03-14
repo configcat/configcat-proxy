@@ -3,6 +3,7 @@ version: "3.4"
 volumes:
   prometheus:
   grafana:
+  influxdb:
 
 configs:
   prometheus_4:
@@ -32,6 +33,11 @@ services:
       - CONFIGCAT_TLS_ENABLED=true
       - CONFIGCAT_TLS_CERTIFICATES=[{"key":"./cert/localhost.key","cert":"./cert/localhost.crt"}]
       - CONFIGCAT_HTTP_PROXY_URL=http://squid:3128
+      - CONFIGCAT_SDK_EVAL_STATS_INFLUX_DB_ENABLED=true
+      - CONFIGCAT_SDK_EVAL_STATS_INFLUX_DB_URL=http://influxdb:8086
+      - CONFIGCAT_SDK_EVAL_STATS_INFLUX_DB_ORGANIZATION=configcat
+      - CONFIGCAT_SDK_EVAL_STATS_INFLUX_DB_BUCKET=flag_eval_stats
+      - CONFIGCAT_SDK_EVAL_STATS_INFLUX_DB_AUTH_TOKEN=PLfpriAlpdKHkZ6iFRKtrpSdyV6b92U3fAzVU4OtxYmqEtgKg2CpdDrubN1WP3ll38WK47s_BfIEn4eBXqM74Q==
     ports:
       - "8050:8050"
       - "8051:8051"
@@ -70,3 +76,16 @@ services:
     image: ubuntu/squid
     ports:
       - "3128:3128"
+
+  influxdb:
+    image: influxdb
+    ports:
+      - "8086:8086"
+    volumes:
+      - influxdb:/var/lib/influxdb
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=admin
+      - DOCKER_INFLUXDB_INIT_PASSWORD=admin1234
+      - DOCKER_INFLUXDB_INIT_ORG=configcat
+      - DOCKER_INFLUXDB_INIT_BUCKET=flag_eval_stats

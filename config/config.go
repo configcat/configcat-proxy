@@ -41,7 +41,21 @@ type SDKConfig struct {
 	DataGovernance string `yaml:"data_governance"`
 	Offline        OfflineConfig
 	Cache          CacheConfig
+	EvalStats      EvalStatsConfig `yaml:"eval_stats"`
 	Log            LogConfig
+}
+
+type EvalStatsConfig struct {
+	InfluxDb InfluxDbConfig `yaml:"influx_db"`
+}
+
+type InfluxDbConfig struct {
+	Enabled      bool   `yaml:"enabled"`
+	Url          string `yaml:"url"`
+	AuthToken    string `yaml:"auth_token"`
+	Organization string `yaml:"organization"`
+	Bucket       string `yaml:"bucket"`
+	Tls          TlsConfig
 }
 
 type GrpcConfig struct {

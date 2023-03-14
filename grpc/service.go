@@ -8,7 +8,6 @@ import (
 	"github.com/configcat/configcat-proxy/stream"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"sync"
 )
 
 type flagService struct {
@@ -17,7 +16,6 @@ type flagService struct {
 	log          log.Logger
 	sdkClient    sdk.Client
 	closed       chan struct{}
-	closedOnce   sync.Once
 }
 
 func newFlagService(sdkClient sdk.Client, metrics metrics.Handler, log log.Logger) *flagService {
@@ -72,8 +70,6 @@ func (s *flagService) EvalFlag(req *proto.Request, stream proto.FlagService_Eval
 }
 
 func (s *flagService) Close() {
-	s.closedOnce.Do(func() {
-		close(s.closed)
-	})
+	close(s.closed)
 	s.streamServer.Close()
 }

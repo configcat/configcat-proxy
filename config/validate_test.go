@@ -52,6 +52,26 @@ func TestConfig_Validate(t *testing.T) {
 		conf = Config{SDK: SDKConfig{Key: "Key", Cache: CacheConfig{Redis: RedisConfig{Enabled: true, Addresses: []string{"localhost"}, Tls: TlsConfig{Enabled: true, Certificates: []CertConfig{{Cert: "cert"}}}}}}}
 		require.ErrorContains(t, conf.Validate(), "tls: both TLS cert and key file required")
 	})
+	t.Run("influx db validate", func(t *testing.T) {
+		conf := Config{SDK: SDKConfig{Key: "Key", EvalStats: EvalStatsConfig{InfluxDb: InfluxDbConfig{Enabled: true, Organization: "org", AuthToken: "auth", Bucket: "bucket"}}}}
+		require.ErrorContains(t, conf.Validate(), "influxdb: URL is required")
+
+		conf = Config{SDK: SDKConfig{Key: "Key", EvalStats: EvalStatsConfig{InfluxDb: InfluxDbConfig{Enabled: true, Organization: "org", AuthToken: "auth", Url: "url"}}}}
+		require.ErrorContains(t, conf.Validate(), "influxdb: bucket is required")
+
+		conf = Config{SDK: SDKConfig{Key: "Key", EvalStats: EvalStatsConfig{InfluxDb: InfluxDbConfig{Enabled: true, Organization: "org", Bucket: "bucket", Url: "url"}}}}
+		require.ErrorContains(t, conf.Validate(), "influxdb: auth token is required")
+
+		conf = Config{SDK: SDKConfig{Key: "Key", EvalStats: EvalStatsConfig{InfluxDb: InfluxDbConfig{Enabled: true, AuthToken: "auth", Bucket: "bucket", Url: "url"}}}}
+		require.ErrorContains(t, conf.Validate(), "influxdb: organization is required")
+	})
+	t.Run("influx db tls validate", func(t *testing.T) {
+		conf := Config{SDK: SDKConfig{Key: "Key", EvalStats: EvalStatsConfig{InfluxDb: InfluxDbConfig{Enabled: true, Organization: "org", AuthToken: "auth", Bucket: "bucket", Url: "url", Tls: TlsConfig{Enabled: true, Certificates: []CertConfig{{Key: "key"}}}}}}}
+		require.ErrorContains(t, conf.Validate(), "tls: both TLS cert and key file required")
+
+		conf = Config{SDK: SDKConfig{Key: "Key", EvalStats: EvalStatsConfig{InfluxDb: InfluxDbConfig{Enabled: true, Organization: "org", AuthToken: "auth", Bucket: "bucket", Url: "url", Tls: TlsConfig{Enabled: true, Certificates: []CertConfig{{Cert: "cert"}}}}}}}
+		require.ErrorContains(t, conf.Validate(), "tls: both TLS cert and key file required")
+	})
 	t.Run("webhook signature invalid validity time", func(t *testing.T) {
 		conf := Config{SDK: SDKConfig{Key: "Key"}, Http: HttpConfig{Webhook: WebhookConfig{Enabled: true, SigningKey: "key", SignatureValidFor: 2}}}
 		require.ErrorContains(t, conf.Validate(), "webhook: signature validity check must be greater than 5 seconds")

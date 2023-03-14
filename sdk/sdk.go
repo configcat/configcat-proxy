@@ -5,6 +5,7 @@ import (
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/metrics"
+	"github.com/configcat/configcat-proxy/sdk/statistics"
 	"github.com/configcat/configcat-proxy/sdk/store"
 	"github.com/configcat/configcat-proxy/sdk/store/cache"
 	"github.com/configcat/configcat-proxy/sdk/store/cache/redis"
@@ -42,6 +43,7 @@ type client struct {
 	readyOnce       sync.Once
 	log             log.Logger
 	cache           store.CacheStorage
+	stats           statistics.Reporter
 	conf            config.SDKConfig
 	mu              sync.RWMutex
 	initialized     atomic.Bool
@@ -91,12 +93,11 @@ func NewClient(conf config.SDKConfig, proxyConf config.HttpProxyConfig, metricsH
 		DataGovernance: configcat.Global,
 		Logger:         sdkLog,
 		Transport:      transport,
+		Hooks:          &configcat.Hooks{},
 	}
 	if !conf.Offline.Enabled {
-		clientConfig.Hooks = &configcat.Hooks{
-			OnConfigChanged: func() {
-				client.signal()
-			},
+		clientConfig.Hooks.OnConfigChanged = func() {
+			client.signal()
 		}
 		if metricsHandler != nil {
 			clientConfig.Transport = metrics.InterceptSdk(metricsHandler, clientConfig.Transport)
@@ -105,6 +106,16 @@ func NewClient(conf config.SDKConfig, proxyConf config.HttpProxyConfig, metricsH
 	} else {
 		clientConfig.PollingMode = configcat.Manual
 		close(client.ready) // in OFFLINE mode we are ready immediately
+	}
+	if conf.EvalStats.InfluxDb.Enabled {
+		client.stats = statistics.NewInfluxDbReporter(conf.EvalStats.InfluxDb)
+		clientConfig.Hooks.OnFlagEvaluated = func(details *configcat.EvaluationDetails) {
+			var user map[string]string
+			if details.Data.User != nil {
+				user = details.Data.User.(*UserAttrs).Attrs
+			}
+			client.stats.ReportEvaluation(details.Data.Key, details.Value, user)
+		}
 	}
 	if conf.DataGovernance == "eu" {
 		clientConfig.DataGovernance = configcat.EUOnly
@@ -211,5 +222,8 @@ func (c *client) Close() {
 	c.ctxCancel()
 	c.cache.Close()
 	c.configCatClient.Close()
+	if c.stats != nil {
+		c.stats.Close()
+	}
 	c.log.Reportf("shutdown complete")
 }
