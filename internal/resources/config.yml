@@ -1,25 +1,29 @@
-sdk:
-  base_url: "https://test-cdn-global.configcat.com"
-  key: "XxPbCKmzIUGORk4vsufpzw/iC_KABprDEueeQs3yovVnQ"
-  poll_interval: 300
-  log:
-    level: "error"
-  offline:
-    enabled: true
-    use_cache: false
-    local:
-      file_path: "./internal/resources/local.json"
-      polling: false
-  cache:
-    redis:
-      enabled: false
-  eval_stats:
-    influx_db:
+environments:
+  env1:
+    base_url: "https://test-cdn-global.configcat.com"
+    key: "XxPbCKmzIUGORk4vsufpzw/iC_KABprDEueeQs3yovVnQ"
+    poll_interval: 300
+    webhook_signing_key: "configcat_whsk_Dj59sEWxRmm+84izQ8Cbn9o4Pnjz7E+/hxcmyfEVT+A="
+    log:
+      level: "error"
+    offline:
       enabled: true
-      url: http://localhost:8086
-      organization: configcat
-      bucket: flag_eval_stats
-      auth_token: PLfpriAlpdKHkZ6iFRKtrpSdyV6b92U3fAzVU4OtxYmqEtgKg2CpdDrubN1WP3ll38WK47s_BfIEn4eBXqM74Q==
+      use_cache: false
+      local:
+        file_path: "./internal/resources/local.json"
+        polling: false
+
+cache:
+  redis:
+    enabled: false
+
+eval_stats:
+  influx_db:
+    enabled: true
+    url: http://localhost:8086
+    organization: configcat
+    bucket: flag_eval_stats
+    auth_token: cD1ZfZr7-fHBGMd0Zcb2DaJBCqiD9Y47-HI8yK343BsvN0Og6TXU7-bCmL0kxD77JqR7OkjViYBOt1zhFD5D1w==
 
 log:
   level: "debug"
@@ -32,7 +36,6 @@ http:
   port: 8090
   webhook:
     enabled: true
-    signing_key: "configcat_whsk_Dj59sEWxRmm+84izQ8Cbn9o4Pnjz7E+/hxcmyfEVT+A="
   cdn_proxy:
     enabled: true
   api:

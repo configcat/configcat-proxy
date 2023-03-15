@@ -3,11 +3,12 @@ package stream
 import (
 	"fmt"
 	"github.com/configcat/configcat-proxy/config"
+	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/sdk"
-	"github.com/configcat/configcat-proxy/status"
 	"github.com/configcat/go-sdk/v7/configcattest"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 )
 
@@ -22,21 +23,22 @@ func BenchmarkStream(b *testing.B) {
 	srv := httptest.NewServer(&h)
 	defer srv.Close()
 
-	opts := config.SDKConfig{BaseUrl: srv.URL, Key: key}
-	client := sdk.NewClient(opts, config.HttpProxyConfig{}, nil, status.NewNullReporter(), log.NewNullLogger())
+	ctx := testutils.NewTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key}, nil)
+	client := sdk.NewClient(ctx, log.NewNullLogger())
 	defer client.Close()
 
-	strServer := NewServer(client, nil, log.NewNullLogger(), "test").(*server)
+	strServer := NewServer(map[string]sdk.Client{"test": client}, nil, log.NewNullLogger(), "test").(*server)
 	defer strServer.Close()
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		sKey := fmt.Sprintf("flag%d", i)
+		sKey := "flag" + strconv.Itoa(i)
 		for j := 0; j < 100; j++ {
-			user := sdk.UserAttrs{Attrs: map[string]string{"id": fmt.Sprintf("user%d", j)}}
-			conn := strServer.CreateConnection(sKey, &user)
+			user := sdk.UserAttrs{Attrs: map[string]string{"id": "user" + strconv.Itoa(j)}}
+			str := strServer.GetStreamOrNil("test")
+			conn := str.CreateConnection(sKey, &user)
 			<-conn.Receive()
-			strServer.CloseConnection(conn, sKey)
+			str.CloseConnection(conn, sKey)
 		}
 	}
 }

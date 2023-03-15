@@ -4,9 +4,9 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
-	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/sdk"
+	"github.com/julienschmidt/httprouter"
 	"io"
 	"net/http"
 	"strconv"
@@ -19,22 +19,32 @@ const idHeader = "X-ConfigCat-Webhook-ID"
 const timestampHeader = "X-ConfigCat-Webhook-Timestamp"
 
 type Server struct {
-	sdkClient sdk.Client
-	config    config.WebhookConfig
-	logger    log.Logger
+	sdkClients map[string]sdk.Client
+	logger     log.Logger
 }
 
-func NewServer(client sdk.Client, config config.WebhookConfig, log log.Logger) *Server {
+func NewServer(sdkClients map[string]sdk.Client, log log.Logger) *Server {
 	whLogger := log.WithPrefix("webhook")
 	return &Server{
-		sdkClient: client,
-		config:    config,
-		logger:    whLogger,
+		sdkClients: sdkClients,
+		logger:     whLogger,
 	}
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if s.config.SigningKey != "" {
+	vars := httprouter.ParamsFromContext(r.Context())
+	env := vars.ByName("env")
+	if env == "" {
+		http.Error(w, "'env' path parameter must be set", http.StatusBadRequest)
+		return
+	}
+	sdkClient, ok := s.sdkClients[env]
+	if !ok {
+		http.Error(w, "Invalid environment identifier: '"+env+"'", http.StatusBadRequest)
+		return
+	}
+
+	if sdkClient.WebhookSigningKey() != "" {
 		signatures := r.Header.Get(signatureHeader)
 		webhookId := r.Header.Get(idHeader)
 		timestampStr := r.Header.Get(timestampHeader)
@@ -44,7 +54,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		timestamp, err := strconv.ParseInt(timestampStr, 10, 64)
-		if err != nil || timestamp < (time.Now().Unix()-int64(s.config.SignatureValidFor)) {
+		if err != nil || timestamp < (time.Now().Unix()-int64(sdkClient.WebhookSignatureValidFor())) {
 			s.logger.Debugf("request is too old, rejecting")
 			http.Error(w, "Signature validation failed", http.StatusBadRequest)
 			return
@@ -56,7 +66,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		payloadToSign := webhookId + timestampStr + string(body)
-		mac := hmac.New(sha256.New, []byte(s.config.SigningKey))
+		mac := hmac.New(sha256.New, []byte(sdkClient.WebhookSigningKey()))
 		mac.Write([]byte(payloadToSign))
 
 		calcSignature := base64.StdEncoding.EncodeToString(mac.Sum(nil))
@@ -77,5 +87,5 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// Everything OK, refresh
 	s.logger.Infof("webhook request received, refreshing")
-	_ = s.sdkClient.Refresh()
+	_ = sdkClient.Refresh()
 }

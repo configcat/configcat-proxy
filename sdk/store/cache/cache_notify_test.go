@@ -17,8 +17,8 @@ import (
 
 func TestRedisNotify(t *testing.T) {
 	s := miniredis.RunT(t)
-	r := redis.NewRedisStorage("key", config.RedisConfig{Addresses: []string{s.Addr()}}, status.NewNullReporter())
-	srv := NewNotifyingCacheStorage(r, config.OfflineConfig{CachePollInterval: 1}, status.NewNullReporter(), log.NewNullLogger())
+	r := redis.NewRedisStorage("key", &config.RedisConfig{Addresses: []string{s.Addr()}}, status.NewNullReporter())
+	srv := NewNotifyingCacheStorage("test", r, &config.OfflineConfig{CachePollInterval: 1}, status.NewNullReporter(), log.NewNullLogger())
 	cacheKey := produceCacheKey("key")
 	err := s.Set(cacheKey, `{"f":{"flag":{"i":"","v":false,"t":0,"r":[],"p":[]}}}`)
 	assert.NoError(t, err)
@@ -38,8 +38,8 @@ func TestRedisNotify_Initial(t *testing.T) {
 	cacheKey := produceCacheKey("key")
 	err := s.Set(cacheKey, `{"f":{"flag":{"i":"","v":false,"t":0,"r":[],"p":[]}}}`)
 	assert.NoError(t, err)
-	r := redis.NewRedisStorage("key", config.RedisConfig{Addresses: []string{s.Addr()}}, status.NewNullReporter())
-	srv := NewNotifyingCacheStorage(r, config.OfflineConfig{CachePollInterval: 1}, status.NewNullReporter(), log.NewNullLogger())
+	r := redis.NewRedisStorage("key", &config.RedisConfig{Addresses: []string{s.Addr()}}, status.NewNullReporter())
+	srv := NewNotifyingCacheStorage("test", r, &config.OfflineConfig{CachePollInterval: 1}, status.NewNullReporter(), log.NewNullLogger())
 	s.CheckGet(t, cacheKey, `{"f":{"flag":{"i":"","v":false,"t":0,"r":[],"p":[]}}}`)
 	res, err := srv.Get(context.Background(), "")
 	assert.NoError(t, err)
@@ -53,8 +53,8 @@ func TestRedisNotify_Notify(t *testing.T) {
 	cacheKey := produceCacheKey("key")
 	err := s.Set(cacheKey, `{"f":{"flag":{"i":"","v":false,"t":0,"r":[],"p":[]}}}`)
 	assert.NoError(t, err)
-	r := redis.NewRedisStorage("key", config.RedisConfig{Addresses: []string{s.Addr()}}, status.NewNullReporter())
-	srv := NewNotifyingCacheStorage(r, config.OfflineConfig{CachePollInterval: 1}, status.NewNullReporter(), log.NewNullLogger())
+	r := redis.NewRedisStorage("key", &config.RedisConfig{Addresses: []string{s.Addr()}}, status.NewNullReporter())
+	srv := NewNotifyingCacheStorage("test", r, &config.OfflineConfig{CachePollInterval: 1}, status.NewNullReporter(), log.NewNullLogger())
 	s.CheckGet(t, cacheKey, `{"f":{"flag":{"i":"","v":false,"t":0,"r":[],"p":[]}}}`)
 	res, err := srv.Get(context.Background(), "")
 	assert.NoError(t, err)
@@ -78,8 +78,8 @@ func TestRedisNotify_BadJson(t *testing.T) {
 	cacheKey := produceCacheKey("key")
 	err := s.Set(cacheKey, `{"k":{"flag":{"i":"","v":false,"t":0,"r":[],"p":[]}}}`)
 	assert.NoError(t, err)
-	r := redis.NewRedisStorage("key", config.RedisConfig{Addresses: []string{s.Addr()}}, status.NewNullReporter())
-	srv := NewNotifyingCacheStorage(r, config.OfflineConfig{CachePollInterval: 1}, status.NewNullReporter(), log.NewNullLogger())
+	r := redis.NewRedisStorage("key", &config.RedisConfig{Addresses: []string{s.Addr()}}, status.NewNullReporter())
+	srv := NewNotifyingCacheStorage("test", r, &config.OfflineConfig{CachePollInterval: 1}, status.NewNullReporter(), log.NewNullLogger())
 	res, err := srv.Get(context.Background(), "")
 	assert.NoError(t, err)
 	assert.Equal(t, `{"f":{}}`, string(res))
@@ -92,8 +92,8 @@ func TestRedisNotify_MalformedJson(t *testing.T) {
 	cacheKey := fmt.Sprintf("%x", sha1.Sum([]byte("key_config_v5")))
 	err := s.Set(cacheKey, `{"k":{"flag`)
 	assert.NoError(t, err)
-	r := redis.NewRedisStorage("key", config.RedisConfig{Addresses: []string{s.Addr()}}, status.NewNullReporter())
-	srv := NewNotifyingCacheStorage(r, config.OfflineConfig{CachePollInterval: 1}, status.NewNullReporter(), log.NewNullLogger())
+	r := redis.NewRedisStorage("key", &config.RedisConfig{Addresses: []string{s.Addr()}}, status.NewNullReporter())
+	srv := NewNotifyingCacheStorage("test", r, &config.OfflineConfig{CachePollInterval: 1}, status.NewNullReporter(), log.NewNullLogger())
 	res, err := srv.Get(context.Background(), "")
 	assert.NoError(t, err)
 	assert.Equal(t, `{"f":{}}`, string(res))
@@ -102,8 +102,8 @@ func TestRedisNotify_MalformedJson(t *testing.T) {
 }
 
 func TestRedisNotify_Unavailable(t *testing.T) {
-	r := redis.NewRedisStorage("key", config.RedisConfig{Addresses: []string{"nonexisting"}}, status.NewNullReporter())
-	srv := NewNotifyingCacheStorage(r, config.OfflineConfig{CachePollInterval: 1}, status.NewNullReporter(), log.NewNullLogger())
+	r := redis.NewRedisStorage("key", &config.RedisConfig{Addresses: []string{"nonexisting"}}, status.NewNullReporter())
+	srv := NewNotifyingCacheStorage("test", r, &config.OfflineConfig{CachePollInterval: 1}, status.NewNullReporter(), log.NewNullLogger())
 	res, err := srv.Get(context.Background(), "")
 	assert.NoError(t, err)
 	assert.Equal(t, `{"f":{}}`, string(res))
@@ -113,8 +113,8 @@ func TestRedisNotify_Unavailable(t *testing.T) {
 
 func TestRedisNotify_Close(t *testing.T) {
 	s := miniredis.RunT(t)
-	r := redis.NewRedisStorage("key", config.RedisConfig{Addresses: []string{s.Addr()}}, status.NewNullReporter())
-	srv := NewNotifyingCacheStorage(r, config.OfflineConfig{CachePollInterval: 1}, status.NewNullReporter(), log.NewNullLogger()).(*notifyingCacheStorage)
+	r := redis.NewRedisStorage("key", &config.RedisConfig{Addresses: []string{s.Addr()}}, status.NewNullReporter())
+	srv := NewNotifyingCacheStorage("test", r, &config.OfflineConfig{CachePollInterval: 1}, status.NewNullReporter(), log.NewNullLogger()).(*notifyingCacheStorage)
 	go func() {
 		srv.Close()
 	}()

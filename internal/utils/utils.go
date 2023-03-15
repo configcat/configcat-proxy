@@ -1,8 +1,15 @@
 package utils
 
 import (
+	"context"
+	"crypto/sha1"
 	"encoding/base64"
+	"encoding/hex"
+	"github.com/julienschmidt/httprouter"
+	"net/http"
+	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 func WithTimeout(timeout time.Duration, f func()) {
@@ -38,4 +45,25 @@ func Min(args ...int) int {
 		}
 	}
 	return min
+}
+
+func Sha1Hex(data []byte) string {
+	h := sha1.New()
+	h.Write(data)
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+func Obfuscate(str string, clearLen int) string {
+	l := len(str)
+	if l < clearLen {
+		return strings.Repeat("*", utf8.RuneCountInString(str))
+	}
+	toObfuscate := str[0 : l-clearLen]
+	return strings.Repeat("*", utf8.RuneCountInString(toObfuscate)) + str[l-clearLen:l]
+}
+
+func AddEnvContextParam(r *http.Request) {
+	params := httprouter.Params{httprouter.Param{Key: "env", Value: "test"}}
+	ctx := context.WithValue(context.Background(), httprouter.ParamsKey, params)
+	*r = *r.WithContext(ctx)
 }

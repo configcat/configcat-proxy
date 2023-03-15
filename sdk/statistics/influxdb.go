@@ -14,7 +14,7 @@ type influxReporter struct {
 	writer api.WriteAPI
 }
 
-func NewInfluxDbReporter(conf config.InfluxDbConfig) Reporter {
+func NewInfluxDbReporter(conf *config.InfluxDbConfig) Reporter {
 	options := influxdb2.DefaultOptions().SetBatchSize(20)
 	if conf.Tls.Enabled {
 		t := &tls.Config{
@@ -36,8 +36,8 @@ func NewInfluxDbReporter(conf config.InfluxDbConfig) Reporter {
 	}
 }
 
-func (r *influxReporter) ReportEvaluation(flagKey string, value interface{}, attrs map[string]string) {
-	point := influxdb2.NewPointWithMeasurement("flag_eval").
+func (r *influxReporter) ReportEvaluation(envId string, flagKey string, value interface{}, attrs map[string]string) {
+	point := influxdb2.NewPointWithMeasurement(envId).
 		AddTag("flag_key", flagKey).
 		AddTag("flag_eval_value", fmt.Sprintf("%v", value)).
 		AddField("value", 1).

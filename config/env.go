@@ -2,9 +2,9 @@ package config
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"strconv"
+	"strings"
 )
 
 var envPrefix = "CONFIGCAT"
@@ -26,7 +26,7 @@ var toCertConfigSlice = func(s string) ([]CertConfig, error) {
 	}
 	return r, nil
 }
-var toHeaderMap = func(s string) (map[string]string, error) {
+var toStringMap = func(s string) (map[string]string, error) {
 	var r map[string]string
 	if err := json.Unmarshal([]byte(s), &r); err != nil {
 		return nil, err
@@ -35,24 +35,34 @@ var toHeaderMap = func(s string) (map[string]string, error) {
 }
 
 func (c *Config) loadEnv() {
-	c.SDK.loadEnv(envPrefix)
+	var envs map[string]string
+	readEnv(envPrefix, "ENVIRONMENTS", &envs, toStringMap)
+	if c.Environments == nil {
+		c.Environments = make(map[string]*SDKConfig, len(envs))
+	}
+	for envId, key := range envs {
+		prefix := concatPrefix(envPrefix, strings.ToUpper(strings.ReplaceAll(envId, "-", "_")))
+		sdkConf := &SDKConfig{Key: key}
+		sdkConf.loadEnv(prefix)
+		c.Environments[envId] = sdkConf
+	}
 	c.Http.loadEnv(envPrefix)
 	c.Grpc.loadEnv(envPrefix)
 	c.HttpProxy.loadEnv(envPrefix)
 	c.Log.loadEnv(envPrefix)
 	c.Tls.loadEnv(envPrefix)
 	c.Metrics.loadEnv(envPrefix)
+	c.EvalStats.loadEnv(envPrefix)
+	c.Cache.loadEnv(envPrefix)
 }
 
 func (s *SDKConfig) loadEnv(prefix string) {
-	prefix = concatPrefix(prefix, "SDK")
-	readEnvString(prefix, "KEY", &s.Key)
 	readEnvString(prefix, "BASE_URL", &s.BaseUrl)
 	readEnvString(prefix, "DATA_GOVERNANCE", &s.DataGovernance)
+	readEnvString(prefix, "WEBHOOK_SIGNING_KEY", &s.WebhookSigningKey)
+	readEnv(prefix, "WEBHOOK_SIGNATURE_VALID_FOR", &s.WebhookSignatureValidFor, toInt)
 	readEnv(prefix, "POLL_INTERVAL", &s.PollInterval, toInt)
-	s.Cache.loadEnv(prefix)
 	s.Offline.loadEnv(prefix)
-	s.EvalStats.loadEnv(prefix)
 	s.Log.loadEnv(prefix)
 }
 
@@ -127,7 +137,7 @@ func (s *SseConfig) loadEnv(prefix string) {
 	prefix = concatPrefix(prefix, "SSE")
 	readEnv(prefix, "ENABLED", &s.Enabled, toBool)
 	readEnv(prefix, "ALLOW_CORS", &s.AllowCORS, toBool)
-	readEnv(prefix, "HEADERS", &s.Headers, toHeaderMap)
+	readEnv(prefix, "HEADERS", &s.Headers, toStringMap)
 	readEnv(prefix, "HEARTBEAT_INTERVAL", &s.HeartBeatInterval, toInt)
 	s.Log.loadEnv(prefix)
 }
@@ -136,23 +146,21 @@ func (a *ApiConfig) loadEnv(prefix string) {
 	prefix = concatPrefix(prefix, "API")
 	readEnv(prefix, "ENABLED", &a.Enabled, toBool)
 	readEnv(prefix, "ALLOW_CORS", &a.AllowCORS, toBool)
-	readEnv(prefix, "HEADERS", &a.Headers, toHeaderMap)
-	readEnv(prefix, "AUTH_HEADERS", &a.AuthHeaders, toHeaderMap)
+	readEnv(prefix, "HEADERS", &a.Headers, toStringMap)
+	readEnv(prefix, "AUTH_HEADERS", &a.AuthHeaders, toStringMap)
 }
 
 func (c *CdnProxyConfig) loadEnv(prefix string) {
 	prefix = concatPrefix(prefix, "CDN_PROXY")
 	readEnv(prefix, "ENABLED", &c.Enabled, toBool)
 	readEnv(prefix, "ALLOW_CORS", &c.AllowCORS, toBool)
-	readEnv(prefix, "HEADERS", &c.Headers, toHeaderMap)
+	readEnv(prefix, "HEADERS", &c.Headers, toStringMap)
 }
 
 func (w *WebhookConfig) loadEnv(prefix string) {
 	prefix = concatPrefix(prefix, "WEBHOOK")
-	readEnvString(prefix, "SIGNING_KEY", &w.SigningKey)
 	readEnv(prefix, "ENABLED", &w.Enabled, toBool)
-	readEnv(prefix, "SIGNATURE_VALID_FOR", &w.SignatureValidFor, toInt)
-	readEnv(prefix, "AUTH_HEADERS", &w.AuthHeaders, toHeaderMap)
+	readEnv(prefix, "AUTH_HEADERS", &w.AuthHeaders, toStringMap)
 	w.Auth.loadEnv(prefix)
 }
 
@@ -182,7 +190,7 @@ func (m *MetricsConfig) loadEnv(prefix string) {
 }
 
 func readEnv[T any](prefix string, key string, in *T, conv func(string) (T, error)) {
-	if env := os.Getenv(fmt.Sprintf("%s_%s", prefix, key)); env != "" {
+	if env := os.Getenv(prefix + "_" + key); env != "" {
 		if r, err := conv(env); err == nil {
 			*in = r
 		}
@@ -190,11 +198,11 @@ func readEnv[T any](prefix string, key string, in *T, conv func(string) (T, erro
 }
 
 func readEnvString(prefix string, key string, in *string) {
-	if env := os.Getenv(fmt.Sprintf("%s_%s", prefix, key)); env != "" {
+	if env := os.Getenv(prefix + "_" + key); env != "" {
 		*in = env
 	}
 }
 
 func concatPrefix(p1 string, p2 string) string {
-	return fmt.Sprintf("%s_%s", p1, p2)
+	return p1 + "_" + p2
 }

@@ -395,7 +395,7 @@
           "editorMode": "builder",
           "exemplar": false,
           "expr": "configcat_stream_connections{type=\"sse\", instance=\"configcat_proxy:8051\"} > 0",
-          "legendFormat": "{{stream}}",
+          "legendFormat": "{{env}} - {{flag}}",
           "range": true,
           "refId": "A"
         }
@@ -492,7 +492,7 @@
           "editorMode": "code",
           "exemplar": false,
           "expr": "configcat_stream_connections{type=\"grpc\", instance=\"configcat_proxy:8051\"} > 0",
-          "legendFormat": "{{stream}}",
+          "legendFormat": "{{env}} - {{flag}}",
           "range": true,
           "refId": "A"
         }
@@ -838,9 +838,9 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(increase(configcat_sdk_http_request_duration_seconds_count{instance=\"configcat_proxy:8051\"}[$__rate_interval])) by (status)",
+          "expr": "sum(increase(configcat_sdk_http_request_duration_seconds_count{instance=\"configcat_proxy:8051\"}[$__rate_interval])) by (env, status)",
           "interval": "",
-          "legendFormat": "{{status}}",
+          "legendFormat": "{{env}} - {{status}}",
           "range": true,
           "refId": "A"
         }
@@ -933,7 +933,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.99, sum by(le, route) (rate(configcat_sdk_http_request_duration_seconds_bucket{instance=\"configcat_proxy:8051\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.99, sum by(le, env) (rate(configcat_sdk_http_request_duration_seconds_bucket{instance=\"configcat_proxy:8051\"}[$__rate_interval])))",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -1238,6 +1238,6 @@
   "timezone": "",
   "title": "Proxy",
   "uid": "s3Vj4B14k",
-  "version": 16,
+  "version": 17,
   "weekStart": ""
 }

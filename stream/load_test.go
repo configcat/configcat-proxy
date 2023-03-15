@@ -1,15 +1,15 @@
 package stream
 
 import (
-	"fmt"
 	"github.com/configcat/configcat-proxy/config"
+	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/internal/utils"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/sdk"
-	"github.com/configcat/configcat-proxy/status"
 	"github.com/configcat/go-sdk/v7/configcattest"
 	"github.com/stretchr/testify/assert"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 	"time"
 )
@@ -21,30 +21,30 @@ func TestStreamServer_Load(t *testing.T) {
 	var h configcattest.Handler
 	flags := make(map[string]*configcattest.Flag)
 	for i := 0; i < connCount; i++ {
-		flags[fmt.Sprintf("flag%d", i)] = &configcattest.Flag{Default: false}
+		flags["flag"+strconv.Itoa(i)] = &configcattest.Flag{Default: false}
 	}
 	_ = h.SetFlags(key, flags)
 	srv := httptest.NewServer(&h)
 	defer srv.Close()
 
-	opts := config.SDKConfig{BaseUrl: srv.URL, Key: key}
-	client := sdk.NewClient(opts, config.HttpProxyConfig{}, nil, status.NewNullReporter(), log.NewNullLogger())
+	ctx := testutils.NewTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key}, nil)
+	client := sdk.NewClient(ctx, log.NewNullLogger())
 	defer client.Close()
 
-	strServer := NewServer(client, nil, log.NewNullLogger(), "test").(*server)
+	strServer := NewServer(map[string]sdk.Client{"test": client}, nil, log.NewNullLogger(), "test").(*server)
 	defer strServer.Close()
 
 	t.Run("init", func(t *testing.T) {
 		for i := 0; i < connCount; i++ {
-			fName := fmt.Sprintf("flag%d", i)
+			fName := "flag" + strconv.Itoa(i)
 			t.Run(fName, func(t *testing.T) {
 				t.Parallel()
-				runConnectionTest(t, fName, strServer)
+				runConnectionTest(t, fName, strServer.GetStreamOrNil("test"))
 			})
 		}
 	})
 	for i := 0; i < connCount; i++ {
-		flags[fmt.Sprintf("flag%d", i)] = &configcattest.Flag{Default: true}
+		flags["flag"+strconv.Itoa(i)] = &configcattest.Flag{Default: true}
 	}
 	_ = h.SetFlags(key, flags)
 	_ = client.Refresh()
@@ -53,7 +53,7 @@ func TestStreamServer_Load(t *testing.T) {
 	})
 }
 
-func runConnectionTest(t *testing.T, fName string, str *server) {
+func runConnectionTest(t *testing.T, fName string, str Stream) {
 	conn := str.CreateConnection(fName, nil)
 	utils.WithTimeout(2*time.Second, func() {
 		payload := <-conn.Receive()
@@ -61,15 +61,16 @@ func runConnectionTest(t *testing.T, fName string, str *server) {
 	})
 }
 
-func checkConnections(t *testing.T, str *server) {
+func checkConnections(t *testing.T, srv Server) {
+	str := srv.GetStreamOrNil("test").(*stream)
 	for id, c := range str.channels {
 		ch := c
-		t.Run(fmt.Sprintf("chan-%s", id), func(t *testing.T) {
+		t.Run("chan-"+id, func(t *testing.T) {
 			t.Parallel()
 			for i, conn := range ch.connections {
 				connect := conn
 				cId := i
-				t.Run(fmt.Sprintf("conn%d", cId), func(t *testing.T) {
+				t.Run("conn"+strconv.Itoa(cId), func(t *testing.T) {
 					t.Parallel()
 					utils.WithTimeout(2*time.Second, func() {
 						payload := <-connect.Receive()

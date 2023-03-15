@@ -10,14 +10,13 @@ import (
 	"time"
 )
 
-type Component int
 type SDKSource string
 type HealthStatus string
 type SDKMode string
 
 const (
-	SDK   Component = 1
-	Cache Component = 2
+	Cache    = "cache"
+	InfluxDb = "influxdb"
 
 	FileSrc   SDKSource = "file"
 	RemoteSrc SDKSource = "remote"
@@ -35,19 +34,20 @@ const maxRecordCount = 5
 const maxLastErrorsMeaningDegraded = 2
 
 type Reporter interface {
-	ReportOk(component Component, message string)
-	ReportError(component Component, err error)
+	ReportOk(component string, message string)
+	ReportError(component string, err error)
 
 	HttpHandler() http.HandlerFunc
 }
 
 type Status struct {
-	Status HealthStatus `json:"status"`
-	SDK    SdkStatus    `json:"sdk"`
-	Cache  CacheStatus  `json:"cache"`
+	Status       HealthStatus          `json:"status"`
+	Environments map[string]*SdkStatus `json:"environments"`
+	Cache        CacheStatus           `json:"cache"`
 }
 
 type SdkStatus struct {
+	SdkKey string          `json:"key"`
 	Mode   SDKMode         `json:"mode"`
 	Source SdkSourceStatus `json:"source"`
 }
@@ -70,57 +70,64 @@ type record struct {
 }
 
 type reporter struct {
-	records map[Component][]record
+	records map[string][]record
 	mu      sync.RWMutex
 	status  Status
+	conf    *config.Config
 }
 
 func NewNullReporter() Reporter {
-	return &reporter{records: make(map[Component][]record)}
+	return &reporter{records: make(map[string][]record)}
 }
 
-func NewReporter(conf config.Config) Reporter {
+func NewReporter(conf *config.Config) Reporter {
 	r := &reporter{
-		records: make(map[Component][]record),
+		conf:    conf,
+		records: make(map[string][]record),
 		status: Status{
 			Status: Healthy,
-			SDK: SdkStatus{
-				Mode: Online,
-				Source: SdkSourceStatus{
-					Type:   RemoteSrc,
-					Status: Healthy,
-				},
-			},
 			Cache: CacheStatus{
 				Status: Healthy,
 			},
 		},
 	}
-	if conf.SDK.Offline.Enabled {
-		r.status.SDK.Mode = Offline
-		if conf.SDK.Offline.Local.FilePath != "" {
-			r.status.SDK.Source.Type = FileSrc
+	envs := make(map[string]*SdkStatus, len(conf.Environments))
+	for key, env := range conf.Environments {
+		status := &SdkStatus{
+			Mode:   Online,
+			SdkKey: utils.Obfuscate(env.Key, 5),
+			Source: SdkSourceStatus{
+				Type:   RemoteSrc,
+				Status: Healthy,
+			},
+		}
+		if env.Offline.Enabled {
+			status.Mode = Offline
+			if env.Offline.Local.FilePath != "" {
+				status.Source.Type = FileSrc
+				r.status.Cache.Status = NA
+			} else {
+				status.Source.Type = CacheSrc
+			}
+		}
+		if !conf.Cache.Redis.Enabled {
 			r.status.Cache.Status = NA
-		} else {
-			r.status.SDK.Source.Type = CacheSrc
+			if status.Source.Type == CacheSrc {
+				status.Source.Status = Degraded
+				r.ReportError(key, fmt.Errorf("cache offline source enabled without a configured cache"))
+			}
 		}
+		envs[key] = status
 	}
-	if !conf.SDK.Cache.Redis.Enabled {
-		r.status.Cache.Status = NA
-		if r.status.SDK.Source.Type == CacheSrc {
-			r.status.SDK.Source.Status = Degraded
-			r.ReportError(SDK, fmt.Errorf("cache offline source enabled without a configured cache"))
-		}
-	}
-
+	r.status.Environments = envs
 	return r
 }
 
-func (r *reporter) ReportOk(component Component, message string) {
+func (r *reporter) ReportOk(component string, message string) {
 	r.appendRecord(component, "[ok] "+message, false)
 }
 
-func (r *reporter) ReportError(component Component, err error) {
+func (r *reporter) ReportError(component string, err error) {
 	r.appendRecord(component, "[error] "+err.Error(), true)
 }
 
@@ -140,24 +147,33 @@ func (r *reporter) getStatus() Status {
 	defer r.mu.RUnlock()
 
 	current := r.status
-	if sdk, ok := r.records[SDK]; ok {
-		r.checkStatus(sdk, &current.SDK.Source.Records, &current.SDK.Source.Status)
+	overallStatus := Healthy
+	for key := range r.conf.Environments {
+		if sdk, ok := r.records[key]; ok {
+			stat := current.Environments[key].Source.Status
+			rec, stat := r.checkStatus(sdk)
+			current.Environments[key].Source.Records = rec
+			current.Environments[key].Source.Status = stat
+			if stat == Degraded {
+				overallStatus = Degraded
+			}
+		}
 	}
 	if cache, ok := r.records[Cache]; ok {
-		r.checkStatus(cache, &current.Cache.Records, &current.Cache.Status)
+		rec, stat := r.checkStatus(cache)
+		current.Cache.Records = rec
+		current.Cache.Status = stat
 	}
-	if current.SDK.Source.Status == Degraded {
-		current.Status = Degraded
-	}
+	current.Status = overallStatus
 	return current
 }
 
-func (r *reporter) checkStatus(records []record, targetRecords *[]string, status *HealthStatus) {
+func (r *reporter) checkStatus(records []record) ([]string, HealthStatus) {
 	length := len(records)
-	*targetRecords = make([]string, length)
+	targetRecords := make([]string, length)
 	var errorCount = 0
 	for i, msg := range records {
-		(*targetRecords)[i] = fmt.Sprintf("%s: %s", msg.time.UTC().Format(time.RFC1123), msg.message)
+		targetRecords[i] = msg.time.UTC().Format(time.RFC1123) + ": " + msg.message
 		if i >= length-maxLastErrorsMeaningDegraded {
 			if msg.isError {
 				errorCount++
@@ -167,11 +183,12 @@ func (r *reporter) checkStatus(records []record, targetRecords *[]string, status
 		}
 	}
 	if errorCount > 0 && errorCount >= utils.Min(maxLastErrorsMeaningDegraded, length) {
-		*status = Degraded
+		return targetRecords, Degraded
 	}
+	return targetRecords, Healthy
 }
 
-func (r *reporter) appendRecord(component Component, message string, isError bool) {
+func (r *reporter) appendRecord(component string, message string, isError bool) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 

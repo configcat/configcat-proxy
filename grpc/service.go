@@ -14,20 +14,23 @@ type flagService struct {
 	proto.UnimplementedFlagServiceServer
 	streamServer stream.Server
 	log          log.Logger
-	sdkClient    sdk.Client
+	sdkClients   map[string]sdk.Client
 	closed       chan struct{}
 }
 
-func newFlagService(sdkClient sdk.Client, metrics metrics.Handler, log log.Logger) *flagService {
+func newFlagService(sdkClients map[string]sdk.Client, metrics metrics.Handler, log log.Logger) *flagService {
 	return &flagService{
-		streamServer: stream.NewServer(sdkClient, metrics, log, "grpc"),
+		streamServer: stream.NewServer(sdkClients, metrics, log, "grpc"),
 		log:          log,
-		sdkClient:    sdkClient,
+		sdkClients:   sdkClients,
 		closed:       make(chan struct{}),
 	}
 }
 
 func (s *flagService) EvalFlag(req *proto.Request, stream proto.FlagService_EvalFlagServer) error {
+	if req.GetEnvId() == "" {
+		return status.Error(codes.InvalidArgument, "environment id parameter missing")
+	}
 	if req.GetKey() == "" {
 		return status.Error(codes.InvalidArgument, "key request parameter missing")
 	}
@@ -37,7 +40,11 @@ func (s *flagService) EvalFlag(req *proto.Request, stream proto.FlagService_Eval
 		user = &sdk.UserAttrs{Attrs: req.GetUser()}
 	}
 
-	conn := s.streamServer.CreateConnection(req.GetKey(), user)
+	str := s.streamServer.GetStreamOrNil(req.GetEnvId())
+	if str == nil {
+		return status.Error(codes.InvalidArgument, "invalid environment identifier: '"+req.GetEnvId()+"'")
+	}
+	conn := str.CreateConnection(req.GetKey(), user)
 
 	for {
 		select {
@@ -61,7 +68,7 @@ func (s *flagService) EvalFlag(req *proto.Request, stream proto.FlagService_Eval
 				}
 			}
 		case <-stream.Context().Done():
-			s.streamServer.CloseConnection(conn, req.GetKey())
+			str.CloseConnection(conn, req.GetKey())
 			return stream.Context().Err()
 		case <-s.closed:
 			return status.Error(codes.Aborted, "server down")

@@ -1,11 +1,14 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/model"
 	"github.com/configcat/configcat-proxy/sdk"
+	"github.com/julienschmidt/httprouter"
 	"io"
 	"net/http"
 )
@@ -15,17 +18,17 @@ type keysResponse struct {
 }
 
 type Server struct {
-	sdkClient sdk.Client
-	config    config.ApiConfig
-	logger    log.Logger
+	sdkClients map[string]sdk.Client
+	config     *config.ApiConfig
+	logger     log.Logger
 }
 
-func NewServer(client sdk.Client, config config.ApiConfig, log log.Logger) *Server {
+func NewServer(sdkClients map[string]sdk.Client, config *config.ApiConfig, log log.Logger) *Server {
 	cdnLogger := log.WithPrefix("api")
 	return &Server{
-		sdkClient: client,
-		config:    config,
-		logger:    cdnLogger,
+		sdkClients: sdkClients,
+		config:     config,
+		logger:     cdnLogger,
 	}
 }
 
@@ -45,7 +48,12 @@ func (s *Server) Eval(w http.ResponseWriter, r *http.Request) {
 	if evalReq.User != nil {
 		userAttrs = &sdk.UserAttrs{Attrs: evalReq.User}
 	}
-	eval, err := s.sdkClient.Eval(evalReq.Key, userAttrs)
+	sdkClient, err := s.getSDKClient(r.Context())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	eval, err := sdkClient.Eval(evalReq.Key, userAttrs)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -76,7 +84,12 @@ func (s *Server) EvalAll(w http.ResponseWriter, r *http.Request) {
 	if evalReq.User != nil {
 		userAttrs = &sdk.UserAttrs{Attrs: evalReq.User}
 	}
-	details := s.sdkClient.EvalAll(userAttrs)
+	sdkClient, err := s.getSDKClient(r.Context())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	details := sdkClient.EvalAll(userAttrs)
 	res := make(map[string]model.ResponsePayload, len(details))
 	for key, detail := range details {
 		res[key] = model.PayloadFromEvalData(&detail)
@@ -90,8 +103,13 @@ func (s *Server) EvalAll(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(data)
 }
 
-func (s *Server) Keys(w http.ResponseWriter, _ *http.Request) {
-	keys := s.sdkClient.Keys()
+func (s *Server) Keys(w http.ResponseWriter, r *http.Request) {
+	sdkClient, err := s.getSDKClient(r.Context())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	keys := sdkClient.Keys()
 	data, err := json.Marshal(keysResponse{Keys: keys})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -102,9 +120,27 @@ func (s *Server) Keys(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (s *Server) Refresh(w http.ResponseWriter, r *http.Request) {
-	err := s.sdkClient.Refresh()
+	sdkClient, err := s.getSDKClient(r.Context())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	err = sdkClient.Refresh()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+}
+
+func (s *Server) getSDKClient(ctx context.Context) (sdk.Client, error) {
+	vars := httprouter.ParamsFromContext(ctx)
+	env := vars.ByName("env")
+	if env == "" {
+		return nil, fmt.Errorf("'env' path parameter must be set")
+	}
+	sdkClient, ok := s.sdkClients[env]
+	if !ok {
+		return nil, fmt.Errorf("invalid environment identifier: '%s'", env)
+	}
+	return sdkClient, nil
 }

@@ -9,8 +9,9 @@ service FlagService {
 }
 
 message Request {
-  string key = 1;
-  map<string, string> user = 2;
+  string env_id = 1;
+  string key = 2;
+  map<string, string> user = 3;
 }
 
 message Payload {

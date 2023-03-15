@@ -7,6 +7,7 @@ import (
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/metrics"
 	"github.com/configcat/configcat-proxy/sdk"
+	"github.com/configcat/configcat-proxy/sdk/statistics"
 	"github.com/configcat/configcat-proxy/status"
 	"github.com/configcat/configcat-proxy/web"
 	"os"
@@ -17,6 +18,7 @@ import (
 
 func main() {
 	logger := log.NewLogger(os.Stderr, os.Stdout, log.Warn)
+	logger.Reportf("service starting...")
 	var configFile string
 	flag.StringVar(&configFile, "c", "", "path to the configuration file")
 	flag.Parse()
@@ -40,20 +42,36 @@ func main() {
 	var metricServer *metrics.Server
 	if conf.Metrics.Enabled {
 		metric = metrics.NewHandler()
-		metricServer = metrics.NewServer(metric.HttpHandler(), conf.Metrics, logger, errorChan)
+		metricServer = metrics.NewServer(metric.HttpHandler(), &conf.Metrics, logger, errorChan)
 		metricServer.Listen()
 	}
 
-	statusReporter := status.NewReporter(conf)
-	sdkClient := sdk.NewClient(conf.SDK, conf.HttpProxy, metric, statusReporter, logger)
-	router := web.NewRouter(sdkClient, metric, statusReporter, conf.Http, logger)
+	var evalReporter statistics.Reporter
+	if conf.EvalStats.InfluxDb.Enabled {
+		evalReporter = statistics.NewInfluxDbReporter(&conf.EvalStats.InfluxDb)
+	}
 
-	httpServer := web.NewServer(router.Handler(), logger, conf, errorChan)
+	statusReporter := status.NewReporter(&conf)
+	sdkClients := make(map[string]sdk.Client)
+	for key, env := range conf.Environments {
+		sdkClients[key] = sdk.NewClient(&sdk.Context{
+			SDKConf:        env,
+			EvalReporter:   evalReporter,
+			MetricsHandler: metric,
+			StatusReporter: statusReporter,
+			ProxyConf:      &conf.HttpProxy,
+			CacheConf:      &conf.Cache,
+			EnvId:          key,
+		}, logger)
+	}
+	router := web.NewRouter(sdkClients, metric, statusReporter, &conf.Http, logger)
+
+	httpServer := web.NewServer(router.Handler(), logger, &conf, errorChan)
 	httpServer.Listen()
 
 	var grpcServer *grpc.Server
 	if conf.Grpc.Enabled {
-		grpcServer = grpc.NewServer(sdkClient, metric, conf, logger, errorChan)
+		grpcServer = grpc.NewServer(sdkClients, metric, &conf, logger, errorChan)
 		grpcServer.Listen()
 	}
 
@@ -63,7 +81,12 @@ func main() {
 	for {
 		select {
 		case <-sigChan:
-			sdkClient.Close()
+			if evalReporter != nil {
+				evalReporter.Close()
+			}
+			for _, sdkClient := range sdkClients {
+				sdkClient.Close()
+			}
 			router.Close()
 
 			shutDownCount := 1

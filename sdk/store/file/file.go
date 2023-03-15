@@ -26,13 +26,14 @@ type fileStorage struct {
 
 	watcher  watcher
 	log      log.Logger
-	conf     config.LocalConfig
+	conf     *config.LocalConfig
 	stored   []byte
 	done     chan struct{}
 	reporter status.Reporter
+	envId    string
 }
 
-func NewFileStorage(conf config.LocalConfig, reporter status.Reporter, log log.Logger) store.NotifyingStorage {
+func NewFileStorage(envId string, conf *config.LocalConfig, reporter status.Reporter, log log.Logger) store.NotifyingStorage {
 	fileLogger := log.WithPrefix("file-store")
 	var watch watcher
 	var err error
@@ -54,6 +55,7 @@ func NewFileStorage(conf config.LocalConfig, reporter status.Reporter, log log.L
 		log:        fileLogger,
 		conf:       conf,
 		reporter:   reporter,
+		envId:      envId,
 		done:       make(chan struct{}),
 	}
 	f.reload()
@@ -78,25 +80,25 @@ func (f *fileStorage) reload() bool {
 	data, err := os.ReadFile(f.conf.FilePath)
 	if err != nil {
 		f.log.Errorf("failed to read file %s: %s", f.conf.FilePath, err)
-		f.reporter.ReportError(status.SDK, err)
+		f.reporter.ReportError(f.envId, err)
 		return false
 	}
 	if bytes.Equal(f.stored, data) {
-		f.reporter.ReportOk(status.SDK, "config from file not modified")
+		f.reporter.ReportOk(f.envId, "config from file not modified")
 		return false
 	}
 	f.log.Debugf("local JSON (%s) modified, reloading", f.conf.FilePath)
 	var root store.RootNode
 	if err = json.Unmarshal(data, &root); err != nil {
 		f.log.Errorf("failed to parse JSON from file %s: %s", f.conf.FilePath, err)
-		f.reporter.ReportError(status.SDK, err)
+		f.reporter.ReportError(f.envId, err)
 		return false
 	}
 	f.stored = data
 	root.Fixup()
 	ser, _ := json.Marshal(root) // Re-serialize to enforce the JSON schema
 	f.StoreEntry(ser)
-	f.reporter.ReportOk(status.SDK, "file source reloaded")
+	f.reporter.ReportOk(f.envId, "file source reloaded")
 	return true
 }
 

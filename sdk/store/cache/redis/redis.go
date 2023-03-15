@@ -2,10 +2,9 @@ package redis
 
 import (
 	"context"
-	"crypto/sha1"
 	"crypto/tls"
-	"fmt"
 	"github.com/configcat/configcat-proxy/config"
+	"github.com/configcat/configcat-proxy/internal/utils"
 	"github.com/configcat/configcat-proxy/sdk/store"
 	"github.com/configcat/configcat-proxy/status"
 	"github.com/redis/go-redis/v9"
@@ -19,7 +18,7 @@ type redisStorage struct {
 	reporter status.Reporter
 }
 
-func NewRedisStorage(sdkKey string, conf config.RedisConfig, reporter status.Reporter) store.CacheStorage {
+func NewRedisStorage(sdkKey string, conf *config.RedisConfig, reporter status.Reporter) store.CacheStorage {
 	opts := &redis.UniversalOptions{
 		Addrs:    conf.Addresses,
 		Password: conf.Password,
@@ -39,7 +38,7 @@ func NewRedisStorage(sdkKey string, conf config.RedisConfig, reporter status.Rep
 	}
 	return &redisStorage{
 		redisDb:    redis.NewUniversalClient(opts),
-		cacheKey:   fmt.Sprintf("%x", sha1.Sum([]byte(fmt.Sprintf("%s_%s", sdkKey, "config_v5")))),
+		cacheKey:   utils.Sha1Hex([]byte(sdkKey + "_config_v5")),
 		EntryStore: store.NewEntryStore(),
 		reporter:   reporter,
 	}

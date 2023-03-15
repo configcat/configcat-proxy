@@ -2,28 +2,21 @@ package grpc
 
 import (
 	"context"
-	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/grpc/proto"
+	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/internal/utils"
 	"github.com/configcat/configcat-proxy/log"
-	"github.com/configcat/configcat-proxy/sdk"
-	"github.com/configcat/configcat-proxy/status"
-	"github.com/configcat/go-sdk/v7/configcattest"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/test/bufconn"
 	"net"
-	"net/http/httptest"
 	"testing"
 	"time"
 )
 
 func TestGrpc(t *testing.T) {
-	key := configcattest.RandomSDKKey()
-	var h = &configcattest.Handler{}
-	_ = h.SetFlags(key, map[string]*configcattest.Flag{"flag": {Default: true}})
-	sdkClient := newClient(t, h, key)
+	sdkClient, _, _ := testutils.NewTestSdkClient(t)
 	flagSrv := newFlagService(sdkClient, nil, log.NewNullLogger())
 
 	lis := bufconn.Listen(1024 * 1024)
@@ -49,7 +42,7 @@ func TestGrpc(t *testing.T) {
 	}()
 
 	client := proto.NewFlagServiceClient(conn)
-	cl, err := client.EvalFlag(context.Background(), &proto.Request{Key: "flag"})
+	cl, err := client.EvalFlag(context.Background(), &proto.Request{Key: "flag", EnvId: "test"})
 	assert.NoError(t, err)
 
 	var payload *proto.Payload
@@ -59,15 +52,4 @@ func TestGrpc(t *testing.T) {
 	})
 
 	assert.True(t, payload.GetBoolValue())
-}
-
-func newClient(t *testing.T, h *configcattest.Handler, key string) sdk.Client {
-	srv := httptest.NewServer(h)
-	opts := config.SDKConfig{BaseUrl: srv.URL, Key: key}
-	client := sdk.NewClient(opts, config.HttpProxyConfig{}, nil, status.NewNullReporter(), log.NewNullLogger())
-	t.Cleanup(func() {
-		srv.Close()
-		client.Close()
-	})
-	return client
 }

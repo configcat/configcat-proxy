@@ -31,25 +31,23 @@ func TestConfig_Defaults(t *testing.T) {
 	assert.True(t, conf.Http.Api.AllowCORS)
 
 	assert.True(t, conf.Http.Webhook.Enabled)
-	assert.Equal(t, 300, conf.Http.Webhook.SignatureValidFor)
 
-	assert.Equal(t, 30, conf.SDK.PollInterval)
-	assert.Equal(t, 5, conf.SDK.Offline.Local.PollInterval)
-	assert.Equal(t, 5, conf.SDK.Offline.CachePollInterval)
-
-	assert.Equal(t, 0, conf.SDK.Cache.Redis.DB)
-	assert.Equal(t, "localhost:6379", conf.SDK.Cache.Redis.Addresses[0])
+	assert.Equal(t, 0, conf.Cache.Redis.DB)
+	assert.Equal(t, "localhost:6379", conf.Cache.Redis.Addresses[0])
 
 	assert.Equal(t, 1.2, conf.Tls.MinVersion)
-	assert.Equal(t, 1.2, conf.SDK.Cache.Redis.Tls.MinVersion)
+	assert.Equal(t, 1.2, conf.Cache.Redis.Tls.MinVersion)
 
 	assert.Equal(t, uint16(tls.VersionTLS12), conf.Tls.GetVersion())
-	assert.Equal(t, uint16(tls.VersionTLS12), conf.SDK.Cache.Redis.Tls.GetVersion())
+	assert.Equal(t, uint16(tls.VersionTLS12), conf.Cache.Redis.Tls.GetVersion())
 }
 
 func TestConfig_LogLevelFixup(t *testing.T) {
 	t.Run("valid base level", func(t *testing.T) {
 		utils.UseTempFile(`
+environments:
+  test_env:
+    key: key
 log:
   level: "info"
 `, func(file string) {
@@ -57,8 +55,8 @@ log:
 			require.NoError(t, err)
 
 			assert.Equal(t, log.Info, conf.Log.GetLevel())
-			assert.Equal(t, log.Info, conf.SDK.Log.GetLevel())
-			assert.Equal(t, log.Info, conf.SDK.Offline.Log.GetLevel())
+			assert.Equal(t, log.Info, conf.Environments["test_env"].Log.GetLevel())
+			assert.Equal(t, log.Info, conf.Environments["test_env"].Offline.Log.GetLevel())
 			assert.Equal(t, log.Info, conf.Http.Log.GetLevel())
 			assert.Equal(t, log.Info, conf.Http.Sse.Log.GetLevel())
 			assert.Equal(t, log.Info, conf.Grpc.Log.GetLevel())
@@ -67,6 +65,9 @@ log:
 
 	t.Run("invalid base level", func(t *testing.T) {
 		utils.UseTempFile(`
+environments:
+  test_env:
+    key: key
 log:
   level: "invalid"
 `, func(file string) {
@@ -74,8 +75,8 @@ log:
 			require.NoError(t, err)
 
 			assert.Equal(t, log.Warn, conf.Log.GetLevel())
-			assert.Equal(t, log.Warn, conf.SDK.Log.GetLevel())
-			assert.Equal(t, log.Warn, conf.SDK.Offline.Log.GetLevel())
+			assert.Equal(t, log.Warn, conf.Environments["test_env"].Log.GetLevel())
+			assert.Equal(t, log.Warn, conf.Environments["test_env"].Offline.Log.GetLevel())
 			assert.Equal(t, log.Warn, conf.Http.Log.GetLevel())
 			assert.Equal(t, log.Warn, conf.Http.Sse.Log.GetLevel())
 			assert.Equal(t, log.Warn, conf.Grpc.Log.GetLevel())
@@ -86,12 +87,13 @@ log:
 		utils.UseTempFile(`
 log:
   level: "error"
-sdk:
-  log:
-    level: "debug"
-  offline: 
+environments:
+  test_env:
     log:
       level: "debug"
+    offline: 
+      log:
+        level: "debug"
 http:
   log:
     level: "debug"
@@ -106,8 +108,8 @@ grpc:
 			require.NoError(t, err)
 
 			assert.Equal(t, log.Error, conf.Log.GetLevel())
-			assert.Equal(t, log.Debug, conf.SDK.Log.GetLevel())
-			assert.Equal(t, log.Debug, conf.SDK.Offline.Log.GetLevel())
+			assert.Equal(t, log.Debug, conf.Environments["test_env"].Log.GetLevel())
+			assert.Equal(t, log.Debug, conf.Environments["test_env"].Offline.Log.GetLevel())
 			assert.Equal(t, log.Debug, conf.Http.Log.GetLevel())
 			assert.Equal(t, log.Debug, conf.Http.Sse.Log.GetLevel())
 			assert.Equal(t, log.Debug, conf.Grpc.Log.GetLevel())
@@ -117,68 +119,81 @@ grpc:
 
 func TestSDKConfig_YAML(t *testing.T) {
 	utils.UseTempFile(`
-sdk:
-  base_url: "base"
-  key: "sdkKey"
-  poll_interval: 300
-  data_governance: "eu"
-  log:
-    level: "error"
-  offline:
-    enabled: true
+environments:
+  test_env:
+    base_url: "base"
+    key: "sdkKey"
+    poll_interval: 300
+    data_governance: "eu"
+    webhook_signing_key: "key"
+    webhook_signature_valid_for: 600
     log:
-      level: "debug"
-    local:
-      file_path: "./local.json"
-      polling: true
-      poll_interval: 100
-    use_cache: true
-    cache_poll_interval: 200
-  cache:
-    redis:
+      level: "error"
+    offline:
       enabled: true
-      db: 1
-      password: "pass"
-      addresses: ["addr1", "addr2"]
-      tls: 
-        enabled: true
-        min_version: 1.1
-        server_name: "serv"
-        certificates:
-          - cert: "./cert1"
-            key: "./key1"
-          - cert: "./cert2"
-            key: "./key2"
+      log:
+        level: "debug"
+      local:
+        file_path: "./local.json"
+        polling: true
+        poll_interval: 100
+      use_cache: true
+      cache_poll_interval: 200
 `, func(file string) {
 		conf, err := LoadConfigFromFileAndEnvironment(file)
 		require.NoError(t, err)
 
-		assert.Equal(t, "base", conf.SDK.BaseUrl)
-		assert.Equal(t, "sdkKey", conf.SDK.Key)
-		assert.Equal(t, 300, conf.SDK.PollInterval)
-		assert.Equal(t, "eu", conf.SDK.DataGovernance)
-		assert.Equal(t, log.Error, conf.SDK.Log.GetLevel())
+		assert.Equal(t, "base", conf.Environments["test_env"].BaseUrl)
+		assert.Equal(t, "sdkKey", conf.Environments["test_env"].Key)
+		assert.Equal(t, 300, conf.Environments["test_env"].PollInterval)
+		assert.Equal(t, "eu", conf.Environments["test_env"].DataGovernance)
+		assert.Equal(t, log.Error, conf.Environments["test_env"].Log.GetLevel())
+		assert.Equal(t, "key", conf.Environments["test_env"].WebhookSigningKey)
+		assert.Equal(t, 600, conf.Environments["test_env"].WebhookSignatureValidFor)
 
-		assert.True(t, conf.SDK.Offline.Enabled)
-		assert.Equal(t, log.Debug, conf.SDK.Offline.Log.GetLevel())
-		assert.Equal(t, "./local.json", conf.SDK.Offline.Local.FilePath)
-		assert.True(t, conf.SDK.Offline.Local.Polling)
-		assert.Equal(t, 100, conf.SDK.Offline.Local.PollInterval)
-		assert.True(t, conf.SDK.Offline.UseCache)
-		assert.Equal(t, 200, conf.SDK.Offline.CachePollInterval)
+		assert.True(t, conf.Environments["test_env"].Offline.Enabled)
+		assert.Equal(t, log.Debug, conf.Environments["test_env"].Offline.Log.GetLevel())
+		assert.Equal(t, "./local.json", conf.Environments["test_env"].Offline.Local.FilePath)
+		assert.True(t, conf.Environments["test_env"].Offline.Local.Polling)
+		assert.Equal(t, 100, conf.Environments["test_env"].Offline.Local.PollInterval)
+		assert.True(t, conf.Environments["test_env"].Offline.UseCache)
+		assert.Equal(t, 200, conf.Environments["test_env"].Offline.CachePollInterval)
+	})
+}
 
-		assert.True(t, conf.SDK.Cache.Redis.Enabled)
-		assert.Equal(t, 1, conf.SDK.Cache.Redis.DB)
-		assert.Equal(t, "pass", conf.SDK.Cache.Redis.Password)
-		assert.Equal(t, "addr1", conf.SDK.Cache.Redis.Addresses[0])
-		assert.Equal(t, "addr2", conf.SDK.Cache.Redis.Addresses[1])
-		assert.True(t, conf.SDK.Cache.Redis.Tls.Enabled)
-		assert.Equal(t, tls.VersionTLS11, int(conf.SDK.Cache.Redis.Tls.GetVersion()))
-		assert.Equal(t, "serv", conf.SDK.Cache.Redis.Tls.ServerName)
-		assert.Equal(t, "./cert1", conf.SDK.Cache.Redis.Tls.Certificates[0].Cert)
-		assert.Equal(t, "./key1", conf.SDK.Cache.Redis.Tls.Certificates[0].Key)
-		assert.Equal(t, "./cert2", conf.SDK.Cache.Redis.Tls.Certificates[1].Cert)
-		assert.Equal(t, "./key2", conf.SDK.Cache.Redis.Tls.Certificates[1].Key)
+func TestCacheConfig_YAML(t *testing.T) {
+	utils.UseTempFile(`
+cache:
+  redis:
+    enabled: true
+    db: 1
+    password: "pass"
+    addresses: ["addr1", "addr2"]
+    tls: 
+      enabled: true
+      min_version: 1.1
+      server_name: "serv"
+      certificates:
+        - cert: "./cert1"
+          key: "./key1"
+        - cert: "./cert2"
+          key: "./key2"
+`, func(file string) {
+		conf, err := LoadConfigFromFileAndEnvironment(file)
+		require.NoError(t, err)
+
+		assert.True(t, conf.Cache.Redis.Enabled)
+		assert.Equal(t, 1, conf.Cache.Redis.DB)
+		assert.Equal(t, "pass", conf.Cache.Redis.Password)
+		assert.Equal(t, "addr1", conf.Cache.Redis.Addresses[0])
+		assert.Equal(t, "addr2", conf.Cache.Redis.Addresses[1])
+		assert.True(t, conf.Cache.Redis.Tls.Enabled)
+		assert.Equal(t, tls.VersionTLS11, int(conf.Cache.Redis.Tls.GetVersion()))
+		assert.Equal(t, "serv", conf.Cache.Redis.Tls.ServerName)
+		assert.Equal(t, "./cert1", conf.Cache.Redis.Tls.Certificates[0].Cert)
+		assert.Equal(t, "./key1", conf.Cache.Redis.Tls.Certificates[0].Key)
+		assert.Equal(t, "./cert2", conf.Cache.Redis.Tls.Certificates[1].Cert)
+		assert.Equal(t, "./key2", conf.Cache.Redis.Tls.Certificates[1].Key)
 	})
 }
 
@@ -241,8 +256,6 @@ http:
     level: "info"
   webhook:
     enabled: true
-    signing_key: "key"
-    signature_valid_for: 600
     auth:
       user: "mickey"
       password: "pass"
@@ -280,8 +293,6 @@ http:
 		assert.Equal(t, log.Info, conf.Http.Log.GetLevel())
 		assert.Equal(t, 8090, conf.Http.Port)
 		assert.True(t, conf.Http.Webhook.Enabled)
-		assert.Equal(t, "key", conf.Http.Webhook.SigningKey)
-		assert.Equal(t, 600, conf.Http.Webhook.SignatureValidFor)
 		assert.Equal(t, "mickey", conf.Http.Webhook.Auth.User)
 		assert.Equal(t, "pass", conf.Http.Webhook.Auth.Password)
 		assert.Equal(t, "auth1", conf.Http.Webhook.AuthHeaders["X-API-KEY1"])

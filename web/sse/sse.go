@@ -2,7 +2,6 @@ package sse
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/internal/utils"
 	"github.com/configcat/configcat-proxy/log"
@@ -18,19 +17,17 @@ const streamDataName = "data"
 
 type Server struct {
 	streamServer stream.Server
-	config       config.SseConfig
+	config       *config.SseConfig
 	logger       log.Logger
-	sdkClient    sdk.Client
 	stop         chan struct{}
 }
 
-func NewServer(sdkClient sdk.Client, metrics metrics.Handler, conf config.SseConfig, logger log.Logger) *Server {
+func NewServer(sdkClients map[string]sdk.Client, metrics metrics.Handler, conf *config.SseConfig, logger log.Logger) *Server {
 	sseLog := logger.WithLevel(conf.Log.GetLevel()).WithPrefix("sse")
 	return &Server{
-		streamServer: stream.NewServer(sdkClient, metrics, sseLog, "sse"),
+		streamServer: stream.NewServer(sdkClients, metrics, sseLog, "sse"),
 		logger:       sseLog,
 		config:       conf,
-		sdkClient:    sdkClient,
 		stop:         make(chan struct{}),
 	}
 }
@@ -50,18 +47,23 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	vars := httprouter.ParamsFromContext(r.Context())
 	streamData := vars.ByName("data")
 	if streamData == "" {
-		http.Error(w, fmt.Sprintf("'%s' must be set", streamDataName), http.StatusBadRequest)
+		http.Error(w, "'"+streamDataName+"' path parameter must be set", http.StatusBadRequest)
+		return
+	}
+	env := vars.ByName("env")
+	if env == "" {
+		http.Error(w, "'env' path parameter must be set", http.StatusBadRequest)
 		return
 	}
 	streamContext, err := utils.Base64URLDecode(streamData)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to decode incoming '%s'", streamDataName), http.StatusBadRequest)
+		http.Error(w, "Failed to decode incoming '"+streamDataName+"'", http.StatusBadRequest)
 		return
 	}
 	var evalReq model.EvalRequest
 	err = json.Unmarshal(streamContext, &evalReq)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to deserialize incoming '%s'", streamDataName), http.StatusBadRequest)
+		http.Error(w, "Failed to deserialize incoming '"+streamDataName+"'", http.StatusBadRequest)
 		return
 	}
 	if evalReq.Key == "" {
@@ -74,7 +76,12 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		userAttrs = &sdk.UserAttrs{Attrs: evalReq.User}
 	}
 
-	conn := s.streamServer.CreateConnection(evalReq.Key, userAttrs)
+	str := s.streamServer.GetStreamOrNil(env)
+	if str == nil {
+		http.Error(w, "Invalid environment identifier: '"+env+"'", http.StatusBadRequest)
+	}
+
+	conn := str.CreateConnection(evalReq.Key, userAttrs)
 	w.WriteHeader(http.StatusOK)
 	flusher.Flush()
 
@@ -93,7 +100,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				s.logger.Errorf("%s", e)
 			}
 		case <-r.Context().Done():
-			s.streamServer.CloseConnection(conn, evalReq.Key)
+			str.CloseConnection(conn, evalReq.Key)
 			return
 		case <-s.stop:
 			return

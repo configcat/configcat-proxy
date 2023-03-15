@@ -10,12 +10,13 @@ import (
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"net/http"
+	"strconv"
 	"time"
 )
 
 type Handler interface {
-	IncrementConnection(streamType string, streamName string)
-	DecrementConnection(streamType string, streamName string)
+	IncrementConnection(envId string, streamType string, flag string)
+	DecrementConnection(envId string, streamType string, flag string)
 
 	HttpHandler() http.Handler
 }
@@ -30,18 +31,18 @@ type handler struct {
 type Server struct {
 	httpServer   *http.Server
 	log          log.Logger
-	conf         config.MetricsConfig
+	conf         *config.MetricsConfig
 	errorChannel chan error
 }
 
-func NewServer(handler http.Handler, conf config.MetricsConfig, log log.Logger, errorChan chan error) *Server {
+func NewServer(handler http.Handler, conf *config.MetricsConfig, log log.Logger, errorChan chan error) *Server {
 	metricsLog := log.WithPrefix("metrics")
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", handler)
 	metricsLog.Reportf("metrics enabled, accepting requests on path: /metrics")
 
 	httpServer := &http.Server{
-		Addr:    fmt.Sprintf(":%d", conf.Port),
+		Addr:    ":" + strconv.Itoa(conf.Port),
 		Handler: mux,
 	}
 
@@ -68,13 +69,13 @@ func NewHandler() Handler {
 		Name:      "sdk_http_request_duration_seconds",
 		Help:      "Histogram of ConfigCat CDN HTTP response time in seconds.",
 		Buckets:   prometheus.DefBuckets,
-	}, []string{"route", "status"})
+	}, []string{"env", "route", "status"})
 
 	connections := prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: "configcat",
 		Name:      "stream_connections",
 		Help:      "Number of active client connections per stream.",
-	}, []string{"type", "stream"})
+	}, []string{"env", "type", "flag"})
 
 	reg.MustRegister(
 		collectors.NewGoCollector(),
@@ -121,10 +122,10 @@ func (h *handler) HttpHandler() http.Handler {
 	return promhttp.HandlerFor(h.registry, promhttp.HandlerOpts{Registry: h.registry})
 }
 
-func (h *handler) IncrementConnection(streamType string, streamName string) {
-	h.connections.WithLabelValues(streamType, streamName).Inc()
+func (h *handler) IncrementConnection(envId string, streamType string, flag string) {
+	h.connections.WithLabelValues(envId, streamType, flag).Inc()
 }
 
-func (h *handler) DecrementConnection(streamType string, streamName string) {
-	h.connections.WithLabelValues(streamType, streamName).Dec()
+func (h *handler) DecrementConnection(envId string, streamType string, flag string) {
+	h.connections.WithLabelValues(envId, streamType, flag).Dec()
 }

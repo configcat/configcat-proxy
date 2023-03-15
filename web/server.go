@@ -8,20 +8,21 @@ import (
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/log"
 	"net/http"
+	"strconv"
 	"time"
 )
 
 type Server struct {
 	log          log.Logger
-	conf         config.Config
+	conf         *config.Config
 	httpServer   *http.Server
 	errorChannel chan error
 }
 
-func NewServer(handler http.Handler, log log.Logger, conf config.Config, errorChan chan error) *Server {
+func NewServer(handler http.Handler, log log.Logger, conf *config.Config, errorChan chan error) *Server {
 	httpLog := log.WithPrefix("http")
 	httpServer := &http.Server{
-		Addr:    fmt.Sprintf(":%d", conf.Http.Port),
+		Addr:    ":" + strconv.Itoa(conf.Http.Port),
 		Handler: handler,
 	}
 	if conf.Tls.Enabled {

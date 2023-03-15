@@ -8,6 +8,7 @@ import (
 
 type requestInterceptor struct {
 	http.ResponseWriter
+
 	statusCode int
 }
 
@@ -30,11 +31,13 @@ func Measure(metricsHandler Handler, next http.HandlerFunc) http.HandlerFunc {
 
 type clientInterceptor struct {
 	http.RoundTripper
+
 	metricsHandler Handler
+	envId          string
 }
 
-func InterceptSdk(metricsHandler Handler, transport http.RoundTripper) http.RoundTripper {
-	return &clientInterceptor{metricsHandler: metricsHandler, RoundTripper: transport}
+func InterceptSdk(envId string, metricsHandler Handler, transport http.RoundTripper) http.RoundTripper {
+	return &clientInterceptor{metricsHandler: metricsHandler, RoundTripper: transport, envId: envId}
 }
 
 func (i *clientInterceptor) RoundTrip(r *http.Request) (*http.Response, error) {
@@ -47,6 +50,6 @@ func (i *clientInterceptor) RoundTrip(r *http.Request) (*http.Response, error) {
 	} else {
 		stat = resp.Status
 	}
-	i.metricsHandler.(*handler).sdkResponseTime.WithLabelValues(r.URL.String(), stat).Observe(duration.Seconds())
+	i.metricsHandler.(*handler).sdkResponseTime.WithLabelValues(i.envId, r.URL.String(), stat).Observe(duration.Seconds())
 	return resp, err
 }

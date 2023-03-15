@@ -25,24 +25,26 @@ var allowedTlsVersions = map[float64]uint16{
 }
 
 type Config struct {
-	Log       LogConfig
-	SDK       SDKConfig
-	Grpc      GrpcConfig
-	Tls       TlsConfig
-	Metrics   MetricsConfig
-	Http      HttpConfig
-	HttpProxy HttpProxyConfig `yaml:"http_proxy"`
+	Log          LogConfig
+	Environments map[string]*SDKConfig
+	Grpc         GrpcConfig
+	Tls          TlsConfig
+	Metrics      MetricsConfig
+	Http         HttpConfig
+	HttpProxy    HttpProxyConfig `yaml:"http_proxy"`
+	EvalStats    EvalStatsConfig `yaml:"eval_stats"`
+	Cache        CacheConfig
 }
 
 type SDKConfig struct {
-	Key            string `yaml:"key"`
-	BaseUrl        string `yaml:"base_url"`
-	PollInterval   int    `yaml:"poll_interval"`
-	DataGovernance string `yaml:"data_governance"`
-	Offline        OfflineConfig
-	Cache          CacheConfig
-	EvalStats      EvalStatsConfig `yaml:"eval_stats"`
-	Log            LogConfig
+	Key                      string `yaml:"key"`
+	BaseUrl                  string `yaml:"base_url"`
+	PollInterval             int    `yaml:"poll_interval"`
+	DataGovernance           string `yaml:"data_governance"`
+	WebhookSignatureValidFor int    `yaml:"webhook_signature_valid_for"`
+	WebhookSigningKey        string `yaml:"webhook_signing_key"`
+	Offline                  OfflineConfig
+	Log                      LogConfig
 }
 
 type EvalStatsConfig struct {
@@ -87,11 +89,9 @@ type HttpConfig struct {
 }
 
 type WebhookConfig struct {
-	SignatureValidFor int               `yaml:"signature_valid_for"`
-	SigningKey        string            `yaml:"signing_key"`
-	AuthHeaders       map[string]string `yaml:"auth_headers"`
-	Enabled           bool              `yaml:"enabled"`
-	Auth              AuthConfig
+	AuthHeaders map[string]string `yaml:"auth_headers"`
+	Enabled     bool              `yaml:"enabled"`
+	Auth        AuthConfig
 }
 
 type CdnProxyConfig struct {
@@ -187,6 +187,7 @@ func LoadConfigFromFileAndEnvironment(filePath string) (Config, error) {
 		config.Log.Level = "warn"
 	}
 	config.fixupLogLevels(config.Log.Level)
+	config.fixupDefaults()
 	config.fixupTlsMinVersions(1.2)
 	return config, nil
 }
@@ -221,22 +222,42 @@ func (c *Config) setDefaults() {
 	c.Http.Api.AllowCORS = true
 
 	c.Http.Webhook.Enabled = true
-	c.Http.Webhook.SignatureValidFor = 300
 
-	c.SDK.PollInterval = 30
-	c.SDK.Offline.Local.PollInterval = 5
-	c.SDK.Offline.CachePollInterval = 5
+	c.Cache.Redis.DB = 0
+	c.Cache.Redis.Addresses = []string{"localhost:6379"}
+}
 
-	c.SDK.Cache.Redis.DB = 0
-	c.SDK.Cache.Redis.Addresses = []string{"localhost:6379"}
+func (c *Config) fixupDefaults() {
+	for _, env := range c.Environments {
+		if env == nil {
+			continue
+		}
+		if env.WebhookSignatureValidFor == 0 {
+			env.WebhookSignatureValidFor = 300
+		}
+		if env.PollInterval == 0 {
+			env.PollInterval = 30
+		}
+		if env.Offline.Local.PollInterval == 0 {
+			env.Offline.Local.PollInterval = 5
+		}
+		if env.Offline.CachePollInterval == 0 {
+			env.Offline.CachePollInterval = 5
+		}
+	}
 }
 
 func (c *Config) fixupLogLevels(defLevel string) {
-	if c.SDK.Log.GetLevel() == log.None {
-		c.SDK.Log.Level = defLevel
-	}
-	if c.SDK.Offline.Log.GetLevel() == log.None {
-		c.SDK.Offline.Log.Level = defLevel
+	for _, env := range c.Environments {
+		if env == nil {
+			continue
+		}
+		if env.Log.GetLevel() == log.None {
+			env.Log.Level = defLevel
+		}
+		if env.Offline.Log.GetLevel() == log.None {
+			env.Offline.Log.Level = defLevel
+		}
 	}
 	if c.Http.Log.GetLevel() == log.None {
 		c.Http.Log.Level = defLevel
@@ -253,7 +274,10 @@ func (c *Config) fixupTlsMinVersions(defVersion float64) {
 	if _, ok := allowedTlsVersions[c.Tls.MinVersion]; !ok {
 		c.Tls.MinVersion = defVersion
 	}
-	if _, ok := allowedTlsVersions[c.SDK.Cache.Redis.Tls.MinVersion]; !ok {
-		c.SDK.Cache.Redis.Tls.MinVersion = defVersion
+	if _, ok := allowedTlsVersions[c.Cache.Redis.Tls.MinVersion]; !ok {
+		c.Cache.Redis.Tls.MinVersion = defVersion
+	}
+	if _, ok := allowedTlsVersions[c.EvalStats.InfluxDb.Tls.MinVersion]; !ok {
+		c.EvalStats.InfluxDb.Tls.MinVersion = defVersion
 	}
 }

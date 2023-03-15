@@ -17,7 +17,7 @@ type fileWatcher struct {
 	realFilePath string
 }
 
-func newFileWatcher(conf config.LocalConfig, log log.Logger) (*fileWatcher, error) {
+func newFileWatcher(conf *config.LocalConfig, log log.Logger) (*fileWatcher, error) {
 	fsLog := log.WithPrefix("file-watcher")
 	_, err := os.Stat(conf.FilePath)
 	if err != nil {

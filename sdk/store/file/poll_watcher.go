@@ -19,7 +19,7 @@ type pollWatcher struct {
 	lastSize         int64
 }
 
-func newPollWatcher(conf config.LocalConfig, log log.Logger) (*pollWatcher, error) {
+func newPollWatcher(conf *config.LocalConfig, log log.Logger) (*pollWatcher, error) {
 	fsLog := log.WithPrefix("poll-watcher")
 	stat, err := os.Stat(conf.FilePath)
 	if err != nil {

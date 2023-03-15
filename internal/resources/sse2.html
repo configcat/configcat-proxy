@@ -13,7 +13,7 @@
 <body>
 <div id="main"></div>
 <script>
-    for (let i = 0; i < 250; i++) {
+    for (let i = 0; i < 200; i++) {
         const user = {
             key: "textsetting",
             user: {
@@ -29,11 +29,11 @@
         document.getElementById("main").appendChild(div);
 
         const data = btoa(JSON.stringify(user))
-        const evtSource = new EventSource("https://localhost:8050/sse/" + data);
+        const evtSource = new EventSource("https://localhost:8050/sse/env1/" + data);
         evtSource.onmessage = (event) => {
             console.log(event.data);
             const main = document.getElementById("main");
-            main.children[i].style.background = "#" + JSON.parse(event.data).value;
+            main.children[i].style.background = JSON.parse(event.data).value;
         };
     }
 </script>

@@ -1,9 +1,8 @@
 package store
 
 import (
-	"crypto/sha1"
 	"encoding/json"
-	"fmt"
+	"github.com/configcat/configcat-proxy/internal/utils"
 	"sync/atomic"
 )
 
@@ -94,7 +93,6 @@ func (e *entryStore) GetLatestJson() *EntryWithEtag {
 }
 
 func parseEntryWithEtag(data []byte) *EntryWithEtag {
-	hash := sha1.Sum(data)
-	etag := fmt.Sprintf("W/\"%x\"", hash)
+	etag := "W/" + "\"" + utils.Sha1Hex(data) + "\""
 	return &EntryWithEtag{CachedJson: data, Etag: etag}
 }

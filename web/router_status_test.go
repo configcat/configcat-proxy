@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/configcat/configcat-proxy/config"
+	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/internal/utils"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/sdk"
@@ -39,11 +40,11 @@ func TestStatus_Get_Body(t *testing.T) {
 	_ = json.Unmarshal(body, &stat)
 
 	assert.Equal(t, status.Healthy, stat.Status)
-	assert.Equal(t, status.Healthy, stat.SDK.Source.Status)
-	assert.Equal(t, status.Online, stat.SDK.Mode)
-	assert.Equal(t, 1, len(stat.SDK.Source.Records))
-	assert.Contains(t, stat.SDK.Source.Records[0], "config fetched")
-	assert.Equal(t, status.RemoteSrc, stat.SDK.Source.Type)
+	assert.Equal(t, status.Healthy, stat.Environments["test"].Source.Status)
+	assert.Equal(t, status.Online, stat.Environments["test"].Mode)
+	assert.Equal(t, 1, len(stat.Environments["test"].Source.Records))
+	assert.Contains(t, stat.Environments["test"].Source.Records[0], "config fetched")
+	assert.Equal(t, status.RemoteSrc, stat.Environments["test"].Source.Type)
 	assert.Equal(t, status.NA, stat.Cache.Status)
 	assert.Equal(t, 0, len(stat.Cache.Records))
 }
@@ -85,8 +86,11 @@ func newStatusRouter(t *testing.T) *HttpRouter {
 	})
 	srv := httptest.NewServer(&h)
 	opts := config.SDKConfig{BaseUrl: srv.URL, Key: key}
-	reporter := status.NewReporter(config.Config{SDK: opts})
-	client := sdk.NewClient(opts, config.HttpProxyConfig{}, nil, reporter, log.NewNullLogger())
+	ctx := testutils.NewTestSdkContext(&opts, nil)
+	conf := config.Config{Environments: map[string]*config.SDKConfig{"test": &opts}}
+	reporter := status.NewReporter(&conf)
+	ctx.StatusReporter = reporter
+	client := sdk.NewClient(ctx, log.NewNullLogger())
 	utils.WithTimeout(2*time.Second, func() {
 		<-client.Ready()
 	})
@@ -94,5 +98,5 @@ func newStatusRouter(t *testing.T) *HttpRouter {
 		srv.Close()
 		client.Close()
 	})
-	return NewRouter(client, nil, reporter, config.HttpConfig{}, log.NewNullLogger())
+	return NewRouter(map[string]sdk.Client{"test": client}, nil, reporter, &config.HttpConfig{}, log.NewNullLogger())
 }
