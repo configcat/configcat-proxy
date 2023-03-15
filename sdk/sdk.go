@@ -85,7 +85,7 @@ func NewClient(sdkCtx *Context, log log.Logger) Client {
 	}
 	client.ctx, client.ctxCancel = context.WithCancel(context.Background())
 	var transport = http.DefaultTransport.(*http.Transport)
-	if sdkCtx.ProxyConf.Url != "" {
+	if !sdkCtx.SDKConf.Offline.Enabled && sdkCtx.ProxyConf.Url != "" {
 		proxyUrl, err := url.Parse(sdkCtx.ProxyConf.Url)
 		if err != nil {
 			sdkLog.Errorf("failed to parse proxy url: %s", sdkCtx.ProxyConf.Url)
