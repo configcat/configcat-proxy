@@ -38,11 +38,11 @@ func main() {
 
 	errorChan := make(chan error)
 
-	var metric metrics.Handler
+	var metricsHandler metrics.Handler
 	var metricServer *metrics.Server
 	if conf.Metrics.Enabled {
-		metric = metrics.NewHandler()
-		metricServer = metrics.NewServer(metric.HttpHandler(), &conf.Metrics, logger, errorChan)
+		metricsHandler = metrics.NewHandler()
+		metricServer = metrics.NewServer(metricsHandler.HttpHandler(), &conf.Metrics, logger, errorChan)
 		metricServer.Listen()
 	}
 
@@ -57,21 +57,21 @@ func main() {
 		sdkClients[key] = sdk.NewClient(&sdk.Context{
 			SDKConf:        env,
 			EvalReporter:   evalReporter,
-			MetricsHandler: metric,
+			MetricsHandler: metricsHandler,
 			StatusReporter: statusReporter,
 			ProxyConf:      &conf.HttpProxy,
 			CacheConf:      &conf.Cache,
 			EnvId:          key,
 		}, logger)
 	}
-	router := web.NewRouter(sdkClients, metric, statusReporter, &conf.Http, logger)
+	router := web.NewRouter(sdkClients, metricsHandler, statusReporter, &conf.Http, logger)
 
 	httpServer := web.NewServer(router.Handler(), logger, &conf, errorChan)
 	httpServer.Listen()
 
 	var grpcServer *grpc.Server
 	if conf.Grpc.Enabled {
-		grpcServer = grpc.NewServer(sdkClients, metric, &conf, logger, errorChan)
+		grpcServer = grpc.NewServer(sdkClients, metricsHandler, &conf, logger, errorChan)
 		grpcServer.Listen()
 	}
 
@@ -90,7 +90,7 @@ func main() {
 			router.Close()
 
 			shutDownCount := 1
-			if metric != nil {
+			if metricServer != nil {
 				shutDownCount++
 			}
 			if grpcServer != nil {
@@ -109,7 +109,7 @@ func main() {
 					wg.Done()
 				}()
 			}
-			if metric != nil {
+			if metricServer != nil {
 				go func() {
 					metricServer.Shutdown()
 					wg.Done()
