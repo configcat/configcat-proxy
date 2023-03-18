@@ -5,6 +5,7 @@ import (
 	"crypto/sha1"
 	"encoding/base64"
 	"encoding/hex"
+	"github.com/cespare/xxhash/v2"
 	"github.com/julienschmidt/httprouter"
 	"net/http"
 	"strings"
@@ -50,6 +51,18 @@ func Min(args ...int) int {
 func Sha1Hex(data []byte) string {
 	h := sha1.New()
 	h.Write(data)
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+func FastHash(b []byte) uint64 {
+	h := xxhash.New()
+	_, _ = h.Write(b)
+	return h.Sum64()
+}
+
+func FastHashHex(b []byte) string {
+	h := xxhash.New()
+	_, _ = h.Write(b)
 	return hex.EncodeToString(h.Sum(nil))
 }
 

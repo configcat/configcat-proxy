@@ -8,7 +8,7 @@ type UserAttrs struct {
 	Attrs map[string]string
 }
 
-func (attrs UserAttrs) Discriminator() string {
+func (attrs *UserAttrs) Discriminator() string {
 	var result string
 	keys := make([]string, len(attrs.Attrs))
 	i := 0

@@ -5,14 +5,14 @@ import (
 )
 
 type Connection struct {
-	receive    chan *model.ResponsePayload
-	extraAttrs string
+	receive       chan *model.ResponsePayload
+	discriminator string
 }
 
-func newConnection(extraAttrs string) *Connection {
+func newConnection(discriminator string) *Connection {
 	return &Connection{
-		receive:    make(chan *model.ResponsePayload, 64),
-		extraAttrs: extraAttrs,
+		receive:       make(chan *model.ResponsePayload, 64),
+		discriminator: discriminator,
 	}
 }
 

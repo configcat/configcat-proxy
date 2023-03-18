@@ -35,7 +35,7 @@ func TestSdk_Signal(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, data.Value.(bool))
 	assert.Equal(t, `{"f":{"flag":{"i":"v_flag","v":true,"t":0,"r":[],"p":null}},"p":null}`, string(j.CachedJson))
-	assert.Equal(t, fmt.Sprintf("W/\"%x\"", sha1.Sum(j.CachedJson)), j.Etag)
+	assert.Equal(t, fmt.Sprintf("W/\"%x\"", utils.FastHash(j.CachedJson)), j.Etag)
 
 	_ = h.SetFlags(key, map[string]*configcattest.Flag{
 		"flag": {
@@ -50,7 +50,7 @@ func TestSdk_Signal(t *testing.T) {
 	assert.NoError(t, err)
 	assert.False(t, data.Value.(bool))
 	assert.Equal(t, `{"f":{"flag":{"i":"v_flag","v":false,"t":0,"r":[],"p":null}},"p":null}`, string(j.CachedJson))
-	assert.Equal(t, fmt.Sprintf("W/\"%x\"", sha1.Sum(j.CachedJson)), j.Etag)
+	assert.Equal(t, fmt.Sprintf("W/\"%x\"", utils.FastHash(j.CachedJson)), j.Etag)
 }
 
 func TestSdk_Ready_Online(t *testing.T) {
@@ -72,7 +72,7 @@ func TestSdk_Ready_Online(t *testing.T) {
 	})
 	j := client.GetCachedJson()
 	assert.Equal(t, `{"f":{"flag":{"i":"v_flag","v":true,"t":0,"r":[],"p":null}},"p":null}`, string(j.CachedJson))
-	assert.Equal(t, fmt.Sprintf("W/\"%x\"", sha1.Sum(j.CachedJson)), j.Etag)
+	assert.Equal(t, fmt.Sprintf("W/\"%x\"", utils.FastHash(j.CachedJson)), j.Etag)
 }
 
 func TestSdk_Ready_Offline(t *testing.T) {
@@ -85,7 +85,7 @@ func TestSdk_Ready_Offline(t *testing.T) {
 		})
 		j := client.GetCachedJson()
 		assert.Equal(t, `{"f":{"flag":{"i":"","v":true,"t":0,"r":[],"p":[]}}}`, string(j.CachedJson))
-		assert.Equal(t, fmt.Sprintf("W/\"%x\"", sha1.Sum(j.CachedJson)), j.Etag)
+		assert.Equal(t, fmt.Sprintf("W/\"%x\"", utils.FastHash(j.CachedJson)), j.Etag)
 	})
 }
 
@@ -109,7 +109,7 @@ func TestSdk_Signal_Refresh(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, data.Value.(bool))
 	assert.Equal(t, `{"f":{"flag":{"i":"v_flag","v":true,"t":0,"r":[],"p":null}},"p":null}`, string(j.CachedJson))
-	assert.Equal(t, fmt.Sprintf("W/\"%x\"", sha1.Sum(j.CachedJson)), j.Etag)
+	assert.Equal(t, fmt.Sprintf("W/\"%x\"", utils.FastHash(j.CachedJson)), j.Etag)
 
 	_ = h.SetFlags(key, map[string]*configcattest.Flag{
 		"flag": {
@@ -125,7 +125,7 @@ func TestSdk_Signal_Refresh(t *testing.T) {
 	assert.NoError(t, err)
 	assert.False(t, data.Value.(bool))
 	assert.Equal(t, `{"f":{"flag":{"i":"v_flag","v":false,"t":0,"r":[],"p":null}},"p":null}`, string(j.CachedJson))
-	assert.Equal(t, fmt.Sprintf("W/\"%x\"", sha1.Sum(j.CachedJson)), j.Etag)
+	assert.Equal(t, fmt.Sprintf("W/\"%x\"", utils.FastHash(j.CachedJson)), j.Etag)
 }
 
 func TestSdk_BadConfig(t *testing.T) {
@@ -142,7 +142,7 @@ func TestSdk_BadConfig(t *testing.T) {
 	assert.Error(t, err)
 	assert.Nil(t, data.Value)
 	assert.Equal(t, `{"f":{}}`, string(j.CachedJson))
-	assert.Equal(t, fmt.Sprintf("W/\"%x\"", sha1.Sum(j.CachedJson)), j.Etag)
+	assert.Equal(t, fmt.Sprintf("W/\"%x\"", utils.FastHash(j.CachedJson)), j.Etag)
 }
 
 func TestSdk_BadConfig_WithCache(t *testing.T) {
@@ -163,7 +163,7 @@ func TestSdk_BadConfig_WithCache(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, data.Value.(bool))
 	assert.Equal(t, `{"f":{"flag":{"i":"","v":true,"t":0,"r":[],"p":[]}}}`, string(j.CachedJson))
-	assert.Equal(t, fmt.Sprintf("W/\"%x\"", sha1.Sum(j.CachedJson)), j.Etag)
+	assert.Equal(t, fmt.Sprintf("W/\"%x\"", utils.FastHash(j.CachedJson)), j.Etag)
 }
 
 func TestSdk_Signal_Offline_File_Watch(t *testing.T) {
@@ -177,7 +177,7 @@ func TestSdk_Signal_Offline_File_Watch(t *testing.T) {
 		assert.NoError(t, err)
 		assert.True(t, data.Value.(bool))
 		assert.Equal(t, `{"f":{"flag":{"i":"","v":true,"t":0,"r":[],"p":[]}}}`, string(j.CachedJson))
-		assert.Equal(t, fmt.Sprintf("W/\"%x\"", sha1.Sum(j.CachedJson)), j.Etag)
+		assert.Equal(t, fmt.Sprintf("W/\"%x\"", utils.FastHash(j.CachedJson)), j.Etag)
 
 		utils.WriteIntoFile(path, `{"f":{"flag":{"i":"","v":false,"t":0,"r":[],"p":[]}}}`)
 		utils.WithTimeout(2*time.Second, func() {
@@ -188,7 +188,7 @@ func TestSdk_Signal_Offline_File_Watch(t *testing.T) {
 		assert.NoError(t, err)
 		assert.False(t, data.Value.(bool))
 		assert.Equal(t, `{"f":{"flag":{"i":"","v":false,"t":0,"r":[],"p":[]}}}`, string(j.CachedJson))
-		assert.Equal(t, fmt.Sprintf("W/\"%x\"", sha1.Sum(j.CachedJson)), j.Etag)
+		assert.Equal(t, fmt.Sprintf("W/\"%x\"", utils.FastHash(j.CachedJson)), j.Etag)
 	})
 }
 
@@ -203,7 +203,7 @@ func TestSdk_Signal_Offline_Poll_Watch(t *testing.T) {
 		assert.NoError(t, err)
 		assert.True(t, data.Value.(bool))
 		assert.Equal(t, `{"f":{"flag":{"i":"","v":true,"t":0,"r":[],"p":[]}}}`, string(j.CachedJson))
-		assert.Equal(t, fmt.Sprintf("W/\"%x\"", sha1.Sum(j.CachedJson)), j.Etag)
+		assert.Equal(t, fmt.Sprintf("W/\"%x\"", utils.FastHash(j.CachedJson)), j.Etag)
 
 		utils.WriteIntoFile(path, `{"f":{"flag":{"i":"","v":false,"t":0,"r":[],"p":[]}}}`)
 		utils.WithTimeout(2*time.Second, func() {
@@ -214,7 +214,7 @@ func TestSdk_Signal_Offline_Poll_Watch(t *testing.T) {
 		assert.NoError(t, err)
 		assert.False(t, data.Value.(bool))
 		assert.Equal(t, `{"f":{"flag":{"i":"","v":false,"t":0,"r":[],"p":[]}}}`, string(j.CachedJson))
-		assert.Equal(t, fmt.Sprintf("W/\"%x\"", sha1.Sum(j.CachedJson)), j.Etag)
+		assert.Equal(t, fmt.Sprintf("W/\"%x\"", utils.FastHash(j.CachedJson)), j.Etag)
 	})
 }
 
@@ -236,7 +236,7 @@ func TestSdk_Signal_Offline_Redis_Watch(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, data.Value.(bool))
 	assert.Equal(t, `{"f":{"flag":{"i":"","v":true,"t":0,"r":[],"p":[]}}}`, string(j.CachedJson))
-	assert.Equal(t, fmt.Sprintf("W/\"%x\"", sha1.Sum(j.CachedJson)), j.Etag)
+	assert.Equal(t, fmt.Sprintf("W/\"%x\"", utils.FastHash(j.CachedJson)), j.Etag)
 
 	_ = s.Set(cacheKey, `{"f":{"flag":{"i":"","v":false,"t":0,"r":[],"p":[]}}}`)
 	utils.WithTimeout(2*time.Second, func() {
@@ -247,7 +247,7 @@ func TestSdk_Signal_Offline_Redis_Watch(t *testing.T) {
 	assert.NoError(t, err)
 	assert.False(t, data.Value.(bool))
 	assert.Equal(t, `{"f":{"flag":{"i":"","v":false,"t":0,"r":[],"p":[]}}}`, string(j.CachedJson))
-	assert.Equal(t, fmt.Sprintf("W/\"%x\"", sha1.Sum(j.CachedJson)), j.Etag)
+	assert.Equal(t, fmt.Sprintf("W/\"%x\"", utils.FastHash(j.CachedJson)), j.Etag)
 }
 
 func TestSdk_Sub_Unsub(t *testing.T) {

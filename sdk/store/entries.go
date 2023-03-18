@@ -93,6 +93,6 @@ func (e *entryStore) GetLatestJson() *EntryWithEtag {
 }
 
 func parseEntryWithEtag(data []byte) *EntryWithEtag {
-	etag := "W/" + "\"" + utils.Sha1Hex(data) + "\""
+	etag := "W/" + "\"" + utils.FastHashHex(data) + "\""
 	return &EntryWithEtag{CachedJson: data, Etag: etag}
 }

@@ -14,5 +14,5 @@ func TestConnection(t *testing.T) {
 	}()
 	rec := <-conn.Receive()
 	assert.Equal(t, pl, rec)
-	assert.Equal(t, "test", conn.extraAttrs)
+	assert.Equal(t, "test", conn.discriminator)
 }

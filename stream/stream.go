@@ -90,11 +90,11 @@ func (s *stream) run() {
 }
 
 func (s *stream) CreateConnection(key string, user *sdk.UserAttrs) *Connection {
-	var extra = ""
+	var discriminator string
 	if user != nil {
-		extra = user.Discriminator()
+		discriminator = user.Discriminator()
 	}
-	conn := newConnection(extra)
+	conn := newConnection(discriminator)
 	select {
 	case <-s.stop:
 		return conn
@@ -120,7 +120,7 @@ func (s *stream) Close() {
 }
 
 func (s *stream) addConnection(established *connEstablished) {
-	id := established.key + established.conn.extraAttrs
+	id := established.key + established.conn.discriminator
 	ch, ok := s.channels[id]
 	if !ok {
 		val, _ := s.sdkClient.Eval(established.key, established.user)
@@ -135,7 +135,7 @@ func (s *stream) addConnection(established *connEstablished) {
 
 func (s *stream) removeConnection(closed *connClosed) {
 	close(closed.conn.receive)
-	id := closed.key + closed.conn.extraAttrs
+	id := closed.key + closed.conn.discriminator
 	ch, ok := s.channels[id]
 	if !ok {
 		return

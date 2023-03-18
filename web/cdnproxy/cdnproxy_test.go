@@ -84,11 +84,65 @@ func TestProxy_Get(t *testing.T) {
 		assert.Equal(t, http.StatusNotModified, res.Code)
 		assert.Empty(t, res.Body.String())
 	})
+	t.Run("etag twice", func(t *testing.T) {
+		res := httptest.NewRecorder()
+		req := &http.Request{Method: http.MethodGet}
+
+		srv, h, key := newServerWithHandler(t, config.CdnProxyConfig{Enabled: true})
+		utils.AddEnvContextParam(req)
+		srv.ServeHTTP(res, req)
+
+		assert.Equal(t, http.StatusOK, res.Code)
+		assert.Equal(t, `{"f":{"flag":{"i":"v_flag","v":true,"t":0,"r":[],"p":null}},"p":null}`, res.Body.String())
+
+		etag := res.Header().Get("ETag")
+
+		res = httptest.NewRecorder()
+		req = &http.Request{Method: http.MethodGet, Header: map[string][]string{}}
+		req.Header.Set("If-None-Match", etag)
+		utils.AddEnvContextParam(req)
+		srv.ServeHTTP(res, req)
+
+		assert.Equal(t, http.StatusNotModified, res.Code)
+		assert.Empty(t, res.Body.String())
+
+		_ = h.SetFlags(key, map[string]*configcattest.Flag{
+			"flag": {
+				Default: false,
+			},
+		})
+		_ = srv.sdkClients["test"].Refresh()
+
+		res = httptest.NewRecorder()
+		req = &http.Request{Method: http.MethodGet, Header: map[string][]string{}}
+		req.Header.Set("If-None-Match", etag)
+		utils.AddEnvContextParam(req)
+		srv.ServeHTTP(res, req)
+
+		assert.Equal(t, http.StatusOK, res.Code)
+		assert.Equal(t, `{"f":{"flag":{"i":"v_flag","v":false,"t":0,"r":[],"p":null}},"p":null}`, res.Body.String())
+
+		etag = res.Header().Get("ETag")
+
+		res = httptest.NewRecorder()
+		req = &http.Request{Method: http.MethodGet, Header: map[string][]string{}}
+		req.Header.Set("If-None-Match", etag)
+		utils.AddEnvContextParam(req)
+		srv.ServeHTTP(res, req)
+
+		assert.Equal(t, http.StatusNotModified, res.Code)
+		assert.Empty(t, res.Body.String())
+	})
 }
 
 func newServer(t *testing.T, proxyConfig config.CdnProxyConfig) *Server {
 	client, _, _ := testutils.NewTestSdkClient(t)
 	return NewServer(client, &proxyConfig, log.NewNullLogger())
+}
+
+func newServerWithHandler(t *testing.T, proxyConfig config.CdnProxyConfig) (*Server, *configcattest.Handler, string) {
+	client, h, k := testutils.NewTestSdkClient(t)
+	return NewServer(client, &proxyConfig, log.NewNullLogger()), h, k
 }
 
 func newErrorServer(t *testing.T, proxyConfig config.CdnProxyConfig) *Server {
