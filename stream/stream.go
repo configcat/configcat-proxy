@@ -54,7 +54,7 @@ func NewStream(envId string, sdkClient sdk.Client, metrics metrics.Handler, log 
 		stop:             make(chan struct{}),
 		sdkConfigChanged: sdkClient.SubConfigChanged(serverType + envId),
 		sdkClient:        sdkClient,
-		log:              log.WithPrefix("stream-%s" + envId),
+		log:              log.WithPrefix("stream-" + envId),
 		serverType:       serverType,
 		envId:            envId,
 		metrics:          metrics,
