@@ -61,8 +61,8 @@ func (s *HttpRouter) Close() {
 	}
 }
 
-func (s *HttpRouter) setupSSERoutes(conf *config.SseConfig, sdkClients map[string]sdk.Client, log log.Logger) {
-	s.sseServer = sse.NewServer(sdkClients, s.metrics, conf, log)
+func (s *HttpRouter) setupSSERoutes(conf *config.SseConfig, sdkClients map[string]sdk.Client, l log.Logger) {
+	s.sseServer = sse.NewServer(sdkClients, s.metrics, conf, l)
 	path := "/sse/:env/:data"
 	handler := mware.AutoOptions(s.sseServer.ServeHTTP)
 	if len(conf.Headers) > 0 {
@@ -71,31 +71,37 @@ func (s *HttpRouter) setupSSERoutes(conf *config.SseConfig, sdkClients map[strin
 	if conf.AllowCORS {
 		handler = mware.CORS([]string{http.MethodGet, http.MethodOptions}, handler)
 	}
+	if l.Level() == log.Debug {
+		handler = mware.DebugLog(l, handler)
+	}
 	s.router.HandlerFunc(http.MethodGet, path, handler)
 	s.router.HandlerFunc(http.MethodOptions, path, handler)
-	log.Reportf("SSE enabled, listening on path: %s", path)
+	l.Reportf("SSE enabled, listening on path: %s", path)
 }
 
-func (s *HttpRouter) setupWebhookRoutes(conf *config.WebhookConfig, sdkClients map[string]sdk.Client, log log.Logger) {
-	s.webhookServer = webhook.NewServer(sdkClients, log)
+func (s *HttpRouter) setupWebhookRoutes(conf *config.WebhookConfig, sdkClients map[string]sdk.Client, l log.Logger) {
+	s.webhookServer = webhook.NewServer(sdkClients, l)
 	path := "/hook/:env"
 	handler := http.HandlerFunc(s.webhookServer.ServeHTTP)
 	if conf.Auth.User != "" && conf.Auth.Password != "" {
-		handler = mware.BasicAuth(conf.Auth.User, conf.Auth.Password, log, handler)
+		handler = mware.BasicAuth(conf.Auth.User, conf.Auth.Password, l, handler)
 	}
 	if len(conf.AuthHeaders) > 0 {
-		handler = mware.HeaderAuth(conf.AuthHeaders, log, handler)
+		handler = mware.HeaderAuth(conf.AuthHeaders, l, handler)
 	}
 	if s.metrics != nil {
 		handler = metrics.Measure(s.metrics, handler)
 	}
+	if l.Level() == log.Debug {
+		handler = mware.DebugLog(l, handler)
+	}
 	s.router.HandlerFunc(http.MethodGet, path, handler)
 	s.router.HandlerFunc(http.MethodPost, path, handler)
-	log.Reportf("webhook enabled, accepting requests on path: %s", path)
+	l.Reportf("webhook enabled, accepting requests on path: %s", path)
 }
 
-func (s *HttpRouter) setupCDNProxyRoutes(conf *config.CdnProxyConfig, sdkClients map[string]sdk.Client, log log.Logger) {
-	s.cdnProxyServer = cdnproxy.NewServer(sdkClients, conf, log)
+func (s *HttpRouter) setupCDNProxyRoutes(conf *config.CdnProxyConfig, sdkClients map[string]sdk.Client, l log.Logger) {
+	s.cdnProxyServer = cdnproxy.NewServer(sdkClients, conf, l)
 	path := "/configuration-files/:env/:file"
 	handler := mware.AutoOptions(mware.GZip(s.cdnProxyServer.ServeHTTP))
 	if len(conf.Headers) > 0 {
@@ -107,9 +113,12 @@ func (s *HttpRouter) setupCDNProxyRoutes(conf *config.CdnProxyConfig, sdkClients
 	if s.metrics != nil {
 		handler = metrics.Measure(s.metrics, handler)
 	}
+	if l.Level() == log.Debug {
+		handler = mware.DebugLog(l, handler)
+	}
 	s.router.HandlerFunc(http.MethodGet, path, handler)
 	s.router.HandlerFunc(http.MethodOptions, path, handler)
-	log.Reportf("CDN proxy enabled, accepting requests on path: %s", path)
+	l.Reportf("CDN proxy enabled, accepting requests on path: %s", path)
 }
 
 func (s *HttpRouter) setupStatusRoutes(reporter status.Reporter) {
@@ -128,8 +137,8 @@ type endpoint struct {
 	path    string
 }
 
-func (s *HttpRouter) setupAPIRoutes(conf *config.ApiConfig, sdkClients map[string]sdk.Client, log log.Logger) {
-	s.apiServer = api.NewServer(sdkClients, conf, log)
+func (s *HttpRouter) setupAPIRoutes(conf *config.ApiConfig, sdkClients map[string]sdk.Client, l log.Logger) {
+	s.apiServer = api.NewServer(sdkClients, conf, l)
 	endpoints := []endpoint{
 		{path: "/api/:env/eval", handler: mware.GZip(s.apiServer.Eval), method: http.MethodPost},
 		{path: "/api/:env/eval-all", handler: mware.GZip(s.apiServer.EvalAll), method: http.MethodPost},
@@ -138,7 +147,7 @@ func (s *HttpRouter) setupAPIRoutes(conf *config.ApiConfig, sdkClients map[strin
 	}
 	for _, endpoint := range endpoints {
 		if len(conf.AuthHeaders) > 0 {
-			endpoint.handler = mware.HeaderAuth(conf.AuthHeaders, log, endpoint.handler)
+			endpoint.handler = mware.HeaderAuth(conf.AuthHeaders, l, endpoint.handler)
 		}
 		endpoint.handler = mware.AutoOptions(endpoint.handler)
 		if len(conf.Headers) > 0 {
@@ -150,8 +159,11 @@ func (s *HttpRouter) setupAPIRoutes(conf *config.ApiConfig, sdkClients map[strin
 		if s.metrics != nil {
 			endpoint.handler = metrics.Measure(s.metrics, endpoint.handler)
 		}
+		if l.Level() == log.Debug {
+			endpoint.handler = mware.DebugLog(l, endpoint.handler)
+		}
 		s.router.HandlerFunc(endpoint.method, endpoint.path, endpoint.handler)
 		s.router.HandlerFunc(http.MethodOptions, endpoint.path, endpoint.handler)
 	}
-	log.Reportf("API enabled, accepting requests on path: /api/:env/*")
+	l.Reportf("API enabled, accepting requests on path: /api/:env/*")
 }

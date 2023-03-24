@@ -38,7 +38,7 @@ func GZip(next http.HandlerFunc) http.HandlerFunc {
 }
 
 func (w *gzipWriter) WriteHeader(code int) {
-	w.Header().Del("Content-Length")
+	w.ResponseWriter.Header().Del("Content-Length")
 	w.ResponseWriter.WriteHeader(code)
 	w.headersDone = true
 }

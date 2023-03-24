@@ -12,9 +12,9 @@ type requestInterceptor struct {
 	statusCode int
 }
 
-func (rec *requestInterceptor) WriteHeader(statusCode int) {
-	rec.statusCode = statusCode
-	rec.ResponseWriter.WriteHeader(statusCode)
+func (r *requestInterceptor) WriteHeader(statusCode int) {
+	r.statusCode = statusCode
+	r.ResponseWriter.WriteHeader(statusCode)
 }
 
 func Measure(metricsHandler Handler, next http.HandlerFunc) http.HandlerFunc {

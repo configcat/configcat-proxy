@@ -1,7 +1,7 @@
 package log
 
 import (
-	configcat "github.com/configcat/go-sdk/v7"
+	"github.com/configcat/go-sdk/v7"
 	"io"
 	"log"
 )
@@ -9,7 +9,9 @@ import (
 type Level int
 
 type Logger interface {
-	GetLevel() configcat.LogLevel
+	GetLevel() configcat.LogLevel // for the SDK
+
+	Level() Level
 
 	WithLevel(level Level) Logger
 	WithPrefix(prefix string) Logger
@@ -50,7 +52,7 @@ func NewLogger(err io.Writer, out io.Writer, level Level) Logger {
 	}
 }
 
-func (l logger) WithLevel(level Level) Logger {
+func (l *logger) WithLevel(level Level) Logger {
 	return &logger{
 		level:       level,
 		errorLogger: l.errorLogger,
@@ -59,7 +61,7 @@ func (l logger) WithLevel(level Level) Logger {
 	}
 }
 
-func (l logger) WithPrefix(prefix string) Logger {
+func (l *logger) WithPrefix(prefix string) Logger {
 	if l.prefix != "" {
 		prefix = l.prefix + "/" + prefix
 	}
@@ -71,7 +73,7 @@ func (l logger) WithPrefix(prefix string) Logger {
 	}
 }
 
-func (l logger) GetLevel() configcat.LogLevel {
+func (l *logger) GetLevel() configcat.LogLevel {
 	switch l.level {
 	case Debug:
 		return configcat.LogLevelDebug
@@ -86,23 +88,27 @@ func (l logger) GetLevel() configcat.LogLevel {
 	}
 }
 
-func (l logger) Debugf(format string, values ...interface{}) {
+func (l *logger) Level() Level {
+	return l.level
+}
+
+func (l *logger) Debugf(format string, values ...interface{}) {
 	l.logf(Debug, format, values...)
 }
 
-func (l logger) Infof(format string, values ...interface{}) {
+func (l *logger) Infof(format string, values ...interface{}) {
 	l.logf(Info, format, values...)
 }
 
-func (l logger) Warnf(format string, values ...interface{}) {
+func (l *logger) Warnf(format string, values ...interface{}) {
 	l.logf(Warn, format, values...)
 }
 
-func (l logger) Errorf(format string, values ...interface{}) {
+func (l *logger) Errorf(format string, values ...interface{}) {
 	l.logf(Error, format, values...)
 }
 
-func (l logger) Reportf(format string, values ...interface{}) {
+func (l *logger) Reportf(format string, values ...interface{}) {
 	if l.level == None {
 		return
 	}
@@ -117,7 +123,7 @@ func (l logger) Reportf(format string, values ...interface{}) {
 	}
 }
 
-func (l logger) logf(level Level, format string, values ...interface{}) {
+func (l *logger) logf(level Level, format string, values ...interface{}) {
 	if level >= l.level {
 		var lo *log.Logger
 		if level == Error {

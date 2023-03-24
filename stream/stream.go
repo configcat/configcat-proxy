@@ -6,7 +6,6 @@ import (
 	"github.com/configcat/configcat-proxy/model"
 	"github.com/configcat/configcat-proxy/sdk"
 	"hash/maphash"
-	"sync/atomic"
 )
 
 type Stream interface {
@@ -19,7 +18,6 @@ type channel struct {
 	connections []*Connection
 	lastPayload *model.ResponsePayload
 	user        sdk.UserAttrs
-	key         string
 }
 
 type connEstablished struct {
@@ -71,14 +69,16 @@ func (s *stream) run() {
 		select {
 		case established := <-s.connEstablished:
 			s.addConnection(established)
-			s.log.Debugf("connection established, all connections: %d", atomic.AddInt64(&s.connCount, 1))
+			s.connCount++
+			s.log.Debugf("#%s: connection established, all connections: %d", established.key, s.connCount)
 			if s.metrics != nil {
 				s.metrics.IncrementConnection(s.envId, s.serverType, established.key)
 			}
 
 		case closed := <-s.connClosed:
 			s.removeConnection(closed)
-			s.log.Debugf("connection closed, all connections: %d", atomic.AddInt64(&s.connCount, -1))
+			s.connCount--
+			s.log.Debugf("#%s: connection closed, all connections: %d", closed.key, s.connCount)
 			if s.metrics != nil {
 				s.metrics.DecrementConnection(s.envId, s.serverType, closed.key)
 			}
@@ -131,10 +131,7 @@ func (s *stream) addConnection(established *connEstablished) {
 	}
 	ch, ok := bucket[established.conn.discriminator]
 	if !ok {
-		val, _ := s.sdkClient.Eval(established.key, established.user)
-		ch = &channel{user: established.user, key: established.key}
-		payload := model.PayloadFromEvalData(&val)
-		ch.lastPayload = &payload
+		ch = s.createChannel(established)
 		bucket[established.conn.discriminator] = ch
 	}
 	ch.connections = append(ch.connections, established.conn)
@@ -172,9 +169,9 @@ func (s *stream) removeConnection(closed *connClosed) {
 
 func (s *stream) notifyConnections() {
 	sent := 0
-	for _, bucket := range s.channels {
+	for key, bucket := range s.channels {
 		for _, ch := range bucket {
-			val, err := s.sdkClient.Eval(ch.key, ch.user)
+			val, err := s.sdkClient.Eval(key, ch.user)
 			if err != nil {
 				continue
 			}
@@ -195,7 +192,7 @@ func (s *stream) notifyConnections() {
 
 func (s *stream) createChannel(established *connEstablished) *channel {
 	val, _ := s.sdkClient.Eval(established.key, established.user)
-	ch := &channel{user: established.user, key: established.key}
+	ch := &channel{user: established.user}
 	payload := model.PayloadFromEvalData(&val)
 	ch.lastPayload = &payload
 	return ch
