@@ -20,8 +20,8 @@ import (
 )
 
 type Client interface {
-	Eval(key string, user *UserAttrs) (EvalData, error)
-	EvalAll(user *UserAttrs) map[string]EvalData
+	Eval(key string, user UserAttrs) (EvalData, error)
+	EvalAll(user UserAttrs) map[string]EvalData
 	Keys() []string
 	GetCachedJson() *store.EntryWithEtag
 	SubConfigChanged(id string) <-chan struct{}
@@ -122,8 +122,8 @@ func NewClient(sdkCtx *Context, log log.Logger) Client {
 		clientConfig.Hooks.OnFlagEvaluated = func(details *configcat.EvaluationDetails) {
 			var user map[string]string
 			if details.Data.User != nil {
-				if userAttrs, ok := details.Data.User.(*UserAttrs); ok && userAttrs != nil {
-					user = userAttrs.Attrs
+				if userAttrs, ok := details.Data.User.(UserAttrs); ok && userAttrs != nil {
+					user = userAttrs
 				}
 			}
 			sdkCtx.EvalReporter.ReportEvaluation(sdkCtx.EnvId, details.Data.Key, details.Value, user)
@@ -140,12 +140,12 @@ func NewClient(sdkCtx *Context, log log.Logger) Client {
 	}
 
 	if notifier, ok := storage.(store.NotifyingStorage); ok {
-		go client.run(notifier)
+		go client.listen(notifier)
 	}
 	return client
 }
 
-func (c *client) run(notifier store.NotifyingStorage) {
+func (c *client) listen(notifier store.NotifyingStorage) {
 	for {
 		select {
 		case <-notifier.Modified():
@@ -175,12 +175,12 @@ func (c *client) signal() {
 	}
 }
 
-func (c *client) Eval(key string, user *UserAttrs) (EvalData, error) {
+func (c *client) Eval(key string, user UserAttrs) (EvalData, error) {
 	details := c.configCatClient.Snapshot(user).GetValueDetails(key)
 	return EvalData{Value: details.Value, VariationId: details.Data.VariationID}, details.Data.Error
 }
 
-func (c *client) EvalAll(user *UserAttrs) map[string]EvalData {
+func (c *client) EvalAll(user UserAttrs) map[string]EvalData {
 	allDetails := c.configCatClient.Snapshot(user).GetAllValueDetails()
 	result := make(map[string]EvalData, len(allDetails))
 	for _, details := range allDetails {

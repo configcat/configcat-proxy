@@ -5,11 +5,12 @@ import (
 	"github.com/configcat/configcat-proxy/metrics"
 	"github.com/configcat/configcat-proxy/model"
 	"github.com/configcat/configcat-proxy/sdk"
+	"hash/maphash"
 	"sync/atomic"
 )
 
 type Stream interface {
-	CreateConnection(key string, user *sdk.UserAttrs) *Connection
+	CreateConnection(key string, user sdk.UserAttrs) *Connection
 	CloseConnection(conn *Connection, key string)
 	Close()
 }
@@ -17,13 +18,13 @@ type Stream interface {
 type channel struct {
 	connections []*Connection
 	lastPayload *model.ResponsePayload
-	user        *sdk.UserAttrs
+	user        sdk.UserAttrs
 	key         string
 }
 
 type connEstablished struct {
 	conn *Connection
-	user *sdk.UserAttrs
+	user sdk.UserAttrs
 	key  string
 }
 
@@ -40,15 +41,16 @@ type stream struct {
 	serverType       string
 	envId            string
 	metrics          metrics.Handler
-	channels         map[string]*channel
+	channels         map[string]map[uint64]*channel
 	connEstablished  chan *connEstablished
 	connClosed       chan *connClosed
 	connCount        int64
+	seed             maphash.Seed
 }
 
 func NewStream(envId string, sdkClient sdk.Client, metrics metrics.Handler, log log.Logger, serverType string) Stream {
 	s := &stream{
-		channels:         make(map[string]*channel),
+		channels:         make(map[string]map[uint64]*channel),
 		connEstablished:  make(chan *connEstablished),
 		connClosed:       make(chan *connClosed),
 		stop:             make(chan struct{}),
@@ -58,6 +60,7 @@ func NewStream(envId string, sdkClient sdk.Client, metrics metrics.Handler, log 
 		serverType:       serverType,
 		envId:            envId,
 		metrics:          metrics,
+		seed:             maphash.MakeSeed(),
 	}
 	go s.run()
 	return s
@@ -89,10 +92,10 @@ func (s *stream) run() {
 	}
 }
 
-func (s *stream) CreateConnection(key string, user *sdk.UserAttrs) *Connection {
-	var discriminator string
+func (s *stream) CreateConnection(key string, user sdk.UserAttrs) *Connection {
+	var discriminator uint64
 	if user != nil {
-		discriminator = user.Discriminator()
+		discriminator = user.Discriminator(s.seed)
 	}
 	conn := newConnection(discriminator)
 	select {
@@ -120,14 +123,19 @@ func (s *stream) Close() {
 }
 
 func (s *stream) addConnection(established *connEstablished) {
-	id := established.key + established.conn.discriminator
-	ch, ok := s.channels[id]
+	bucket, ok := s.channels[established.key]
+	if !ok {
+		ch := s.createChannel(established)
+		bucket = map[uint64]*channel{established.conn.discriminator: ch}
+		s.channels[established.key] = bucket
+	}
+	ch, ok := bucket[established.conn.discriminator]
 	if !ok {
 		val, _ := s.sdkClient.Eval(established.key, established.user)
 		ch = &channel{user: established.user, key: established.key}
 		payload := model.PayloadFromEvalData(&val)
 		ch.lastPayload = &payload
-		s.channels[id] = ch
+		bucket[established.conn.discriminator] = ch
 	}
 	ch.connections = append(ch.connections, established.conn)
 	established.conn.receive <- ch.lastPayload
@@ -135,8 +143,11 @@ func (s *stream) addConnection(established *connEstablished) {
 
 func (s *stream) removeConnection(closed *connClosed) {
 	close(closed.conn.receive)
-	id := closed.key + closed.conn.discriminator
-	ch, ok := s.channels[id]
+	bucket, ok := s.channels[closed.key]
+	if !ok {
+		return
+	}
+	ch, ok := bucket[closed.conn.discriminator]
 	if !ok {
 		return
 	}
@@ -152,27 +163,40 @@ func (s *stream) removeConnection(closed *connClosed) {
 		ch.connections = append(ch.connections[:index], ch.connections[index+1:]...)
 	}
 	if len(ch.connections) == 0 {
-		delete(s.channels, id)
+		delete(bucket, closed.conn.discriminator)
+	}
+	if len(bucket) == 0 {
+		delete(s.channels, closed.key)
 	}
 }
 
 func (s *stream) notifyConnections() {
 	sent := 0
-	for _, ch := range s.channels {
-		val, err := s.sdkClient.Eval(ch.key, ch.user)
-		if err != nil {
-			continue
-		}
-		if val.Value != ch.lastPayload.Value {
-			payload := model.PayloadFromEvalData(&val)
-			ch.lastPayload = &payload
-			for _, conn := range ch.connections {
-				sent++
-				conn.receive <- &payload
+	for _, bucket := range s.channels {
+		for _, ch := range bucket {
+			val, err := s.sdkClient.Eval(ch.key, ch.user)
+			if err != nil {
+				continue
+			}
+			if val.Value != ch.lastPayload.Value {
+				payload := model.PayloadFromEvalData(&val)
+				ch.lastPayload = &payload
+				for _, conn := range ch.connections {
+					sent++
+					conn.receive <- &payload
+				}
 			}
 		}
 	}
 	if sent > 0 {
 		s.log.Debugf("payload sent to %d connection(s)", sent)
 	}
+}
+
+func (s *stream) createChannel(established *connEstablished) *channel {
+	val, _ := s.sdkClient.Eval(established.key, established.user)
+	ch := &channel{user: established.user, key: established.key}
+	payload := model.PayloadFromEvalData(&val)
+	ch.lastPayload = &payload
+	return ch
 }

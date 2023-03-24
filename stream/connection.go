@@ -6,10 +6,10 @@ import (
 
 type Connection struct {
 	receive       chan *model.ResponsePayload
-	discriminator string
+	discriminator uint64
 }
 
-func newConnection(discriminator string) *Connection {
+func newConnection(discriminator uint64) *Connection {
 	return &Connection{
 		receive:       make(chan *model.ResponsePayload, 64),
 		discriminator: discriminator,

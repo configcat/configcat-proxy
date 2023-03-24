@@ -2,17 +2,22 @@ import http from 'k6/http';
 import { sleep } from 'k6';
 
 export const options = {
-    stages: [
-        { duration: '5m', target: 60 }, // simulate ramp-up of traffic from 1 to 60 users over 5 minutes.
-        { duration: '10m', target: 60 }, // stay at 60 users for 10 minutes
-        { duration: '3m', target: 100 }, // ramp-up to 100 users over 3 minutes (peak hour starts)
-        { duration: '2m', target: 100 }, // stay at 100 users for short amount of time (peak hour)
-        { duration: '3m', target: 60 }, // ramp-down to 60 users over 3 minutes (peak hour ends)
-        { duration: '10m', target: 60 }, // continue at 60 for additional 10 minutes
-        { duration: '5m', target: 0 }, // ramp-down to 0 users
-    ],
-    thresholds: {
-        http_req_duration: ['p(99)<1500'], // 99% of requests must complete below 1.5s
+    scenarios: {
+        spike: {
+            executor: "ramping-arrival-rate",
+            preAllocatedVUs: 3000,
+            timeUnit: "0.5s",
+            stages: [
+                { duration: "10s", target: 10 },
+                { duration: "1m", target: 140 },
+                { duration: "10s", target: 240 },
+                { duration: "5m", target: 240 },
+                { duration: "10s", target: 100 },
+                { duration: "1m", target: 10 },
+                { duration: "10s", target: 0 },
+            ],
+            gracefulStop: "2m",
+        },
     },
 };
 
@@ -76,6 +81,4 @@ export default function () {
             null,
         ],
     ]);
-
-    sleep(1);
 }

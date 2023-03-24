@@ -67,16 +67,18 @@ func checkConnections(t *testing.T, srv Server) {
 		ch := c
 		t.Run("chan-"+id, func(t *testing.T) {
 			t.Parallel()
-			for i, conn := range ch.connections {
-				connect := conn
-				cId := i
-				t.Run("conn"+strconv.Itoa(cId), func(t *testing.T) {
-					t.Parallel()
-					utils.WithTimeout(2*time.Second, func() {
-						payload := <-connect.Receive()
-						assert.True(t, payload.Value.(bool))
+			for _, b := range ch {
+				for i, conn := range b.connections {
+					connect := conn
+					cId := i
+					t.Run("conn"+strconv.Itoa(cId), func(t *testing.T) {
+						t.Parallel()
+						utils.WithTimeout(2*time.Second, func() {
+							payload := <-connect.Receive()
+							assert.True(t, payload.Value.(bool))
+						})
 					})
-				})
+				}
 			}
 		})
 	}

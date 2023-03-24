@@ -42,7 +42,7 @@ func TestGrpc(t *testing.T) {
 	}()
 
 	client := proto.NewFlagServiceClient(conn)
-	cl, err := client.EvalFlag(context.Background(), &proto.Request{Key: "flag", EnvId: "test"})
+	cl, err := client.EvalFlag(context.Background(), &proto.Request{Key: "flag", EnvId: "test", User: map[string]string{"id": "u1"}})
 	assert.NoError(t, err)
 
 	var payload *proto.Payload

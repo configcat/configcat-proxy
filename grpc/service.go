@@ -35,9 +35,9 @@ func (s *flagService) EvalFlag(req *proto.Request, stream proto.FlagService_Eval
 		return status.Error(codes.InvalidArgument, "key request parameter missing")
 	}
 
-	var user *sdk.UserAttrs
+	var user sdk.UserAttrs
 	if req.GetUser() != nil {
-		user = &sdk.UserAttrs{Attrs: req.GetUser()}
+		user = req.GetUser()
 	}
 
 	str := s.streamServer.GetStreamOrNil(req.GetEnvId())

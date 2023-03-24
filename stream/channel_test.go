@@ -7,6 +7,8 @@ import (
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/sdk"
 	"github.com/stretchr/testify/assert"
+	"strconv"
+	"sync"
 	"testing"
 	"time"
 )
@@ -17,11 +19,11 @@ func TestStream_Connections(t *testing.T) {
 	str := NewStream("test", clients["test"], nil, log.NewNullLogger(), "test").(*stream)
 	defer str.Close()
 
-	user1 := &sdk.UserAttrs{Attrs: map[string]string{"id": "u1"}}
-	user2 := &sdk.UserAttrs{Attrs: map[string]string{"id": "u2"}}
+	user1 := sdk.UserAttrs{"id": "u1"}
+	user2 := sdk.UserAttrs{"id": "u2"}
 
-	user1Discriminator := user1.Discriminator()
-	user2Discriminator := user2.Discriminator()
+	user1Discriminator := user1.Discriminator(str.seed)
+	user2Discriminator := user2.Discriminator(str.seed)
 
 	conn1 := str.CreateConnection("test", user1)
 	conn2 := str.CreateConnection("test", user1)
@@ -31,20 +33,20 @@ func TestStream_Connections(t *testing.T) {
 
 	time.Sleep(100 * time.Millisecond) // wait for goroutine finish adding connections
 
-	assert.Same(t, conn1, str.channels["test"+user1Discriminator].connections[0])
-	assert.Same(t, conn2, str.channels["test"+user1Discriminator].connections[1])
-	assert.Same(t, conn3, str.channels["test"+user2Discriminator].connections[0])
-	assert.Same(t, conn4, str.channels["test"].connections[0])
-	assert.Same(t, conn5, str.channels["test"].connections[1])
+	assert.Same(t, conn1, str.channels["test"][user1Discriminator].connections[0])
+	assert.Same(t, conn2, str.channels["test"][user1Discriminator].connections[1])
+	assert.Same(t, conn3, str.channels["test"][user2Discriminator].connections[0])
+	assert.Same(t, conn4, str.channels["test"][0].connections[0])
+	assert.Same(t, conn5, str.channels["test"][0].connections[1])
 
-	assert.Equal(t, 3, len(str.channels))
-	assert.Equal(t, 2, len(str.channels["test"+user1Discriminator].connections))
-	assert.Equal(t, 1, len(str.channels["test"+user2Discriminator].connections))
-	assert.Equal(t, 2, len(str.channels["test"].connections))
+	assert.Equal(t, 3, len(str.channels["test"]))
+	assert.Equal(t, 2, len(str.channels["test"][user1Discriminator].connections))
+	assert.Equal(t, 1, len(str.channels["test"][user2Discriminator].connections))
+	assert.Equal(t, 2, len(str.channels["test"][0].connections))
 
-	assert.Same(t, user1, str.channels["test"+user1Discriminator].user)
-	assert.Same(t, user2, str.channels["test"+user2Discriminator].user)
-	assert.Nil(t, str.channels["test"].user)
+	assert.Equal(t, user1, str.channels["test"][user1Discriminator].user)
+	assert.Equal(t, user2, str.channels["test"][user2Discriminator].user)
+	assert.Nil(t, str.channels["test"][0].user)
 
 	str.CloseConnection(conn2, "test")
 	str.CloseConnection(conn3, "test")
@@ -52,10 +54,10 @@ func TestStream_Connections(t *testing.T) {
 
 	time.Sleep(100 * time.Millisecond) // wait for goroutine finish removing connections
 
-	assert.Equal(t, 2, len(str.channels))
-	assert.Equal(t, 1, len(str.channels["test"+user1Discriminator].connections))
-	assert.Nil(t, str.channels["test"+user2Discriminator])
-	assert.Equal(t, 1, len(str.channels["test"].connections))
+	assert.Equal(t, 2, len(str.channels["test"]))
+	assert.Equal(t, 1, len(str.channels["test"][user1Discriminator].connections))
+	assert.Nil(t, str.channels["test"][user2Discriminator])
+	assert.Equal(t, 1, len(str.channels["test"][0].connections))
 
 	str.CloseConnection(conn1, "test")
 	str.CloseConnection(conn5, "test")
@@ -69,22 +71,45 @@ func TestStream_Close(t *testing.T) {
 
 	str := NewStream("test", clients["test"], nil, log.NewNullLogger(), "test").(*stream)
 
-	user1 := &sdk.UserAttrs{Attrs: map[string]string{"id": "u1"}}
-	user2 := &sdk.UserAttrs{Attrs: map[string]string{"id": "u2"}}
+	user1 := sdk.UserAttrs{"id": "u1"}
+	user2 := sdk.UserAttrs{"id": "u2"}
 
-	user1Discriminator := user1.Discriminator()
-	user2Discriminator := user2.Discriminator()
+	user1Discriminator := user1.Discriminator(str.seed)
+	user2Discriminator := user2.Discriminator(str.seed)
 
 	_ = str.CreateConnection("test", user1)
 	_ = str.CreateConnection("test", user2)
 
 	time.Sleep(100 * time.Millisecond) // wait for goroutine finish adding connections
 
-	assert.Equal(t, 2, len(str.channels))
-	assert.Equal(t, 1, len(str.channels["test"+user1Discriminator].connections))
-	assert.Equal(t, 1, len(str.channels["test"+user2Discriminator].connections))
+	assert.Equal(t, 2, len(str.channels["test"]))
+	assert.Equal(t, 1, len(str.channels["test"][user1Discriminator].connections))
+	assert.Equal(t, 1, len(str.channels["test"][user2Discriminator].connections))
 
 	str.Close()
 	_ = str.CreateConnection("test", user1)
 	_ = str.CreateConnection("test", user2)
+}
+
+func TestStream_Collision(t *testing.T) {
+	clients, _, _ := testutils.NewTestSdkClient(t)
+
+	str := NewStream("test", clients["test"], nil, log.NewNullLogger(), "test").(*stream)
+
+	iter := 500000
+	wg := &sync.WaitGroup{}
+	wg.Add(iter)
+	for i := 0; i < iter; i++ {
+		go func(it int) {
+			is := strconv.Itoa(it)
+			user := sdk.UserAttrs{"id": "u" + is}
+			_ = str.CreateConnection("test", user)
+			wg.Done()
+		}(i)
+	}
+
+	wg.Wait()
+	time.Sleep(200 * time.Millisecond)
+
+	assert.Equal(t, iter, len(str.channels["test"]))
 }

@@ -1,24 +1,26 @@
 package sdk
 
 import (
-	"sort"
+	"hash/maphash"
 )
 
-type UserAttrs struct {
-	Attrs map[string]string
+type UserAttrs map[string]string
+
+func (attrs UserAttrs) GetAttribute(attr string) string { // for the SDK
+	return attrs[attr]
 }
 
-func (attrs *UserAttrs) Discriminator() string {
-	var result string
-	keys := make([]string, len(attrs.Attrs))
-	i := 0
-	for k := range attrs.Attrs {
-		keys[i] = k
-		i++
+func (attrs UserAttrs) Discriminator(s maphash.Seed) uint64 {
+	var h maphash.Hash
+	h.SetSeed(s)
+	var curr uint64
+	for k, v := range attrs {
+		h.Reset()
+		_, _ = h.WriteString(k)
+		hk := h.Sum64()
+		h.Reset()
+		_, _ = h.WriteString(v)
+		curr ^= h.Sum64() + 0x9e3779b97f4a7c15 + (hk << 12) + (hk >> 4)
 	}
-	sort.Strings(keys)
-	for _, k := range keys {
-		result += k + attrs.Attrs[k]
-	}
-	return result
+	return curr
 }

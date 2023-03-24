@@ -44,16 +44,12 @@ func (s *Server) Eval(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to parse JSON body", http.StatusBadRequest)
 		return
 	}
-	var userAttrs *sdk.UserAttrs
-	if evalReq.User != nil {
-		userAttrs = &sdk.UserAttrs{Attrs: evalReq.User}
-	}
 	sdkClient, err := s.getSDKClient(r.Context())
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	eval, err := sdkClient.Eval(evalReq.Key, userAttrs)
+	eval, err := sdkClient.Eval(evalReq.Key, evalReq.User)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -80,16 +76,12 @@ func (s *Server) EvalAll(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to parse JSON body", http.StatusBadRequest)
 		return
 	}
-	var userAttrs *sdk.UserAttrs
-	if evalReq.User != nil {
-		userAttrs = &sdk.UserAttrs{Attrs: evalReq.User}
-	}
 	sdkClient, err := s.getSDKClient(r.Context())
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	details := sdkClient.EvalAll(userAttrs)
+	details := sdkClient.EvalAll(evalReq.User)
 	res := make(map[string]model.ResponsePayload, len(details))
 	for key, detail := range details {
 		res[key] = model.PayloadFromEvalData(&detail)

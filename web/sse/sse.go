@@ -71,17 +71,12 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var userAttrs *sdk.UserAttrs
-	if evalReq.User != nil {
-		userAttrs = &sdk.UserAttrs{Attrs: evalReq.User}
-	}
-
 	str := s.streamServer.GetStreamOrNil(env)
 	if str == nil {
 		http.Error(w, "Invalid environment identifier: '"+env+"'", http.StatusBadRequest)
 	}
 
-	conn := str.CreateConnection(evalReq.Key, userAttrs)
+	conn := str.CreateConnection(evalReq.Key, evalReq.User)
 	w.WriteHeader(http.StatusOK)
 	flusher.Flush()
 

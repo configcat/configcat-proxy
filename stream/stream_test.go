@@ -82,9 +82,9 @@ func TestStream_Goroutines(t *testing.T) {
 	count := runtime.NumGoroutine()
 
 	conn1 := str.CreateConnection("flag", nil)
-	conn2 := str.CreateConnection("flag", &sdk.UserAttrs{Attrs: map[string]string{"id": "1"}})
-	conn3 := str.CreateConnection("flag", &sdk.UserAttrs{Attrs: map[string]string{"id": "1"}})
-	conn4 := str.CreateConnection("flag", &sdk.UserAttrs{Attrs: map[string]string{"id": "2"}})
+	conn2 := str.CreateConnection("flag", sdk.UserAttrs{"id": "1"})
+	conn3 := str.CreateConnection("flag", sdk.UserAttrs{"id": "1"})
+	conn4 := str.CreateConnection("flag", sdk.UserAttrs{"id": "2"})
 	conn5 := str.CreateConnection("flag", nil)
 	conn6 := str.CreateConnection("flag", nil)
 

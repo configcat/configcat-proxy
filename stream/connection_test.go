@@ -7,12 +7,12 @@ import (
 )
 
 func TestConnection(t *testing.T) {
-	conn := newConnection("test")
+	conn := newConnection(42)
 	pl := &model.ResponsePayload{}
 	go func() {
 		conn.receive <- pl
 	}()
 	rec := <-conn.Receive()
 	assert.Equal(t, pl, rec)
-	assert.Equal(t, "test", conn.discriminator)
+	assert.Equal(t, uint64(42), conn.discriminator)
 }
