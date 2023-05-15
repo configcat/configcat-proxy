@@ -50,9 +50,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "'"+streamDataName+"' path parameter must be set", http.StatusBadRequest)
 		return
 	}
-	env := vars.ByName("env")
-	if env == "" {
-		http.Error(w, "'env' path parameter must be set", http.StatusBadRequest)
+	sdkId := vars.ByName("sdkId")
+	if sdkId == "" {
+		http.Error(w, "'sdkId' path parameter must be set", http.StatusBadRequest)
 		return
 	}
 	streamContext, err := utils.Base64URLDecode(streamData)
@@ -71,9 +71,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	str := s.streamServer.GetStreamOrNil(env)
+	str := s.streamServer.GetStreamOrNil(sdkId)
 	if str == nil {
-		http.Error(w, "Invalid environment identifier: '"+env+"'", http.StatusBadRequest)
+		http.Error(w, "Invalid SDK identifier: '"+sdkId+"'", http.StatusBadRequest)
 	}
 
 	conn := str.CreateConnection(evalReq.Key, evalReq.User)

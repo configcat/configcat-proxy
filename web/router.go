@@ -63,7 +63,7 @@ func (s *HttpRouter) Close() {
 
 func (s *HttpRouter) setupSSERoutes(conf *config.SseConfig, sdkClients map[string]sdk.Client, l log.Logger) {
 	s.sseServer = sse.NewServer(sdkClients, s.metrics, conf, l)
-	path := "/sse/:env/:data"
+	path := "/sse/:sdkId/:data"
 	handler := mware.AutoOptions(s.sseServer.ServeHTTP)
 	if len(conf.Headers) > 0 {
 		handler = mware.ExtraHeaders(conf.Headers, handler)
@@ -81,7 +81,7 @@ func (s *HttpRouter) setupSSERoutes(conf *config.SseConfig, sdkClients map[strin
 
 func (s *HttpRouter) setupWebhookRoutes(conf *config.WebhookConfig, sdkClients map[string]sdk.Client, l log.Logger) {
 	s.webhookServer = webhook.NewServer(sdkClients, l)
-	path := "/hook/:env"
+	path := "/hook/:sdkId"
 	handler := http.HandlerFunc(s.webhookServer.ServeHTTP)
 	if conf.Auth.User != "" && conf.Auth.Password != "" {
 		handler = mware.BasicAuth(conf.Auth.User, conf.Auth.Password, l, handler)
@@ -102,7 +102,7 @@ func (s *HttpRouter) setupWebhookRoutes(conf *config.WebhookConfig, sdkClients m
 
 func (s *HttpRouter) setupCDNProxyRoutes(conf *config.CdnProxyConfig, sdkClients map[string]sdk.Client, l log.Logger) {
 	s.cdnProxyServer = cdnproxy.NewServer(sdkClients, conf, l)
-	path := "/configuration-files/:env/:file"
+	path := "/configuration-files/:sdkId/:file"
 	handler := mware.AutoOptions(mware.GZip(s.cdnProxyServer.ServeHTTP))
 	if len(conf.Headers) > 0 {
 		handler = mware.ExtraHeaders(conf.Headers, handler)
@@ -140,10 +140,11 @@ type endpoint struct {
 func (s *HttpRouter) setupAPIRoutes(conf *config.ApiConfig, sdkClients map[string]sdk.Client, l log.Logger) {
 	s.apiServer = api.NewServer(sdkClients, conf, l)
 	endpoints := []endpoint{
-		{path: "/api/:env/eval", handler: mware.GZip(s.apiServer.Eval), method: http.MethodPost},
-		{path: "/api/:env/eval-all", handler: mware.GZip(s.apiServer.EvalAll), method: http.MethodPost},
-		{path: "/api/:env/keys", handler: mware.GZip(s.apiServer.Keys), method: http.MethodGet},
-		{path: "/api/:env/refresh", handler: http.HandlerFunc(s.apiServer.Refresh), method: http.MethodPost},
+		{path: "/api/:sdkId/eval", handler: mware.GZip(s.apiServer.Eval), method: http.MethodPost},
+		{path: "/api/:sdkId/eval-all", handler: mware.GZip(s.apiServer.EvalAll), method: http.MethodPost},
+		{path: "/api/:sdkId/keys", handler: mware.GZip(s.apiServer.Keys), method: http.MethodGet},
+		{path: "/api/:sdkId/refresh", handler: http.HandlerFunc(s.apiServer.Refresh), method: http.MethodPost},
+		{path: "/api/:sdkId/icanhascoffee", handler: http.HandlerFunc(s.apiServer.ICanHasCoffee), method: http.MethodGet},
 	}
 	for _, endpoint := range endpoints {
 		if len(conf.AuthHeaders) > 0 {
@@ -165,5 +166,5 @@ func (s *HttpRouter) setupAPIRoutes(conf *config.ApiConfig, sdkClients map[strin
 		s.router.HandlerFunc(endpoint.method, endpoint.path, endpoint.handler)
 		s.router.HandlerFunc(http.MethodOptions, endpoint.path, endpoint.handler)
 	}
-	l.Reportf("API enabled, accepting requests on path: /api/:env/*")
+	l.Reportf("API enabled, accepting requests on path: /api/:sdk/*")
 }

@@ -25,15 +25,15 @@ var allowedTlsVersions = map[float64]uint16{
 }
 
 type Config struct {
-	Log          LogConfig
-	Environments map[string]*SDKConfig
-	Grpc         GrpcConfig
-	Tls          TlsConfig
-	Metrics      MetricsConfig
-	Http         HttpConfig
-	HttpProxy    HttpProxyConfig `yaml:"http_proxy"`
-	EvalStats    EvalStatsConfig `yaml:"eval_stats"`
-	Cache        CacheConfig
+	Log       LogConfig
+	SDKs      map[string]*SDKConfig
+	Grpc      GrpcConfig
+	Tls       TlsConfig
+	Metrics   MetricsConfig
+	Http      HttpConfig
+	HttpProxy HttpProxyConfig `yaml:"http_proxy"`
+	EvalStats EvalStatsConfig `yaml:"eval_stats"`
+	Cache     CacheConfig
 }
 
 type SDKConfig struct {
@@ -228,7 +228,7 @@ func (c *Config) setDefaults() {
 }
 
 func (c *Config) fixupDefaults() {
-	for _, env := range c.Environments {
+	for _, env := range c.SDKs {
 		if env == nil {
 			continue
 		}
@@ -248,7 +248,7 @@ func (c *Config) fixupDefaults() {
 }
 
 func (c *Config) fixupLogLevels(defLevel string) {
-	for _, env := range c.Environments {
+	for _, env := range c.SDKs {
 		if env == nil {
 			continue
 		}

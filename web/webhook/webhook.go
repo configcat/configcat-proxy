@@ -33,14 +33,14 @@ func NewServer(sdkClients map[string]sdk.Client, log log.Logger) *Server {
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	vars := httprouter.ParamsFromContext(r.Context())
-	env := vars.ByName("env")
-	if env == "" {
-		http.Error(w, "'env' path parameter must be set", http.StatusBadRequest)
+	sdkId := vars.ByName("sdkId")
+	if sdkId == "" {
+		http.Error(w, "'sdkId' path parameter must be set", http.StatusBadRequest)
 		return
 	}
-	sdkClient, ok := s.sdkClients[env]
+	sdkClient, ok := s.sdkClients[sdkId]
 	if !ok {
-		http.Error(w, "Invalid environment identifier: '"+env+"'", http.StatusBadRequest)
+		http.Error(w, "Invalid SDK identifier: '"+sdkId+"'", http.StatusBadRequest)
 		return
 	}
 

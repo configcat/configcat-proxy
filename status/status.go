@@ -91,8 +91,8 @@ func NewReporter(conf *config.Config) Reporter {
 			},
 		},
 	}
-	envs := make(map[string]*SdkStatus, len(conf.Environments))
-	for key, env := range conf.Environments {
+	envs := make(map[string]*SdkStatus, len(conf.SDKs))
+	for key, env := range conf.SDKs {
 		status := &SdkStatus{
 			Mode:   Online,
 			SdkKey: utils.Obfuscate(env.Key, 5),
@@ -148,7 +148,7 @@ func (r *reporter) getStatus() Status {
 
 	current := r.status
 	overallStatus := Healthy
-	for key := range r.conf.Environments {
+	for key := range r.conf.SDKs {
 		if sdk, ok := r.records[key]; ok {
 			stat := current.Environments[key].Source.Status
 			rec, stat := r.checkStatus(sdk)

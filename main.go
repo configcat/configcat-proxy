@@ -53,7 +53,7 @@ func main() {
 
 	statusReporter := status.NewReporter(&conf)
 	sdkClients := make(map[string]sdk.Client)
-	for key, env := range conf.Environments {
+	for key, env := range conf.SDKs {
 		sdkClients[key] = sdk.NewClient(&sdk.Context{
 			SDKConf:        env,
 			EvalReporter:   evalReporter,

@@ -7,10 +7,10 @@ import (
 )
 
 func (c *Config) Validate() error {
-	if len(c.Environments) == 0 {
+	if len(c.SDKs) == 0 {
 		return fmt.Errorf("sdk: at least 1 environment with an SDK key required")
 	}
-	for id, env := range c.Environments {
+	for id, env := range c.SDKs {
 		if err := env.validate(&c.Cache, id); err != nil {
 			return err
 		}

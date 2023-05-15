@@ -75,8 +75,8 @@ func Obfuscate(str string, clearLen int) string {
 	return strings.Repeat("*", utf8.RuneCountInString(toObfuscate)) + str[l-clearLen:l]
 }
 
-func AddEnvContextParam(r *http.Request) {
-	params := httprouter.Params{httprouter.Param{Key: "env", Value: "test"}}
+func AddSdkIdContextParam(r *http.Request) {
+	params := httprouter.Params{httprouter.Param{Key: "sdkId", Value: "test"}}
 	ctx := context.WithValue(context.Background(), httprouter.ParamsKey, params)
 	*r = *r.WithContext(ctx)
 }

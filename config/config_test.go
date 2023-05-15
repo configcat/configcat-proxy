@@ -45,8 +45,8 @@ func TestConfig_Defaults(t *testing.T) {
 func TestConfig_LogLevelFixup(t *testing.T) {
 	t.Run("valid base level", func(t *testing.T) {
 		utils.UseTempFile(`
-environments:
-  test_env:
+sdks:
+  test_sdk:
     key: key
 log:
   level: "info"
@@ -55,8 +55,8 @@ log:
 			require.NoError(t, err)
 
 			assert.Equal(t, log.Info, conf.Log.GetLevel())
-			assert.Equal(t, log.Info, conf.Environments["test_env"].Log.GetLevel())
-			assert.Equal(t, log.Info, conf.Environments["test_env"].Offline.Log.GetLevel())
+			assert.Equal(t, log.Info, conf.SDKs["test_sdk"].Log.GetLevel())
+			assert.Equal(t, log.Info, conf.SDKs["test_sdk"].Offline.Log.GetLevel())
 			assert.Equal(t, log.Info, conf.Http.Log.GetLevel())
 			assert.Equal(t, log.Info, conf.Http.Sse.Log.GetLevel())
 			assert.Equal(t, log.Info, conf.Grpc.Log.GetLevel())
@@ -65,8 +65,8 @@ log:
 
 	t.Run("invalid base level", func(t *testing.T) {
 		utils.UseTempFile(`
-environments:
-  test_env:
+sdks:
+  test_sdk:
     key: key
 log:
   level: "invalid"
@@ -75,8 +75,8 @@ log:
 			require.NoError(t, err)
 
 			assert.Equal(t, log.Warn, conf.Log.GetLevel())
-			assert.Equal(t, log.Warn, conf.Environments["test_env"].Log.GetLevel())
-			assert.Equal(t, log.Warn, conf.Environments["test_env"].Offline.Log.GetLevel())
+			assert.Equal(t, log.Warn, conf.SDKs["test_sdk"].Log.GetLevel())
+			assert.Equal(t, log.Warn, conf.SDKs["test_sdk"].Offline.Log.GetLevel())
 			assert.Equal(t, log.Warn, conf.Http.Log.GetLevel())
 			assert.Equal(t, log.Warn, conf.Http.Sse.Log.GetLevel())
 			assert.Equal(t, log.Warn, conf.Grpc.Log.GetLevel())
@@ -87,8 +87,8 @@ log:
 		utils.UseTempFile(`
 log:
   level: "error"
-environments:
-  test_env:
+sdks:
+  test_sdk:
     log:
       level: "debug"
     offline: 
@@ -108,8 +108,8 @@ grpc:
 			require.NoError(t, err)
 
 			assert.Equal(t, log.Error, conf.Log.GetLevel())
-			assert.Equal(t, log.Debug, conf.Environments["test_env"].Log.GetLevel())
-			assert.Equal(t, log.Debug, conf.Environments["test_env"].Offline.Log.GetLevel())
+			assert.Equal(t, log.Debug, conf.SDKs["test_sdk"].Log.GetLevel())
+			assert.Equal(t, log.Debug, conf.SDKs["test_sdk"].Offline.Log.GetLevel())
 			assert.Equal(t, log.Debug, conf.Http.Log.GetLevel())
 			assert.Equal(t, log.Debug, conf.Http.Sse.Log.GetLevel())
 			assert.Equal(t, log.Debug, conf.Grpc.Log.GetLevel())
@@ -119,8 +119,8 @@ grpc:
 
 func TestSDKConfig_YAML(t *testing.T) {
 	utils.UseTempFile(`
-environments:
-  test_env:
+sdks:
+  test_sdk:
     base_url: "base"
     key: "sdkKey"
     poll_interval: 300
@@ -143,21 +143,21 @@ environments:
 		conf, err := LoadConfigFromFileAndEnvironment(file)
 		require.NoError(t, err)
 
-		assert.Equal(t, "base", conf.Environments["test_env"].BaseUrl)
-		assert.Equal(t, "sdkKey", conf.Environments["test_env"].Key)
-		assert.Equal(t, 300, conf.Environments["test_env"].PollInterval)
-		assert.Equal(t, "eu", conf.Environments["test_env"].DataGovernance)
-		assert.Equal(t, log.Error, conf.Environments["test_env"].Log.GetLevel())
-		assert.Equal(t, "key", conf.Environments["test_env"].WebhookSigningKey)
-		assert.Equal(t, 600, conf.Environments["test_env"].WebhookSignatureValidFor)
+		assert.Equal(t, "base", conf.SDKs["test_sdk"].BaseUrl)
+		assert.Equal(t, "sdkKey", conf.SDKs["test_sdk"].Key)
+		assert.Equal(t, 300, conf.SDKs["test_sdk"].PollInterval)
+		assert.Equal(t, "eu", conf.SDKs["test_sdk"].DataGovernance)
+		assert.Equal(t, log.Error, conf.SDKs["test_sdk"].Log.GetLevel())
+		assert.Equal(t, "key", conf.SDKs["test_sdk"].WebhookSigningKey)
+		assert.Equal(t, 600, conf.SDKs["test_sdk"].WebhookSignatureValidFor)
 
-		assert.True(t, conf.Environments["test_env"].Offline.Enabled)
-		assert.Equal(t, log.Debug, conf.Environments["test_env"].Offline.Log.GetLevel())
-		assert.Equal(t, "./local.json", conf.Environments["test_env"].Offline.Local.FilePath)
-		assert.True(t, conf.Environments["test_env"].Offline.Local.Polling)
-		assert.Equal(t, 100, conf.Environments["test_env"].Offline.Local.PollInterval)
-		assert.True(t, conf.Environments["test_env"].Offline.UseCache)
-		assert.Equal(t, 200, conf.Environments["test_env"].Offline.CachePollInterval)
+		assert.True(t, conf.SDKs["test_sdk"].Offline.Enabled)
+		assert.Equal(t, log.Debug, conf.SDKs["test_sdk"].Offline.Log.GetLevel())
+		assert.Equal(t, "./local.json", conf.SDKs["test_sdk"].Offline.Local.FilePath)
+		assert.True(t, conf.SDKs["test_sdk"].Offline.Local.Polling)
+		assert.Equal(t, 100, conf.SDKs["test_sdk"].Offline.Local.PollInterval)
+		assert.True(t, conf.SDKs["test_sdk"].Offline.UseCache)
+		assert.Equal(t, 200, conf.SDKs["test_sdk"].Offline.CachePollInterval)
 	})
 }
 

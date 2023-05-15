@@ -27,7 +27,7 @@ func TestSSE_Get(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 	data := base64.URLEncoding.EncodeToString([]byte(`{"key":"flag"}`))
-	params := httprouter.Params{httprouter.Param{Key: streamDataName, Value: data}, httprouter.Param{Key: "env", Value: "test"}}
+	params := httprouter.Params{httprouter.Param{Key: streamDataName, Value: data}, httprouter.Param{Key: "sdkId", Value: "test"}}
 	ctx = context.WithValue(ctx, httprouter.ParamsKey, params)
 	req = req.WithContext(ctx)
 	srv.ServeHTTP(res, req)
@@ -60,7 +60,7 @@ func TestSSE_Get_User(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 	data := base64.URLEncoding.EncodeToString([]byte(`{"key":"flag","user":{"Identifier":"test"}}`))
-	params := httprouter.Params{httprouter.Param{Key: streamDataName, Value: data}, httprouter.Param{Key: "env", Value: "test"}}
+	params := httprouter.Params{httprouter.Param{Key: streamDataName, Value: data}, httprouter.Param{Key: "sdkId", Value: "test"}}
 	ctx = context.WithValue(ctx, httprouter.ParamsKey, params)
 	req = req.WithContext(ctx)
 	srv.ServeHTTP(res, req)

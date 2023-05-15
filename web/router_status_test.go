@@ -87,7 +87,7 @@ func newStatusRouter(t *testing.T) *HttpRouter {
 	srv := httptest.NewServer(&h)
 	opts := config.SDKConfig{BaseUrl: srv.URL, Key: key}
 	ctx := testutils.NewTestSdkContext(&opts, nil)
-	conf := config.Config{Environments: map[string]*config.SDKConfig{"test": &opts}}
+	conf := config.Config{SDKs: map[string]*config.SDKConfig{"test": &opts}}
 	reporter := status.NewReporter(&conf)
 	ctx.StatusReporter = reporter
 	client := sdk.NewClient(ctx, log.NewNullLogger())

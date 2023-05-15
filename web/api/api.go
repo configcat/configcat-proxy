@@ -124,15 +124,19 @@ func (s *Server) Refresh(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (s *Server) ICanHasCoffee(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusTeapot)
+}
+
 func (s *Server) getSDKClient(ctx context.Context) (sdk.Client, error) {
 	vars := httprouter.ParamsFromContext(ctx)
-	env := vars.ByName("env")
-	if env == "" {
-		return nil, fmt.Errorf("'env' path parameter must be set")
+	sdkId := vars.ByName("sdkId")
+	if sdkId == "" {
+		return nil, fmt.Errorf("'sdkId' path parameter must be set")
 	}
-	sdkClient, ok := s.sdkClients[env]
+	sdkClient, ok := s.sdkClients[sdkId]
 	if !ok {
-		return nil, fmt.Errorf("invalid environment identifier: '%s'", env)
+		return nil, fmt.Errorf("invalid SDK identifier: '%s'", sdkId)
 	}
 	return sdkClient, nil
 }

@@ -10,7 +10,7 @@ import (
 
 func TestInterceptSdk(t *testing.T) {
 	t.Run("ok", func(t *testing.T) {
-		reporter := NewReporter(&config.Config{Environments: map[string]*config.SDKConfig{"test": {}}}).(*reporter)
+		reporter := NewReporter(&config.Config{SDKs: map[string]*config.SDKConfig{"test": {}}}).(*reporter)
 		repSrv := httptest.NewServer(reporter.HttpHandler())
 		h := http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 			writer.WriteHeader(http.StatusOK)
@@ -33,7 +33,7 @@ func TestInterceptSdk(t *testing.T) {
 		assert.Equal(t, 0, len(stat.Cache.Records))
 	})
 	t.Run("not modified", func(t *testing.T) {
-		reporter := NewReporter(&config.Config{Environments: map[string]*config.SDKConfig{"test": {}}}).(*reporter)
+		reporter := NewReporter(&config.Config{SDKs: map[string]*config.SDKConfig{"test": {}}}).(*reporter)
 		repSrv := httptest.NewServer(reporter.HttpHandler())
 		h := http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 			writer.WriteHeader(http.StatusNotModified)
@@ -56,7 +56,7 @@ func TestInterceptSdk(t *testing.T) {
 		assert.Equal(t, 0, len(stat.Cache.Records))
 	})
 	t.Run("error", func(t *testing.T) {
-		reporter := NewReporter(&config.Config{Environments: map[string]*config.SDKConfig{"test": {}}}).(*reporter)
+		reporter := NewReporter(&config.Config{SDKs: map[string]*config.SDKConfig{"test": {}}}).(*reporter)
 		repSrv := httptest.NewServer(reporter.HttpHandler())
 		h := http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 			writer.WriteHeader(http.StatusBadRequest)

@@ -21,7 +21,7 @@ func TestAPI_Eval(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"key":"flag"}`))
 
 		srv := newServer(t, config.ApiConfig{Enabled: true})
-		utils.AddEnvContextParam(req)
+		utils.AddSdkIdContextParam(req)
 		srv.Eval(res, req)
 
 		assert.Equal(t, 200, res.Code)
@@ -32,7 +32,7 @@ func TestAPI_Eval(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"key":"flag"}`))
 
 		srv := newErrorServer(t, config.ApiConfig{Enabled: true})
-		utils.AddEnvContextParam(req)
+		utils.AddSdkIdContextParam(req)
 		srv.Eval(res, req)
 
 		assert.Equal(t, http.StatusInternalServerError, res.Code)
@@ -43,7 +43,7 @@ func TestAPI_Eval(t *testing.T) {
 			req, _ := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"key":"flag"}`))
 
 			srv := newOfflineServer(t, path, config.ApiConfig{Enabled: true})
-			utils.AddEnvContextParam(req)
+			utils.AddSdkIdContextParam(req)
 			srv.Eval(res, req)
 
 			assert.Equal(t, http.StatusOK, res.Code)
@@ -56,7 +56,7 @@ func TestAPI_Eval(t *testing.T) {
 			req, _ := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"key":"flag"}`))
 
 			srv := newOfflineServer(t, path, config.ApiConfig{Enabled: true})
-			utils.AddEnvContextParam(req)
+			utils.AddSdkIdContextParam(req)
 			srv.Eval(res, req)
 
 			assert.Equal(t, http.StatusInternalServerError, res.Code)
@@ -70,7 +70,7 @@ func TestAPI_EvalAll(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"key":"flag"}`))
 
 		srv := newServer(t, config.ApiConfig{Enabled: true})
-		utils.AddEnvContextParam(req)
+		utils.AddSdkIdContextParam(req)
 		srv.EvalAll(res, req)
 
 		assert.Equal(t, 200, res.Code)
@@ -81,7 +81,7 @@ func TestAPI_EvalAll(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"key":"flag"}`))
 
 		srv := newErrorServer(t, config.ApiConfig{Enabled: true})
-		utils.AddEnvContextParam(req)
+		utils.AddSdkIdContextParam(req)
 		srv.EvalAll(res, req)
 
 		assert.Equal(t, http.StatusOK, res.Code)
@@ -93,7 +93,7 @@ func TestAPI_EvalAll(t *testing.T) {
 			req, _ := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"key":"flag"}`))
 
 			srv := newOfflineServer(t, path, config.ApiConfig{Enabled: true})
-			utils.AddEnvContextParam(req)
+			utils.AddSdkIdContextParam(req)
 			srv.EvalAll(res, req)
 
 			assert.Equal(t, http.StatusOK, res.Code)
@@ -106,7 +106,7 @@ func TestAPI_EvalAll(t *testing.T) {
 			req, _ := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"key":"flag"}`))
 
 			srv := newOfflineServer(t, path, config.ApiConfig{Enabled: true})
-			utils.AddEnvContextParam(req)
+			utils.AddSdkIdContextParam(req)
 			srv.EvalAll(res, req)
 
 			assert.Equal(t, http.StatusOK, res.Code)
@@ -121,7 +121,7 @@ func TestAPI_Keys(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodGet, "/", http.NoBody)
 
 		srv := newServer(t, config.ApiConfig{Enabled: true})
-		utils.AddEnvContextParam(req)
+		utils.AddSdkIdContextParam(req)
 		srv.Keys(res, req)
 
 		assert.Equal(t, 200, res.Code)
@@ -132,7 +132,7 @@ func TestAPI_Keys(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodGet, "/", http.NoBody)
 
 		srv := newErrorServer(t, config.ApiConfig{Enabled: true})
-		utils.AddEnvContextParam(req)
+		utils.AddSdkIdContextParam(req)
 		srv.Keys(res, req)
 
 		assert.Equal(t, http.StatusOK, res.Code)
@@ -144,7 +144,7 @@ func TestAPI_Keys(t *testing.T) {
 			req, _ := http.NewRequest(http.MethodGet, "/", http.NoBody)
 
 			srv := newOfflineServer(t, path, config.ApiConfig{Enabled: true})
-			utils.AddEnvContextParam(req)
+			utils.AddSdkIdContextParam(req)
 			srv.Keys(res, req)
 
 			assert.Equal(t, http.StatusOK, res.Code)
@@ -157,7 +157,7 @@ func TestAPI_Keys(t *testing.T) {
 			req, _ := http.NewRequest(http.MethodGet, "/", http.NoBody)
 
 			srv := newOfflineServer(t, path, config.ApiConfig{Enabled: true})
-			utils.AddEnvContextParam(req)
+			utils.AddSdkIdContextParam(req)
 			srv.Keys(res, req)
 
 			assert.Equal(t, http.StatusOK, res.Code)
@@ -179,7 +179,7 @@ func TestAPI_Refresh(t *testing.T) {
 
 	res := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"key":"flag"}`))
-	utils.AddEnvContextParam(req)
+	utils.AddSdkIdContextParam(req)
 	srv.Eval(res, req)
 
 	assert.Equal(t, http.StatusOK, res.Code)
@@ -192,12 +192,12 @@ func TestAPI_Refresh(t *testing.T) {
 	})
 
 	req = &http.Request{Method: http.MethodPost}
-	utils.AddEnvContextParam(req)
+	utils.AddSdkIdContextParam(req)
 	srv.Refresh(httptest.NewRecorder(), req)
 	time.Sleep(100 * time.Millisecond)
 	res = httptest.NewRecorder()
 	req, _ = http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"key":"flag"}`))
-	utils.AddEnvContextParam(req)
+	utils.AddSdkIdContextParam(req)
 	srv.Eval(res, req)
 
 	assert.Equal(t, http.StatusOK, res.Code)

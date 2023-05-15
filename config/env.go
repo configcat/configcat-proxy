@@ -35,16 +35,16 @@ var toStringMap = func(s string) (map[string]string, error) {
 }
 
 func (c *Config) loadEnv() {
-	var envs map[string]string
-	readEnv(envPrefix, "ENVIRONMENTS", &envs, toStringMap)
-	if c.Environments == nil {
-		c.Environments = make(map[string]*SDKConfig, len(envs))
+	var sdks map[string]string
+	readEnv(envPrefix, "SDKS", &sdks, toStringMap)
+	if c.SDKs == nil {
+		c.SDKs = make(map[string]*SDKConfig, len(sdks))
 	}
-	for envId, key := range envs {
-		prefix := concatPrefix(envPrefix, strings.ToUpper(strings.ReplaceAll(envId, "-", "_")))
+	for sdkId, key := range sdks {
+		prefix := concatPrefix(envPrefix, strings.ToUpper(strings.ReplaceAll(sdkId, "-", "_")))
 		sdkConf := &SDKConfig{Key: key}
 		sdkConf.loadEnv(prefix)
-		c.Environments[envId] = sdkConf
+		c.SDKs[sdkId] = sdkConf
 	}
 	c.Http.loadEnv(envPrefix)
 	c.Grpc.loadEnv(envPrefix)

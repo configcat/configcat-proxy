@@ -1,5 +1,5 @@
-environments:
-  env1:
+sdks:
+  sdk1:
     base_url: "https://test-cdn-global.configcat.com"
     key: "XxPbCKmzIUGORk4vsufpzw/iC_KABprDEueeQs3yovVnQ"
     poll_interval: 300
