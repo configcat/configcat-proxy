@@ -11,7 +11,6 @@ import (
 func TestSDKConfig_ENV(t *testing.T) {
 	t.Setenv("CONFIGCAT_SDKS", `{"sdk1": "sdkKey"}`)
 	t.Setenv("CONFIGCAT_SDK1_BASE_URL", "base")
-	t.Setenv("CONFIGCAT_SDK1_KEY", "sdkKey")
 	t.Setenv("CONFIGCAT_SDK1_POLL_INTERVAL", "300")
 	t.Setenv("CONFIGCAT_SDK1_DATA_GOVERNANCE", "eu")
 	t.Setenv("CONFIGCAT_SDK1_LOG_LEVEL", "error")

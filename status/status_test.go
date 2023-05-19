@@ -19,10 +19,10 @@ func TestReporter_Online(t *testing.T) {
 		stat := readStatus(srv.URL)
 
 		assert.Equal(t, Healthy, stat.Status)
-		assert.Equal(t, Healthy, stat.Environments["t"].Source.Status)
-		assert.Equal(t, Online, stat.Environments["t"].Mode)
-		assert.Equal(t, 1, len(stat.Environments["t"].Source.Records))
-		assert.Equal(t, RemoteSrc, stat.Environments["t"].Source.Type)
+		assert.Equal(t, Healthy, stat.SDKs["t"].Source.Status)
+		assert.Equal(t, Online, stat.SDKs["t"].Mode)
+		assert.Equal(t, 1, len(stat.SDKs["t"].Source.Records))
+		assert.Equal(t, RemoteSrc, stat.SDKs["t"].Source.Type)
 		assert.Equal(t, NA, stat.Cache.Status)
 		assert.Equal(t, 0, len(stat.Cache.Records))
 	})
@@ -35,10 +35,10 @@ func TestReporter_Online(t *testing.T) {
 		stat := readStatus(srv.URL)
 
 		assert.Equal(t, Degraded, stat.Status)
-		assert.Equal(t, Degraded, stat.Environments["t"].Source.Status)
-		assert.Equal(t, Online, stat.Environments["t"].Mode)
-		assert.Equal(t, 2, len(stat.Environments["t"].Source.Records))
-		assert.Equal(t, RemoteSrc, stat.Environments["t"].Source.Type)
+		assert.Equal(t, Degraded, stat.SDKs["t"].Source.Status)
+		assert.Equal(t, Online, stat.SDKs["t"].Mode)
+		assert.Equal(t, 2, len(stat.SDKs["t"].Source.Records))
+		assert.Equal(t, RemoteSrc, stat.SDKs["t"].Source.Type)
 		assert.Equal(t, NA, stat.Cache.Status)
 		assert.Equal(t, 0, len(stat.Cache.Records))
 
@@ -46,10 +46,10 @@ func TestReporter_Online(t *testing.T) {
 		stat = readStatus(srv.URL)
 
 		assert.Equal(t, Healthy, stat.Status)
-		assert.Equal(t, Healthy, stat.Environments["t"].Source.Status)
-		assert.Equal(t, Online, stat.Environments["t"].Mode)
-		assert.Equal(t, 3, len(stat.Environments["t"].Source.Records))
-		assert.Equal(t, RemoteSrc, stat.Environments["t"].Source.Type)
+		assert.Equal(t, Healthy, stat.SDKs["t"].Source.Status)
+		assert.Equal(t, Online, stat.SDKs["t"].Mode)
+		assert.Equal(t, 3, len(stat.SDKs["t"].Source.Records))
+		assert.Equal(t, RemoteSrc, stat.SDKs["t"].Source.Type)
 		assert.Equal(t, NA, stat.Cache.Status)
 		assert.Equal(t, 0, len(stat.Cache.Records))
 	})
@@ -64,12 +64,12 @@ func TestReporter_Online(t *testing.T) {
 		reporter.ReportOk("t", "m6")
 		stat := readStatus(srv.URL)
 
-		assert.Equal(t, 5, len(stat.Environments["t"].Source.Records))
-		assert.Contains(t, stat.Environments["t"].Source.Records[0], "m2")
-		assert.Contains(t, stat.Environments["t"].Source.Records[1], "m3")
-		assert.Contains(t, stat.Environments["t"].Source.Records[2], "m4")
-		assert.Contains(t, stat.Environments["t"].Source.Records[3], "m5")
-		assert.Contains(t, stat.Environments["t"].Source.Records[4], "m6")
+		assert.Equal(t, 5, len(stat.SDKs["t"].Source.Records))
+		assert.Contains(t, stat.SDKs["t"].Source.Records[0], "m2")
+		assert.Contains(t, stat.SDKs["t"].Source.Records[1], "m3")
+		assert.Contains(t, stat.SDKs["t"].Source.Records[2], "m4")
+		assert.Contains(t, stat.SDKs["t"].Source.Records[3], "m5")
+		assert.Contains(t, stat.SDKs["t"].Source.Records[4], "m6")
 	})
 }
 
@@ -81,10 +81,10 @@ func TestReporter_Offline(t *testing.T) {
 		stat := readStatus(srv.URL)
 
 		assert.Equal(t, Healthy, stat.Status)
-		assert.Equal(t, Healthy, stat.Environments["t"].Source.Status)
-		assert.Equal(t, Offline, stat.Environments["t"].Mode)
-		assert.Equal(t, 1, len(stat.Environments["t"].Source.Records))
-		assert.Equal(t, FileSrc, stat.Environments["t"].Source.Type)
+		assert.Equal(t, Healthy, stat.SDKs["t"].Source.Status)
+		assert.Equal(t, Offline, stat.SDKs["t"].Mode)
+		assert.Equal(t, 1, len(stat.SDKs["t"].Source.Records))
+		assert.Equal(t, FileSrc, stat.SDKs["t"].Source.Type)
 		assert.Equal(t, NA, stat.Cache.Status)
 		assert.Equal(t, 0, len(stat.Cache.Records))
 	})
@@ -94,10 +94,10 @@ func TestReporter_Offline(t *testing.T) {
 		stat := readStatus(srv.URL)
 
 		assert.Equal(t, Degraded, stat.Status)
-		assert.Equal(t, Degraded, stat.Environments["t"].Source.Status)
-		assert.Equal(t, Offline, stat.Environments["t"].Mode)
-		assert.Equal(t, 1, len(stat.Environments["t"].Source.Records))
-		assert.Equal(t, CacheSrc, stat.Environments["t"].Source.Type)
+		assert.Equal(t, Degraded, stat.SDKs["t"].Source.Status)
+		assert.Equal(t, Offline, stat.SDKs["t"].Mode)
+		assert.Equal(t, 1, len(stat.SDKs["t"].Source.Records))
+		assert.Equal(t, CacheSrc, stat.SDKs["t"].Source.Type)
 		assert.Equal(t, NA, stat.Cache.Status)
 		assert.Equal(t, 0, len(stat.Cache.Records))
 	})
@@ -109,10 +109,10 @@ func TestReporter_Offline(t *testing.T) {
 		stat := readStatus(srv.URL)
 
 		assert.Equal(t, Healthy, stat.Status)
-		assert.Equal(t, Healthy, stat.Environments["t"].Source.Status)
-		assert.Equal(t, Offline, stat.Environments["t"].Mode)
-		assert.Equal(t, 1, len(stat.Environments["t"].Source.Records))
-		assert.Equal(t, CacheSrc, stat.Environments["t"].Source.Type)
+		assert.Equal(t, Healthy, stat.SDKs["t"].Source.Status)
+		assert.Equal(t, Offline, stat.SDKs["t"].Mode)
+		assert.Equal(t, 1, len(stat.SDKs["t"].Source.Records))
+		assert.Equal(t, CacheSrc, stat.SDKs["t"].Source.Type)
 		assert.Equal(t, Healthy, stat.Cache.Status)
 		assert.Equal(t, 1, len(stat.Cache.Records))
 	})
@@ -134,7 +134,7 @@ func TestReporter_Degraded_Calc(t *testing.T) {
 		stat := reporter.getStatus()
 
 		assert.Equal(t, Degraded, stat.Status)
-		assert.Equal(t, Degraded, stat.Environments["t"].Source.Status)
+		assert.Equal(t, Degraded, stat.SDKs["t"].Source.Status)
 	})
 	t.Run("2 records, 1 error then 1 ok", func(t *testing.T) {
 		reporter := NewReporter(&config.Config{SDKs: map[string]*config.SDKConfig{"t": {}}}).(*reporter)
@@ -143,7 +143,7 @@ func TestReporter_Degraded_Calc(t *testing.T) {
 		stat := reporter.getStatus()
 
 		assert.Equal(t, Healthy, stat.Status)
-		assert.Equal(t, Healthy, stat.Environments["t"].Source.Status)
+		assert.Equal(t, Healthy, stat.SDKs["t"].Source.Status)
 	})
 	t.Run("2 records, 1 ok then 1 error", func(t *testing.T) {
 		reporter := NewReporter(&config.Config{SDKs: map[string]*config.SDKConfig{"t": {}}}).(*reporter)
@@ -152,7 +152,7 @@ func TestReporter_Degraded_Calc(t *testing.T) {
 		stat := reporter.getStatus()
 
 		assert.Equal(t, Healthy, stat.Status)
-		assert.Equal(t, Healthy, stat.Environments["t"].Source.Status)
+		assert.Equal(t, Healthy, stat.SDKs["t"].Source.Status)
 	})
 	t.Run("3 records, 1 ok then 2 errors", func(t *testing.T) {
 		reporter := NewReporter(&config.Config{SDKs: map[string]*config.SDKConfig{"t": {}}}).(*reporter)
@@ -162,7 +162,7 @@ func TestReporter_Degraded_Calc(t *testing.T) {
 		stat := reporter.getStatus()
 
 		assert.Equal(t, Degraded, stat.Status)
-		assert.Equal(t, Degraded, stat.Environments["t"].Source.Status)
+		assert.Equal(t, Degraded, stat.SDKs["t"].Source.Status)
 	})
 	t.Run("3 records, 1 ok then 1 error then 1 ok", func(t *testing.T) {
 		reporter := NewReporter(&config.Config{SDKs: map[string]*config.SDKConfig{"t": {}}}).(*reporter)
@@ -172,7 +172,7 @@ func TestReporter_Degraded_Calc(t *testing.T) {
 		stat := reporter.getStatus()
 
 		assert.Equal(t, Healthy, stat.Status)
-		assert.Equal(t, Healthy, stat.Environments["t"].Source.Status)
+		assert.Equal(t, Healthy, stat.SDKs["t"].Source.Status)
 	})
 	t.Run("3 records, 1 error then 1 ok then 1 error", func(t *testing.T) {
 		reporter := NewReporter(&config.Config{SDKs: map[string]*config.SDKConfig{"t": {}}}).(*reporter)
@@ -182,7 +182,7 @@ func TestReporter_Degraded_Calc(t *testing.T) {
 		stat := reporter.getStatus()
 
 		assert.Equal(t, Healthy, stat.Status)
-		assert.Equal(t, Healthy, stat.Environments["t"].Source.Status)
+		assert.Equal(t, Healthy, stat.SDKs["t"].Source.Status)
 	})
 	t.Run("2 envs 1 degraded", func(t *testing.T) {
 		reporter := NewReporter(&config.Config{SDKs: map[string]*config.SDKConfig{"t1": {}, "t2": {}}}).(*reporter)
@@ -191,8 +191,8 @@ func TestReporter_Degraded_Calc(t *testing.T) {
 		stat := reporter.getStatus()
 
 		assert.Equal(t, Degraded, stat.Status)
-		assert.Equal(t, Degraded, stat.Environments["t1"].Source.Status)
-		assert.Equal(t, Healthy, stat.Environments["t2"].Source.Status)
+		assert.Equal(t, Degraded, stat.SDKs["t1"].Source.Status)
+		assert.Equal(t, Healthy, stat.SDKs["t2"].Source.Status)
 	})
 }
 

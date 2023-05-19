@@ -9,7 +9,7 @@ import (
 func TestConfig_Validate(t *testing.T) {
 	t.Run("no envs", func(t *testing.T) {
 		conf := Config{}
-		require.ErrorContains(t, conf.Validate(), "sdk: at least 1 environment with an SDK key required")
+		require.ErrorContains(t, conf.Validate(), "sdk: at least 1 SDK must be configured")
 	})
 	t.Run("missing sdk key", func(t *testing.T) {
 		conf := Config{SDKs: map[string]*SDKConfig{"env1": {}}}

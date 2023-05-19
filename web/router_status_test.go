@@ -40,11 +40,11 @@ func TestStatus_Get_Body(t *testing.T) {
 	_ = json.Unmarshal(body, &stat)
 
 	assert.Equal(t, status.Healthy, stat.Status)
-	assert.Equal(t, status.Healthy, stat.Environments["test"].Source.Status)
-	assert.Equal(t, status.Online, stat.Environments["test"].Mode)
-	assert.Equal(t, 1, len(stat.Environments["test"].Source.Records))
-	assert.Contains(t, stat.Environments["test"].Source.Records[0], "config fetched")
-	assert.Equal(t, status.RemoteSrc, stat.Environments["test"].Source.Type)
+	assert.Equal(t, status.Healthy, stat.SDKs["test"].Source.Status)
+	assert.Equal(t, status.Online, stat.SDKs["test"].Mode)
+	assert.Equal(t, 1, len(stat.SDKs["test"].Source.Records))
+	assert.Contains(t, stat.SDKs["test"].Source.Records[0], "config fetched")
+	assert.Equal(t, status.RemoteSrc, stat.SDKs["test"].Source.Type)
 	assert.Equal(t, status.NA, stat.Cache.Status)
 	assert.Equal(t, 0, len(stat.Cache.Records))
 }

@@ -41,9 +41,9 @@ type Reporter interface {
 }
 
 type Status struct {
-	Status       HealthStatus          `json:"status"`
-	Environments map[string]*SdkStatus `json:"environments"`
-	Cache        CacheStatus           `json:"cache"`
+	Status HealthStatus          `json:"status"`
+	SDKs   map[string]*SdkStatus `json:"sdks"`
+	Cache  CacheStatus           `json:"cache"`
 }
 
 type SdkStatus struct {
@@ -91,7 +91,7 @@ func NewReporter(conf *config.Config) Reporter {
 			},
 		},
 	}
-	envs := make(map[string]*SdkStatus, len(conf.SDKs))
+	sdks := make(map[string]*SdkStatus, len(conf.SDKs))
 	for key, env := range conf.SDKs {
 		status := &SdkStatus{
 			Mode:   Online,
@@ -117,9 +117,9 @@ func NewReporter(conf *config.Config) Reporter {
 				r.ReportError(key, fmt.Errorf("cache offline source enabled without a configured cache"))
 			}
 		}
-		envs[key] = status
+		sdks[key] = status
 	}
-	r.status.Environments = envs
+	r.status.SDKs = sdks
 	return r
 }
 
@@ -150,10 +150,10 @@ func (r *reporter) getStatus() Status {
 	overallStatus := Healthy
 	for key := range r.conf.SDKs {
 		if sdk, ok := r.records[key]; ok {
-			stat := current.Environments[key].Source.Status
+			stat := current.SDKs[key].Source.Status
 			rec, stat := r.checkStatus(sdk)
-			current.Environments[key].Source.Records = rec
-			current.Environments[key].Source.Status = stat
+			current.SDKs[key].Source.Records = rec
+			current.SDKs[key].Source.Status = stat
 			if stat == Degraded {
 				overallStatus = Degraded
 			}
