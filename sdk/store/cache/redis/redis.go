@@ -24,6 +24,9 @@ func NewRedisStorage(sdkKey string, conf *config.RedisConfig, reporter status.Re
 		Password: conf.Password,
 		DB:       conf.DB,
 	}
+	if conf.User != "" {
+		opts.Username = conf.User
+	}
 	if conf.Tls.Enabled {
 		t := &tls.Config{
 			MinVersion: conf.Tls.GetVersion(),

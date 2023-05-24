@@ -73,7 +73,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	str := s.streamServer.GetStreamOrNil(sdkId)
 	if str == nil {
-		http.Error(w, "Invalid SDK identifier: '"+sdkId+"'", http.StatusBadRequest)
+		http.Error(w, "SDK not found for identifier: '"+sdkId+"'", http.StatusNotFound)
 	}
 
 	conn := str.CreateConnection(evalReq.Key, evalReq.User)

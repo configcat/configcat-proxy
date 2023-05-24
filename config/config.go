@@ -136,6 +136,7 @@ type RedisConfig struct {
 	Enabled   bool     `yaml:"enabled"`
 	Addresses []string `yaml:"addresses"`
 	DB        int      `yaml:"db"`
+	User      string   `yaml:"user"`
 	Password  string   `yaml:"password"`
 	Tls       TlsConfig
 }

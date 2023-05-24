@@ -40,7 +40,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	sdkClient, ok := s.sdkClients[sdkId]
 	if !ok {
-		http.Error(w, "Invalid SDK identifier: '"+sdkId+"'", http.StatusBadRequest)
+		http.Error(w, "SDK not found for identifier: '"+sdkId+"'", http.StatusNotFound)
 		return
 	}
 

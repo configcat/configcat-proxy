@@ -168,6 +168,7 @@ cache:
     enabled: true
     db: 1
     password: "pass"
+    user: "user"
     addresses: ["addr1", "addr2"]
     tls: 
       enabled: true
@@ -185,6 +186,7 @@ cache:
 		assert.True(t, conf.Cache.Redis.Enabled)
 		assert.Equal(t, 1, conf.Cache.Redis.DB)
 		assert.Equal(t, "pass", conf.Cache.Redis.Password)
+		assert.Equal(t, "user", conf.Cache.Redis.User)
 		assert.Equal(t, "addr1", conf.Cache.Redis.Addresses[0])
 		assert.Equal(t, "addr2", conf.Cache.Redis.Addresses[1])
 		assert.True(t, conf.Cache.Redis.Tls.Enabled)

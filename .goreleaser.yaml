@@ -1,0 +1,17 @@
+project_name: configcat-proxy
+
+builds:
+  - env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w -X internal.version.Version={{.Version}}
+    goos:
+      - linux
+      - windows
+      - darwin
+
+archives:
+  - format: tar.gz
+    format_overrides:
+    - goos: windows
+      format: zip

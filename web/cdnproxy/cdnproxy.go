@@ -28,7 +28,7 @@ func NewServer(sdkClients map[string]sdk.Client, config *config.CdnProxyConfig, 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	sdkClient, err := s.getSDKClient(r.Context())
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
 	w.Header().Set("Cache-Control", "max-age=0, must-revalidate")

@@ -117,6 +117,7 @@ func (l *LocalConfig) loadEnv(prefix string) {
 func (r *RedisConfig) loadEnv(prefix string) {
 	prefix = concatPrefix(prefix, "REDIS")
 	readEnvString(prefix, "PASSWORD", &r.Password)
+	readEnvString(prefix, "USER", &r.User)
 	readEnv(prefix, "DB", &r.DB, toInt)
 	readEnv(prefix, "ENABLED", &r.Enabled, toBool)
 	readEnv(prefix, "ADDRESSES", &r.Addresses, toStringSlice)

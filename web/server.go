@@ -28,7 +28,6 @@ func NewServer(handler http.Handler, log log.Logger, conf *config.Config, errorC
 	if conf.Tls.Enabled {
 		t := &tls.Config{
 			MinVersion: conf.Tls.GetVersion(),
-			ServerName: conf.Tls.ServerName,
 		}
 		for _, c := range conf.Tls.Certificates {
 			if cert, err := tls.LoadX509KeyPair(c.Cert, c.Key); err == nil {

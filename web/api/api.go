@@ -46,7 +46,7 @@ func (s *Server) Eval(w http.ResponseWriter, r *http.Request) {
 	}
 	sdkClient, err := s.getSDKClient(r.Context())
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
 	eval, err := sdkClient.Eval(evalReq.Key, evalReq.User)
@@ -78,7 +78,7 @@ func (s *Server) EvalAll(w http.ResponseWriter, r *http.Request) {
 	}
 	sdkClient, err := s.getSDKClient(r.Context())
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
 	details := sdkClient.EvalAll(evalReq.User)
@@ -98,7 +98,7 @@ func (s *Server) EvalAll(w http.ResponseWriter, r *http.Request) {
 func (s *Server) Keys(w http.ResponseWriter, r *http.Request) {
 	sdkClient, err := s.getSDKClient(r.Context())
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
 	keys := sdkClient.Keys()
@@ -114,7 +114,7 @@ func (s *Server) Keys(w http.ResponseWriter, r *http.Request) {
 func (s *Server) Refresh(w http.ResponseWriter, r *http.Request) {
 	sdkClient, err := s.getSDKClient(r.Context())
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
 	err = sdkClient.Refresh()
