@@ -27,39 +27,33 @@ type connClosed struct {
 }
 
 type stream struct {
-	sdkClient                 sdk.Client
-	sdkConfigChanged          <-chan struct{}
-	stop                      chan struct{}
-	log                       log.Logger
-	serverType                string
-	sdkId                     string
-	metrics                   metrics.Handler
-	singleFlagChannels        map[string]map[uint64]*singleFlagChannel
-	allFlagChannels           map[uint64]*allFlagsChannel
-	singleFlagConnEstablished chan *connEstablished
-	singleFlagConnClosed      chan *connClosed
-	allFlagsConnEstablished   chan *connEstablished
-	allFlagsConnClosed        chan *connClosed
-	connCount                 int64
-	seed                      maphash.Seed
+	sdkClient        sdk.Client
+	sdkConfigChanged <-chan struct{}
+	stop             chan struct{}
+	log              log.Logger
+	serverType       string
+	sdkId            string
+	metrics          metrics.Handler
+	channels         map[string]map[uint64]channel
+	connEstablished  chan *connEstablished
+	connClosed       chan *connClosed
+	connCount        int64
+	seed             maphash.Seed
 }
 
 func NewStream(sdkId string, sdkClient sdk.Client, metrics metrics.Handler, log log.Logger, serverType string) Stream {
 	s := &stream{
-		singleFlagChannels:        make(map[string]map[uint64]*singleFlagChannel),
-		allFlagChannels:           make(map[uint64]*allFlagsChannel),
-		singleFlagConnEstablished: make(chan *connEstablished),
-		singleFlagConnClosed:      make(chan *connClosed),
-		allFlagsConnEstablished:   make(chan *connEstablished),
-		allFlagsConnClosed:        make(chan *connClosed),
-		stop:                      make(chan struct{}),
-		sdkConfigChanged:          sdkClient.SubConfigChanged(serverType + sdkId),
-		sdkClient:                 sdkClient,
-		log:                       log.WithPrefix("stream-" + sdkId),
-		serverType:                serverType,
-		sdkId:                     sdkId,
-		metrics:                   metrics,
-		seed:                      maphash.MakeSeed(),
+		channels:         make(map[string]map[uint64]channel),
+		connEstablished:  make(chan *connEstablished),
+		connClosed:       make(chan *connClosed),
+		stop:             make(chan struct{}),
+		sdkConfigChanged: sdkClient.SubConfigChanged(serverType + sdkId),
+		sdkClient:        sdkClient,
+		log:              log.WithPrefix("stream-" + sdkId),
+		serverType:       serverType,
+		sdkId:            sdkId,
+		metrics:          metrics,
+		seed:             maphash.MakeSeed(),
 	}
 	go s.run()
 	return s
@@ -68,32 +62,16 @@ func NewStream(sdkId string, sdkClient sdk.Client, metrics metrics.Handler, log 
 func (s *stream) run() {
 	for {
 		select {
-		case established := <-s.singleFlagConnEstablished:
-			s.addSingleFlagConnection(established)
+		case established := <-s.connEstablished:
+			s.addConnection(established)
 			s.connCount++
 			s.log.Debugf("#%s: connection established, all connections: %d", established.key, s.connCount)
 			if s.metrics != nil {
 				s.metrics.IncrementConnection(s.sdkId, s.serverType, established.key)
 			}
 
-		case established := <-s.allFlagsConnEstablished:
-			s.addAllFlagsConnection(established)
-			s.connCount++
-			s.log.Debugf("#%s: connection established, all connections: %d", established.key, s.connCount)
-			if s.metrics != nil {
-				s.metrics.IncrementConnection(s.sdkId, s.serverType, established.key)
-			}
-
-		case closed := <-s.singleFlagConnClosed:
-			s.removeSingleFlagConnection(closed)
-			s.connCount--
-			s.log.Debugf("#%s: connection closed, all connections: %d", closed.key, s.connCount)
-			if s.metrics != nil {
-				s.metrics.DecrementConnection(s.sdkId, s.serverType, closed.key)
-			}
-
-		case closed := <-s.allFlagsConnClosed:
-			s.removeAllFlagsConnection(closed)
+		case closed := <-s.connClosed:
+			s.removeConnection(closed)
 			s.connCount--
 			s.log.Debugf("#%s: connection closed, all connections: %d", closed.key, s.connCount)
 			if s.metrics != nil {
@@ -119,7 +97,7 @@ func (s *stream) CreateSingleFlagConnection(key string, user sdk.UserAttrs) *Con
 	case <-s.stop:
 		return conn
 	default:
-		s.singleFlagConnEstablished <- &connEstablished{conn: conn, user: user, key: key}
+		s.connEstablished <- &connEstablished{conn: conn, user: user, key: key}
 		return conn
 	}
 }
@@ -134,7 +112,7 @@ func (s *stream) CreateAllFlagsConnection(user sdk.UserAttrs) *Connection {
 	case <-s.stop:
 		return conn
 	default:
-		s.allFlagsConnEstablished <- &connEstablished{conn: conn, user: user, key: allFlagsDiscriminator}
+		s.connEstablished <- &connEstablished{conn: conn, user: user, key: allFlagsDiscriminator}
 		return conn
 	}
 }
@@ -144,7 +122,7 @@ func (s *stream) CloseSingleFlagConnection(conn *Connection, key string) {
 	case <-s.stop:
 		return
 	default:
-		s.singleFlagConnClosed <- &connClosed{conn: conn, key: key}
+		s.connClosed <- &connClosed{conn: conn, key: key}
 	}
 }
 
@@ -153,7 +131,7 @@ func (s *stream) CloseAllFlagsConnection(conn *Connection) {
 	case <-s.stop:
 		return
 	default:
-		s.allFlagsConnClosed <- &connClosed{conn: conn, key: allFlagsDiscriminator}
+		s.connClosed <- &connClosed{conn: conn, key: allFlagsDiscriminator}
 	}
 }
 
@@ -163,34 +141,24 @@ func (s *stream) Close() {
 	s.log.Reportf("shutdown complete")
 }
 
-func (s *stream) addSingleFlagConnection(established *connEstablished) {
-	bucket, ok := s.singleFlagChannels[established.key]
+func (s *stream) addConnection(established *connEstablished) {
+	bucket, ok := s.channels[established.key]
 	if !ok {
-		ch := createSingleFlagChannel(established, s.sdkClient)
-		bucket = map[uint64]*singleFlagChannel{established.conn.discriminator: ch}
-		s.singleFlagChannels[established.key] = bucket
+		ch := createChannel(established, s.sdkClient)
+		bucket = map[uint64]channel{established.conn.discriminator: ch}
+		s.channels[established.key] = bucket
 	}
 	ch, ok := bucket[established.conn.discriminator]
 	if !ok {
-		ch = createSingleFlagChannel(established, s.sdkClient)
+		ch = createChannel(established, s.sdkClient)
 		bucket[established.conn.discriminator] = ch
 	}
-	ch.connections = append(ch.connections, established.conn)
-	established.conn.receive <- ch.lastPayload
+	ch.AddConnection(established.conn)
+	established.conn.receive <- ch.LastPayload()
 }
 
-func (s *stream) addAllFlagsConnection(established *connEstablished) {
-	ch, ok := s.allFlagChannels[established.conn.discriminator]
-	if !ok {
-		ch = createAllFlagsChannel(established, s.sdkClient)
-		s.allFlagChannels[established.conn.discriminator] = ch
-	}
-	ch.connections = append(ch.connections, established.conn)
-	established.conn.receive <- ch.lastPayload
-}
-
-func (s *stream) removeSingleFlagConnection(closed *connClosed) {
-	bucket, ok := s.singleFlagChannels[closed.key]
+func (s *stream) removeConnection(closed *connClosed) {
+	bucket, ok := s.channels[closed.key]
 	if !ok {
 		return
 	}
@@ -199,34 +167,20 @@ func (s *stream) removeSingleFlagConnection(closed *connClosed) {
 		return
 	}
 	ch.RemoveConnection(closed.conn)
-	if len(ch.connections) == 0 {
+	if ch.IsEmpty() {
 		delete(bucket, closed.conn.discriminator)
 	}
 	if len(bucket) == 0 {
-		delete(s.singleFlagChannels, closed.key)
-	}
-}
-
-func (s *stream) removeAllFlagsConnection(closed *connClosed) {
-	ch, ok := s.allFlagChannels[closed.conn.discriminator]
-	if !ok {
-		return
-	}
-	ch.RemoveConnection(closed.conn)
-	if len(ch.connections) == 0 {
-		delete(s.allFlagChannels, closed.conn.discriminator)
+		delete(s.channels, closed.key)
 	}
 }
 
 func (s *stream) notifyConnections() {
 	sent := 0
-	for key, bucket := range s.singleFlagChannels {
+	for key, bucket := range s.channels {
 		for _, ch := range bucket {
 			sent += ch.Notify(s.sdkClient, key)
 		}
-	}
-	for _, ch := range s.allFlagChannels {
-		sent += ch.Notify(s.sdkClient)
 	}
 	if sent > 0 {
 		s.log.Debugf("payload sent to %d connection(s)", sent)

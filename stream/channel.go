@@ -7,6 +7,14 @@ import (
 
 const allFlagsDiscriminator = "[ALL]"
 
+type channel interface {
+	Notify(sdkClient sdk.Client, key string) int
+	AddConnection(conn *Connection)
+	RemoveConnection(conn *Connection)
+	LastPayload() interface{}
+	IsEmpty() bool
+}
+
 type connectionHolder struct {
 	connections []*Connection
 	user        sdk.UserAttrs
@@ -24,20 +32,28 @@ type allFlagsChannel struct {
 	connectionHolder
 }
 
-func createSingleFlagChannel(established *connEstablished, sdkClient sdk.Client) *singleFlagChannel {
-	val, _ := sdkClient.Eval(established.key, established.user)
-	payload := model.PayloadFromEvalData(&val)
-	return &singleFlagChannel{connectionHolder: connectionHolder{user: established.user}, lastPayload: &payload}
+func createChannel(established *connEstablished, sdkClient sdk.Client) channel {
+	if established.key == allFlagsDiscriminator {
+		values := sdkClient.EvalAll(established.user)
+		payloads := make(map[string]*model.ResponsePayload)
+		for key, val := range values {
+			payload := model.PayloadFromEvalData(&val)
+			payloads[key] = &payload
+		}
+		return &allFlagsChannel{connectionHolder: connectionHolder{user: established.user}, lastPayload: payloads}
+	} else {
+		val, _ := sdkClient.Eval(established.key, established.user)
+		payload := model.PayloadFromEvalData(&val)
+		return &singleFlagChannel{connectionHolder: connectionHolder{user: established.user}, lastPayload: &payload}
+	}
 }
 
-func createAllFlagsChannel(established *connEstablished, sdkClient sdk.Client) *allFlagsChannel {
-	values := sdkClient.EvalAll(established.user)
-	payloads := make(map[string]*model.ResponsePayload)
-	for key, val := range values {
-		payload := model.PayloadFromEvalData(&val)
-		payloads[key] = &payload
-	}
-	return &allFlagsChannel{connectionHolder: connectionHolder{user: established.user}, lastPayload: payloads}
+func (sf *singleFlagChannel) LastPayload() interface{} {
+	return sf.lastPayload
+}
+
+func (af *allFlagsChannel) LastPayload() interface{} {
+	return af.lastPayload
 }
 
 func (sf *singleFlagChannel) Notify(sdkClient sdk.Client, key string) int {
@@ -57,7 +73,7 @@ func (sf *singleFlagChannel) Notify(sdkClient sdk.Client, key string) int {
 	return sent
 }
 
-func (af *allFlagsChannel) Notify(sdkClient sdk.Client) int {
+func (af *allFlagsChannel) Notify(sdkClient sdk.Client, _ string) int {
 	sent := 0
 	values := sdkClient.EvalAll(af.user)
 	if values == nil || len(values) == 0 {
@@ -81,6 +97,10 @@ func (af *allFlagsChannel) Notify(sdkClient sdk.Client) int {
 	return sent
 }
 
+func (c *connectionHolder) AddConnection(conn *Connection) {
+	c.connections = append(c.connections, conn)
+}
+
 func (c *connectionHolder) RemoveConnection(conn *Connection) {
 	index := -1
 	for i := range c.connections {
@@ -93,4 +113,8 @@ func (c *connectionHolder) RemoveConnection(conn *Connection) {
 		c.connections[index] = nil
 		c.connections = append(c.connections[:index], c.connections[index+1:]...)
 	}
+}
+
+func (c *connectionHolder) IsEmpty() bool {
+	return len(c.connections) == 0
 }

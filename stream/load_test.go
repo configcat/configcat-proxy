@@ -50,10 +50,9 @@ func TestStreamServer_Load(t *testing.T) {
 	}
 	_ = h.SetFlags(key, flags)
 	_ = client.Refresh()
-	assert.Equal(t, connCount, len(strServer.GetStreamOrNil("test").(*stream).allFlagChannels[0].connections))
+	assert.Equal(t, connCount, len(strServer.GetStreamOrNil("test").(*stream).channels[allFlagsDiscriminator][0].(*allFlagsChannel).connections))
 	t.Run("check refresh", func(t *testing.T) {
-		checkSingleFlagConnections(t, strServer)
-		checkAllFlagsConnections(t, strServer)
+		checkConnections(t, strServer)
 	})
 }
 
@@ -73,47 +72,41 @@ func runAllConnectionTest(t *testing.T, fName string, str Stream) {
 	})
 }
 
-func checkSingleFlagConnections(t *testing.T, srv Server) {
+func checkConnections(t *testing.T, srv Server) {
 	str := srv.GetStreamOrNil("test").(*stream)
-	for id, b := range str.singleFlagChannels {
+	for id, b := range str.channels {
 		bucket := b
 		t.Run("chan-"+id, func(t *testing.T) {
 			t.Parallel()
 			for _, ch := range bucket {
-				for i, conn := range ch.connections {
-					connect := conn
-					cId := i
-					t.Run("conn"+strconv.Itoa(cId)+"single", func(t *testing.T) {
-						t.Parallel()
-						utils.WithTimeout(10*time.Second, func() {
-							payload := <-connect.Receive()
-							assert.True(t, payload.(*model.ResponsePayload).Value.(bool))
+				switch dChan := ch.(type) {
+				case *singleFlagChannel:
+					for i, conn := range dChan.connections {
+						connect := conn
+						cId := i
+						t.Run("conn"+strconv.Itoa(cId)+"single", func(t *testing.T) {
+							t.Parallel()
+							utils.WithTimeout(10*time.Second, func() {
+								payload := <-connect.Receive()
+								assert.True(t, payload.(*model.ResponsePayload).Value.(bool))
+							})
 						})
-					})
+					}
+				case *allFlagsChannel:
+					for i, conn := range dChan.connections {
+						connect := conn
+						cId := i
+						t.Run("conn"+strconv.Itoa(cId)+"all", func(t *testing.T) {
+							t.Parallel()
+							utils.WithTimeout(2*time.Second, func() {
+								payload := <-connect.Receive()
+								for _, v := range payload.(map[string]*model.ResponsePayload) {
+									assert.True(t, v.Value.(bool))
+								}
+							})
+						})
+					}
 				}
-			}
-		})
-	}
-}
-
-func checkAllFlagsConnections(t *testing.T, srv Server) {
-	str := srv.GetStreamOrNil("test").(*stream)
-	for id, b := range str.allFlagChannels {
-		bucket := b
-		t.Run("chan-"+strconv.FormatUint(id, 10), func(t *testing.T) {
-			t.Parallel()
-			for i, conn := range bucket.connections {
-				connect := conn
-				cId := i
-				t.Run("conn"+strconv.Itoa(cId)+"all", func(t *testing.T) {
-					t.Parallel()
-					utils.WithTimeout(2*time.Second, func() {
-						payload := <-connect.Receive()
-						for _, v := range payload.(map[string]*model.ResponsePayload) {
-							assert.True(t, v.Value.(bool))
-						}
-					})
-				})
 			}
 		})
 	}
