@@ -71,11 +71,11 @@ func (af *allFlagsChannel) Notify(sdkClient sdk.Client) int {
 			af.lastPayload[key] = &payload
 			final[key] = &payload
 		}
-		if len(final) != 0 {
-			for _, conn := range af.connections {
-				sent++
-				conn.receive <- final
-			}
+	}
+	if len(final) != 0 {
+		for _, conn := range af.connections {
+			sent++
+			conn.receive <- final
 		}
 	}
 	return sent
