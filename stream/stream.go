@@ -3,21 +3,16 @@ package stream
 import (
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/metrics"
-	"github.com/configcat/configcat-proxy/model"
 	"github.com/configcat/configcat-proxy/sdk"
 	"hash/maphash"
 )
 
 type Stream interface {
-	CreateConnection(key string, user sdk.UserAttrs) *Connection
-	CloseConnection(conn *Connection, key string)
+	CreateSingleFlagConnection(key string, user sdk.UserAttrs) *Connection
+	CreateAllFlagsConnection(user sdk.UserAttrs) *Connection
+	CloseSingleFlagConnection(conn *Connection, key string)
+	CloseAllFlagsConnection(conn *Connection)
 	Close()
-}
-
-type channel struct {
-	connections []*Connection
-	lastPayload *model.ResponsePayload
-	user        sdk.UserAttrs
 }
 
 type connEstablished struct {
@@ -32,33 +27,39 @@ type connClosed struct {
 }
 
 type stream struct {
-	sdkClient        sdk.Client
-	sdkConfigChanged <-chan struct{}
-	stop             chan struct{}
-	log              log.Logger
-	serverType       string
-	envId            string
-	metrics          metrics.Handler
-	channels         map[string]map[uint64]*channel
-	connEstablished  chan *connEstablished
-	connClosed       chan *connClosed
-	connCount        int64
-	seed             maphash.Seed
+	sdkClient                 sdk.Client
+	sdkConfigChanged          <-chan struct{}
+	stop                      chan struct{}
+	log                       log.Logger
+	serverType                string
+	sdkId                     string
+	metrics                   metrics.Handler
+	singleFlagChannels        map[string]map[uint64]*singleFlagChannel
+	allFlagChannels           map[uint64]*allFlagsChannel
+	singleFlagConnEstablished chan *connEstablished
+	singleFlagConnClosed      chan *connClosed
+	allFlagsConnEstablished   chan *connEstablished
+	allFlagsConnClosed        chan *connClosed
+	connCount                 int64
+	seed                      maphash.Seed
 }
 
-func NewStream(envId string, sdkClient sdk.Client, metrics metrics.Handler, log log.Logger, serverType string) Stream {
+func NewStream(sdkId string, sdkClient sdk.Client, metrics metrics.Handler, log log.Logger, serverType string) Stream {
 	s := &stream{
-		channels:         make(map[string]map[uint64]*channel),
-		connEstablished:  make(chan *connEstablished),
-		connClosed:       make(chan *connClosed),
-		stop:             make(chan struct{}),
-		sdkConfigChanged: sdkClient.SubConfigChanged(serverType + envId),
-		sdkClient:        sdkClient,
-		log:              log.WithPrefix("stream-" + envId),
-		serverType:       serverType,
-		envId:            envId,
-		metrics:          metrics,
-		seed:             maphash.MakeSeed(),
+		singleFlagChannels:        make(map[string]map[uint64]*singleFlagChannel),
+		allFlagChannels:           make(map[uint64]*allFlagsChannel),
+		singleFlagConnEstablished: make(chan *connEstablished),
+		singleFlagConnClosed:      make(chan *connClosed),
+		allFlagsConnEstablished:   make(chan *connEstablished),
+		allFlagsConnClosed:        make(chan *connClosed),
+		stop:                      make(chan struct{}),
+		sdkConfigChanged:          sdkClient.SubConfigChanged(serverType + sdkId),
+		sdkClient:                 sdkClient,
+		log:                       log.WithPrefix("stream-" + sdkId),
+		serverType:                serverType,
+		sdkId:                     sdkId,
+		metrics:                   metrics,
+		seed:                      maphash.MakeSeed(),
 	}
 	go s.run()
 	return s
@@ -67,20 +68,36 @@ func NewStream(envId string, sdkClient sdk.Client, metrics metrics.Handler, log 
 func (s *stream) run() {
 	for {
 		select {
-		case established := <-s.connEstablished:
-			s.addConnection(established)
+		case established := <-s.singleFlagConnEstablished:
+			s.addSingleFlagConnection(established)
 			s.connCount++
 			s.log.Debugf("#%s: connection established, all connections: %d", established.key, s.connCount)
 			if s.metrics != nil {
-				s.metrics.IncrementConnection(s.envId, s.serverType, established.key)
+				s.metrics.IncrementConnection(s.sdkId, s.serverType, established.key)
 			}
 
-		case closed := <-s.connClosed:
-			s.removeConnection(closed)
+		case established := <-s.allFlagsConnEstablished:
+			s.addAllFlagsConnection(established)
+			s.connCount++
+			s.log.Debugf("#%s: connection established, all connections: %d", established.key, s.connCount)
+			if s.metrics != nil {
+				s.metrics.IncrementConnection(s.sdkId, s.serverType, established.key)
+			}
+
+		case closed := <-s.singleFlagConnClosed:
+			s.removeSingleFlagConnection(closed)
 			s.connCount--
 			s.log.Debugf("#%s: connection closed, all connections: %d", closed.key, s.connCount)
 			if s.metrics != nil {
-				s.metrics.DecrementConnection(s.envId, s.serverType, closed.key)
+				s.metrics.DecrementConnection(s.sdkId, s.serverType, closed.key)
+			}
+
+		case closed := <-s.allFlagsConnClosed:
+			s.removeAllFlagsConnection(closed)
+			s.connCount--
+			s.log.Debugf("#%s: connection closed, all connections: %d", closed.key, s.connCount)
+			if s.metrics != nil {
+				s.metrics.DecrementConnection(s.sdkId, s.serverType, closed.key)
 			}
 
 		case <-s.sdkConfigChanged:
@@ -92,7 +109,7 @@ func (s *stream) run() {
 	}
 }
 
-func (s *stream) CreateConnection(key string, user sdk.UserAttrs) *Connection {
+func (s *stream) CreateSingleFlagConnection(key string, user sdk.UserAttrs) *Connection {
 	var discriminator uint64
 	if user != nil {
 		discriminator = user.Discriminator(s.seed)
@@ -102,45 +119,78 @@ func (s *stream) CreateConnection(key string, user sdk.UserAttrs) *Connection {
 	case <-s.stop:
 		return conn
 	default:
-		s.connEstablished <- &connEstablished{conn: conn, user: user, key: key}
+		s.singleFlagConnEstablished <- &connEstablished{conn: conn, user: user, key: key}
 		return conn
 	}
 }
 
-func (s *stream) CloseConnection(conn *Connection, key string) {
+func (s *stream) CreateAllFlagsConnection(user sdk.UserAttrs) *Connection {
+	var discriminator uint64
+	if user != nil {
+		discriminator = user.Discriminator(s.seed)
+	}
+	conn := newConnection(discriminator)
+	select {
+	case <-s.stop:
+		return conn
+	default:
+		s.allFlagsConnEstablished <- &connEstablished{conn: conn, user: user, key: allFlagsDiscriminator}
+		return conn
+	}
+}
+
+func (s *stream) CloseSingleFlagConnection(conn *Connection, key string) {
 	select {
 	case <-s.stop:
 		return
 	default:
-		s.connClosed <- &connClosed{conn: conn, key: key}
+		s.singleFlagConnClosed <- &connClosed{conn: conn, key: key}
+	}
+}
+
+func (s *stream) CloseAllFlagsConnection(conn *Connection) {
+	select {
+	case <-s.stop:
+		return
+	default:
+		s.allFlagsConnClosed <- &connClosed{conn: conn, key: allFlagsDiscriminator}
 	}
 }
 
 func (s *stream) Close() {
 	close(s.stop)
-	s.sdkClient.UnsubConfigChanged(s.serverType + s.envId)
+	s.sdkClient.UnsubConfigChanged(s.serverType + s.sdkId)
 	s.log.Reportf("shutdown complete")
 }
 
-func (s *stream) addConnection(established *connEstablished) {
-	bucket, ok := s.channels[established.key]
+func (s *stream) addSingleFlagConnection(established *connEstablished) {
+	bucket, ok := s.singleFlagChannels[established.key]
 	if !ok {
-		ch := s.createChannel(established)
-		bucket = map[uint64]*channel{established.conn.discriminator: ch}
-		s.channels[established.key] = bucket
+		ch := createSingleFlagChannel(established, s.sdkClient)
+		bucket = map[uint64]*singleFlagChannel{established.conn.discriminator: ch}
+		s.singleFlagChannels[established.key] = bucket
 	}
 	ch, ok := bucket[established.conn.discriminator]
 	if !ok {
-		ch = s.createChannel(established)
+		ch = createSingleFlagChannel(established, s.sdkClient)
 		bucket[established.conn.discriminator] = ch
 	}
 	ch.connections = append(ch.connections, established.conn)
 	established.conn.receive <- ch.lastPayload
 }
 
-func (s *stream) removeConnection(closed *connClosed) {
-	close(closed.conn.receive)
-	bucket, ok := s.channels[closed.key]
+func (s *stream) addAllFlagsConnection(established *connEstablished) {
+	ch, ok := s.allFlagChannels[established.conn.discriminator]
+	if !ok {
+		ch = createAllFlagsChannel(established, s.sdkClient)
+		s.allFlagChannels[established.conn.discriminator] = ch
+	}
+	ch.connections = append(ch.connections, established.conn)
+	established.conn.receive <- ch.lastPayload
+}
+
+func (s *stream) removeSingleFlagConnection(closed *connClosed) {
+	bucket, ok := s.singleFlagChannels[closed.key]
 	if !ok {
 		return
 	}
@@ -148,52 +198,37 @@ func (s *stream) removeConnection(closed *connClosed) {
 	if !ok {
 		return
 	}
-	index := -1
-	for i := range ch.connections {
-		if ch.connections[i] == closed.conn {
-			index = i
-			break
-		}
-	}
-	if index != -1 {
-		ch.connections[index] = nil
-		ch.connections = append(ch.connections[:index], ch.connections[index+1:]...)
-	}
+	ch.RemoveConnection(closed.conn)
 	if len(ch.connections) == 0 {
 		delete(bucket, closed.conn.discriminator)
 	}
 	if len(bucket) == 0 {
-		delete(s.channels, closed.key)
+		delete(s.singleFlagChannels, closed.key)
+	}
+}
+
+func (s *stream) removeAllFlagsConnection(closed *connClosed) {
+	ch, ok := s.allFlagChannels[closed.conn.discriminator]
+	if !ok {
+		return
+	}
+	ch.RemoveConnection(closed.conn)
+	if len(ch.connections) == 0 {
+		delete(s.allFlagChannels, closed.conn.discriminator)
 	}
 }
 
 func (s *stream) notifyConnections() {
 	sent := 0
-	for key, bucket := range s.channels {
+	for key, bucket := range s.singleFlagChannels {
 		for _, ch := range bucket {
-			val, err := s.sdkClient.Eval(key, ch.user)
-			if err != nil {
-				continue
-			}
-			if val.Value != ch.lastPayload.Value {
-				payload := model.PayloadFromEvalData(&val)
-				ch.lastPayload = &payload
-				for _, conn := range ch.connections {
-					sent++
-					conn.receive <- &payload
-				}
-			}
+			sent += ch.Notify(s.sdkClient, key)
 		}
+	}
+	for _, ch := range s.allFlagChannels {
+		sent += ch.Notify(s.sdkClient)
 	}
 	if sent > 0 {
 		s.log.Debugf("payload sent to %d connection(s)", sent)
 	}
-}
-
-func (s *stream) createChannel(established *connEstablished) *channel {
-	val, _ := s.sdkClient.Eval(established.key, established.user)
-	ch := &channel{user: established.user}
-	payload := model.PayloadFromEvalData(&val)
-	ch.lastPayload = &payload
-	return ch
 }

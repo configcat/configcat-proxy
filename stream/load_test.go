@@ -5,6 +5,7 @@ import (
 	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/internal/utils"
 	"github.com/configcat/configcat-proxy/log"
+	"github.com/configcat/configcat-proxy/model"
 	"github.com/configcat/configcat-proxy/sdk"
 	"github.com/configcat/go-sdk/v7/configcattest"
 	"github.com/stretchr/testify/assert"
@@ -39,7 +40,8 @@ func TestStreamServer_Load(t *testing.T) {
 			fName := "flag" + strconv.Itoa(i)
 			t.Run(fName, func(t *testing.T) {
 				t.Parallel()
-				runConnectionTest(t, fName, strServer.GetStreamOrNil("test"))
+				runSingleConnectionTest(t, fName, strServer.GetStreamOrNil("test"))
+				runAllConnectionTest(t, fName, strServer.GetStreamOrNil("test"))
 			})
 		}
 	})
@@ -48,37 +50,70 @@ func TestStreamServer_Load(t *testing.T) {
 	}
 	_ = h.SetFlags(key, flags)
 	_ = client.Refresh()
+	assert.Equal(t, connCount, len(strServer.GetStreamOrNil("test").(*stream).allFlagChannels[0].connections))
 	t.Run("check refresh", func(t *testing.T) {
-		checkConnections(t, strServer)
+		checkSingleFlagConnections(t, strServer)
+		checkAllFlagsConnections(t, strServer)
 	})
 }
 
-func runConnectionTest(t *testing.T, fName string, str Stream) {
-	conn := str.CreateConnection(fName, nil)
+func runSingleConnectionTest(t *testing.T, fName string, str Stream) {
+	conn := str.CreateSingleFlagConnection(fName, nil)
 	utils.WithTimeout(2*time.Second, func() {
 		payload := <-conn.Receive()
-		assert.False(t, payload.Value.(bool))
+		assert.False(t, payload.(*model.ResponsePayload).Value.(bool))
 	})
 }
 
-func checkConnections(t *testing.T, srv Server) {
+func runAllConnectionTest(t *testing.T, fName string, str Stream) {
+	conn := str.CreateAllFlagsConnection(nil)
+	utils.WithTimeout(2*time.Second, func() {
+		payload := <-conn.Receive()
+		assert.False(t, payload.(map[string]*model.ResponsePayload)[fName].Value.(bool))
+	})
+}
+
+func checkSingleFlagConnections(t *testing.T, srv Server) {
 	str := srv.GetStreamOrNil("test").(*stream)
-	for id, c := range str.channels {
-		ch := c
+	for id, b := range str.singleFlagChannels {
+		bucket := b
 		t.Run("chan-"+id, func(t *testing.T) {
 			t.Parallel()
-			for _, b := range ch {
-				for i, conn := range b.connections {
+			for _, ch := range bucket {
+				for i, conn := range ch.connections {
 					connect := conn
 					cId := i
-					t.Run("conn"+strconv.Itoa(cId), func(t *testing.T) {
+					t.Run("conn"+strconv.Itoa(cId)+"single", func(t *testing.T) {
 						t.Parallel()
-						utils.WithTimeout(2*time.Second, func() {
+						utils.WithTimeout(10*time.Second, func() {
 							payload := <-connect.Receive()
-							assert.True(t, payload.Value.(bool))
+							assert.True(t, payload.(*model.ResponsePayload).Value.(bool))
 						})
 					})
 				}
+			}
+		})
+	}
+}
+
+func checkAllFlagsConnections(t *testing.T, srv Server) {
+	str := srv.GetStreamOrNil("test").(*stream)
+	for id, b := range str.allFlagChannels {
+		bucket := b
+		t.Run("chan-"+strconv.FormatUint(id, 10), func(t *testing.T) {
+			t.Parallel()
+			for i, conn := range bucket.connections {
+				connect := conn
+				cId := i
+				t.Run("conn"+strconv.Itoa(cId)+"all", func(t *testing.T) {
+					t.Parallel()
+					utils.WithTimeout(2*time.Second, func() {
+						payload := <-connect.Receive()
+						for _, v := range payload.(map[string]*model.ResponsePayload) {
+							assert.True(t, v.Value.(bool))
+						}
+					})
+				})
 			}
 		})
 	}

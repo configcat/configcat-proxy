@@ -63,20 +63,26 @@ func (s *HttpRouter) Close() {
 
 func (s *HttpRouter) setupSSERoutes(conf *config.SseConfig, sdkClients map[string]sdk.Client, l log.Logger) {
 	s.sseServer = sse.NewServer(sdkClients, s.metrics, conf, l)
-	path := "/sse/:sdkId/:data"
-	handler := mware.AutoOptions(s.sseServer.ServeHTTP)
-	if len(conf.Headers) > 0 {
-		handler = mware.ExtraHeaders(conf.Headers, handler)
+	endpoints := []endpoint{
+		{path: "/sse/:sdkId/eval/:data", handler: http.HandlerFunc(s.sseServer.SingleFlag), method: http.MethodGet},
+		{path: "/sse/:sdkId/eval-all/:data", handler: http.HandlerFunc(s.sseServer.AllFlags), method: http.MethodGet},
+		{path: "/sse/:sdkId/eval-all/", handler: http.HandlerFunc(s.sseServer.AllFlags), method: http.MethodGet},
 	}
-	if conf.AllowCORS {
-		handler = mware.CORS([]string{http.MethodGet, http.MethodOptions}, handler)
+	for _, endpoint := range endpoints {
+		endpoint.handler = mware.AutoOptions(endpoint.handler)
+		if len(conf.Headers) > 0 {
+			endpoint.handler = mware.ExtraHeaders(conf.Headers, endpoint.handler)
+		}
+		if conf.AllowCORS {
+			endpoint.handler = mware.CORS([]string{endpoint.method, http.MethodOptions}, endpoint.handler)
+		}
+		if l.Level() == log.Debug {
+			endpoint.handler = mware.DebugLog(l, endpoint.handler)
+		}
+		s.router.HandlerFunc(endpoint.method, endpoint.path, endpoint.handler)
+		s.router.HandlerFunc(http.MethodOptions, endpoint.path, endpoint.handler)
 	}
-	if l.Level() == log.Debug {
-		handler = mware.DebugLog(l, handler)
-	}
-	s.router.HandlerFunc(http.MethodGet, path, handler)
-	s.router.HandlerFunc(http.MethodOptions, path, handler)
-	l.Reportf("SSE enabled, listening on path: %s", path)
+	l.Reportf("SSE enabled, listening on path: /sse/*")
 }
 
 func (s *HttpRouter) setupWebhookRoutes(conf *config.WebhookConfig, sdkClients map[string]sdk.Client, l log.Logger) {

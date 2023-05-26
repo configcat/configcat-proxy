@@ -36,9 +36,9 @@ func BenchmarkStream(b *testing.B) {
 		for j := 0; j < 100; j++ {
 			user := sdk.UserAttrs{"id": "user" + strconv.Itoa(j)}
 			str := strServer.GetStreamOrNil("test")
-			conn := str.CreateConnection(sKey, user)
+			conn := str.CreateSingleFlagConnection(sKey, user)
 			<-conn.Receive()
-			str.CloseConnection(conn, sKey)
+			str.CloseSingleFlagConnection(conn, sKey)
 		}
 	}
 }

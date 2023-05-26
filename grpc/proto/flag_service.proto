@@ -2,24 +2,47 @@ syntax = "proto3";
 
 option go_package = "github.com/configcat/configcat-proxy/grpc/proto";
 
+import "google/protobuf/empty.proto";
 package configcat;
 
 service FlagService {
-  rpc EvalFlag(Request) returns (stream Payload) {}
+  rpc EvalFlagStream(EvalRequest) returns (stream EvalResponse) {}
+  rpc EvalAllFlagsStream(EvalRequest) returns (stream EvalAllResponse) {}
+
+  rpc EvalFlag(EvalRequest) returns (EvalResponse) {}
+  rpc EvalAllFlags(EvalRequest) returns (EvalAllResponse) {}
+  rpc GetKeys(KeysRequest) returns (KeysResponse) {}
+  rpc Refresh(RefreshRequest) returns (google.protobuf.Empty) {}
 }
 
-message Request {
-  string env_id = 1;
+message EvalRequest {
+  string sdk_id = 1;
   string key = 2;
   map<string, string> user = 3;
 }
 
-message Payload {
-  string variation_id = 1;
+message EvalResponse {
   oneof value {
-    int32 int_value = 2;
-    double double_value = 3;
-    string string_value = 4;
-    bool bool_value = 5;
+    int32 int_value = 1;
+    double double_value = 2;
+    string string_value = 3;
+    bool bool_value = 4;
   }
+  string variation_id = 5;
+}
+
+message EvalAllResponse {
+  map<string, EvalResponse> values = 1;
+}
+
+message KeysRequest {
+  string sdk_id = 1;
+}
+
+message KeysResponse {
+  repeated string keys = 1;
+}
+
+message RefreshRequest {
+  string sdk_id = 1;
 }
