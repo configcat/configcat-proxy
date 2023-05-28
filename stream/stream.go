@@ -8,10 +8,8 @@ import (
 )
 
 type Stream interface {
-	CreateSingleFlagConnection(key string, user sdk.UserAttrs) *Connection
-	CreateAllFlagsConnection(user sdk.UserAttrs) *Connection
-	CloseSingleFlagConnection(conn *Connection, key string)
-	CloseAllFlagsConnection(conn *Connection)
+	CreateConnection(key string, user sdk.UserAttrs) *Connection
+	CloseConnection(conn *Connection, key string)
 	Close()
 }
 
@@ -87,7 +85,7 @@ func (s *stream) run() {
 	}
 }
 
-func (s *stream) CreateSingleFlagConnection(key string, user sdk.UserAttrs) *Connection {
+func (s *stream) CreateConnection(key string, user sdk.UserAttrs) *Connection {
 	var discriminator uint64
 	if user != nil {
 		discriminator = user.Discriminator(s.seed)
@@ -102,36 +100,12 @@ func (s *stream) CreateSingleFlagConnection(key string, user sdk.UserAttrs) *Con
 	}
 }
 
-func (s *stream) CreateAllFlagsConnection(user sdk.UserAttrs) *Connection {
-	var discriminator uint64
-	if user != nil {
-		discriminator = user.Discriminator(s.seed)
-	}
-	conn := newConnection(discriminator)
-	select {
-	case <-s.stop:
-		return conn
-	default:
-		s.connEstablished <- &connEstablished{conn: conn, user: user, key: allFlagsDiscriminator}
-		return conn
-	}
-}
-
-func (s *stream) CloseSingleFlagConnection(conn *Connection, key string) {
+func (s *stream) CloseConnection(conn *Connection, key string) {
 	select {
 	case <-s.stop:
 		return
 	default:
 		s.connClosed <- &connClosed{conn: conn, key: key}
-	}
-}
-
-func (s *stream) CloseAllFlagsConnection(conn *Connection) {
-	select {
-	case <-s.stop:
-		return
-	default:
-		s.connClosed <- &connClosed{conn: conn, key: allFlagsDiscriminator}
 	}
 }
 

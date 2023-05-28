@@ -47,7 +47,7 @@ func (s *flagService) EvalFlagStream(req *proto.EvalRequest, stream proto.FlagSe
 	if str == nil {
 		return status.Error(codes.InvalidArgument, "sdk not found for identifier: '"+req.GetSdkId()+"'")
 	}
-	conn := str.CreateSingleFlagConnection(req.GetKey(), user)
+	conn := str.CreateConnection(req.GetKey(), user)
 
 	for {
 		select {
@@ -63,7 +63,7 @@ func (s *flagService) EvalFlagStream(req *proto.EvalRequest, stream proto.FlagSe
 				}
 			}
 		case <-stream.Context().Done():
-			str.CloseSingleFlagConnection(conn, req.GetKey())
+			str.CloseConnection(conn, req.GetKey())
 			return stream.Context().Err()
 		case <-s.closed:
 			return status.Error(codes.Aborted, "server down")
@@ -71,7 +71,7 @@ func (s *flagService) EvalFlagStream(req *proto.EvalRequest, stream proto.FlagSe
 	}
 }
 
-func (s *flagService) EvalAllFlagsStream(req *proto.EvalRequest, stream proto.FlagService_EvalAllFlagsStreamServer) error {
+func (s *flagService) EvalAllFlagsStream(req *proto.EvalRequest, evalStream proto.FlagService_EvalAllFlagsStreamServer) error {
 	if req.GetSdkId() == "" {
 		return status.Error(codes.InvalidArgument, "sdk id parameter missing")
 	}
@@ -85,7 +85,7 @@ func (s *flagService) EvalAllFlagsStream(req *proto.EvalRequest, stream proto.Fl
 	if str == nil {
 		return status.Error(codes.InvalidArgument, "sdk not found for identifier: '"+req.GetSdkId()+"'")
 	}
-	conn := str.CreateAllFlagsConnection(user)
+	conn := str.CreateConnection(stream.AllFlagsDiscriminator, user)
 
 	for {
 		select {
@@ -96,14 +96,14 @@ func (s *flagService) EvalAllFlagsStream(req *proto.EvalRequest, stream proto.Fl
 				for key, val := range resp {
 					responses[key] = s.toPayload(val)
 				}
-				err := stream.Send(&proto.EvalAllResponse{Values: responses})
+				err := evalStream.Send(&proto.EvalAllResponse{Values: responses})
 				if err != nil {
 					s.log.Errorf("%s", err)
 				}
 			}
-		case <-stream.Context().Done():
-			str.CloseAllFlagsConnection(conn)
-			return stream.Context().Err()
+		case <-evalStream.Context().Done():
+			str.CloseConnection(conn, stream.AllFlagsDiscriminator)
+			return evalStream.Context().Err()
 		case <-s.closed:
 			return status.Error(codes.Aborted, "server down")
 		}

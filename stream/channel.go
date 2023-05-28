@@ -5,7 +5,7 @@ import (
 	"github.com/configcat/configcat-proxy/sdk"
 )
 
-const allFlagsDiscriminator = "[ALL]"
+const AllFlagsDiscriminator = "[ALL]"
 
 type channel interface {
 	Notify(sdkClient sdk.Client, key string) int
@@ -33,7 +33,7 @@ type allFlagsChannel struct {
 }
 
 func createChannel(established *connEstablished, sdkClient sdk.Client) channel {
-	if established.key == allFlagsDiscriminator {
+	if established.key == AllFlagsDiscriminator {
 		values := sdkClient.EvalAll(established.user)
 		payloads := make(map[string]*model.ResponsePayload)
 		for key, val := range values {

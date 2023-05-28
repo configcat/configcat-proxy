@@ -50,14 +50,14 @@ func TestStreamServer_Load(t *testing.T) {
 	}
 	_ = h.SetFlags(key, flags)
 	_ = client.Refresh()
-	assert.Equal(t, connCount, len(strServer.GetStreamOrNil("test").(*stream).channels[allFlagsDiscriminator][0].(*allFlagsChannel).connections))
+	assert.Equal(t, connCount, len(strServer.GetStreamOrNil("test").(*stream).channels[AllFlagsDiscriminator][0].(*allFlagsChannel).connections))
 	t.Run("check refresh", func(t *testing.T) {
 		checkConnections(t, strServer)
 	})
 }
 
 func runSingleConnectionTest(t *testing.T, fName string, str Stream) {
-	conn := str.CreateSingleFlagConnection(fName, nil)
+	conn := str.CreateConnection(fName, nil)
 	utils.WithTimeout(2*time.Second, func() {
 		payload := <-conn.Receive()
 		assert.False(t, payload.(*model.ResponsePayload).Value.(bool))
@@ -65,7 +65,7 @@ func runSingleConnectionTest(t *testing.T, fName string, str Stream) {
 }
 
 func runAllConnectionTest(t *testing.T, fName string, str Stream) {
-	conn := str.CreateAllFlagsConnection(nil)
+	conn := str.CreateConnection(AllFlagsDiscriminator, nil)
 	utils.WithTimeout(2*time.Second, func() {
 		payload := <-conn.Receive()
 		assert.False(t, payload.(map[string]*model.ResponsePayload)[fName].Value.(bool))

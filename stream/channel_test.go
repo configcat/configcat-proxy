@@ -25,11 +25,11 @@ func TestStream_Connections(t *testing.T) {
 	user1Discriminator := user1.Discriminator(str.seed)
 	user2Discriminator := user2.Discriminator(str.seed)
 
-	conn1 := str.CreateSingleFlagConnection("test", user1)
-	conn2 := str.CreateSingleFlagConnection("test", user1)
-	conn3 := str.CreateSingleFlagConnection("test", user2)
-	conn4 := str.CreateSingleFlagConnection("test", nil)
-	conn5 := str.CreateSingleFlagConnection("test", nil)
+	conn1 := str.CreateConnection("test", user1)
+	conn2 := str.CreateConnection("test", user1)
+	conn3 := str.CreateConnection("test", user2)
+	conn4 := str.CreateConnection("test", nil)
+	conn5 := str.CreateConnection("test", nil)
 
 	time.Sleep(100 * time.Millisecond) // wait for goroutine finish adding connections
 
@@ -48,9 +48,9 @@ func TestStream_Connections(t *testing.T) {
 	assert.Equal(t, user2, str.channels["test"][user2Discriminator].(*singleFlagChannel).user)
 	assert.Nil(t, str.channels["test"][0].(*singleFlagChannel).user)
 
-	str.CloseSingleFlagConnection(conn2, "test")
-	str.CloseSingleFlagConnection(conn3, "test")
-	str.CloseSingleFlagConnection(conn4, "test")
+	str.CloseConnection(conn2, "test")
+	str.CloseConnection(conn3, "test")
+	str.CloseConnection(conn4, "test")
 
 	time.Sleep(100 * time.Millisecond) // wait for goroutine finish removing connections
 
@@ -59,8 +59,8 @@ func TestStream_Connections(t *testing.T) {
 	assert.Nil(t, str.channels["test"][user2Discriminator])
 	assert.Equal(t, 1, len(str.channels["test"][0].(*singleFlagChannel).connections))
 
-	str.CloseSingleFlagConnection(conn1, "test")
-	str.CloseSingleFlagConnection(conn5, "test")
+	str.CloseConnection(conn1, "test")
+	str.CloseConnection(conn5, "test")
 
 	time.Sleep(100 * time.Millisecond) // wait for goroutine finish removing connections
 	assert.Empty(t, str.channels)
@@ -77,8 +77,8 @@ func TestStream_Close(t *testing.T) {
 	user1Discriminator := user1.Discriminator(str.seed)
 	user2Discriminator := user2.Discriminator(str.seed)
 
-	_ = str.CreateSingleFlagConnection("test", user1)
-	_ = str.CreateSingleFlagConnection("test", user2)
+	_ = str.CreateConnection("test", user1)
+	_ = str.CreateConnection("test", user2)
 
 	time.Sleep(100 * time.Millisecond) // wait for goroutine finish adding connections
 
@@ -87,8 +87,8 @@ func TestStream_Close(t *testing.T) {
 	assert.Equal(t, 1, len(str.channels["test"][user2Discriminator].(*singleFlagChannel).connections))
 
 	str.Close()
-	_ = str.CreateSingleFlagConnection("test", user1)
-	_ = str.CreateSingleFlagConnection("test", user2)
+	_ = str.CreateConnection("test", user1)
+	_ = str.CreateConnection("test", user2)
 }
 
 func TestStream_Collision(t *testing.T) {
@@ -103,7 +103,7 @@ func TestStream_Collision(t *testing.T) {
 		go func(it int) {
 			is := strconv.Itoa(it)
 			user := sdk.UserAttrs{"id": "u" + is}
-			_ = str.CreateSingleFlagConnection("test", user)
+			_ = str.CreateConnection("test", user)
 			wg.Done()
 		}(i)
 	}
@@ -111,7 +111,7 @@ func TestStream_Collision(t *testing.T) {
 		go func(it int) {
 			is := strconv.Itoa(it)
 			user := sdk.UserAttrs{"id": "u" + is}
-			_ = str.CreateAllFlagsConnection(user)
+			_ = str.CreateConnection(AllFlagsDiscriminator, user)
 			wg.Done()
 		}(i)
 	}
@@ -120,5 +120,5 @@ func TestStream_Collision(t *testing.T) {
 	time.Sleep(200 * time.Millisecond)
 
 	assert.Equal(t, iter, len(str.channels["test"]))
-	assert.Equal(t, iter, len(str.channels[allFlagsDiscriminator]))
+	assert.Equal(t, iter, len(str.channels[AllFlagsDiscriminator]))
 }

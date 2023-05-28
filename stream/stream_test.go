@@ -20,8 +20,8 @@ func TestStream_Receive(t *testing.T) {
 	str := NewStream("test", clients["test"], nil, log.NewNullLogger(), "test")
 	defer str.Close()
 
-	sConn := str.CreateSingleFlagConnection("flag", nil)
-	aConn := str.CreateAllFlagsConnection(nil)
+	sConn := str.CreateConnection("flag", nil)
+	aConn := str.CreateConnection(AllFlagsDiscriminator, nil)
 	utils.WithTimeout(2*time.Second, func() {
 		pyl := <-sConn.Receive()
 		assert.True(t, pyl.(*model.ResponsePayload).Value.(bool))
@@ -55,8 +55,8 @@ func TestStream_Offline_Receive(t *testing.T) {
 		str := NewStream("test", client, nil, log.NewNullLogger(), "test")
 		defer str.Close()
 
-		sConn := str.CreateSingleFlagConnection("flag", nil)
-		aConn := str.CreateAllFlagsConnection(nil)
+		sConn := str.CreateConnection("flag", nil)
+		aConn := str.CreateConnection(AllFlagsDiscriminator, nil)
 		utils.WithTimeout(2*time.Second, func() {
 			pyl := <-sConn.Receive()
 			assert.True(t, pyl.(*model.ResponsePayload).Value.(bool))
@@ -81,8 +81,8 @@ func TestStream_Receive_Close(t *testing.T) {
 	clients, _, _ := testutils.NewTestSdkClient(t)
 
 	str := NewStream("test", clients["test"], nil, log.NewNullLogger(), "test")
-	sConn := str.CreateSingleFlagConnection("flag", nil)
-	aConn := str.CreateAllFlagsConnection(nil)
+	sConn := str.CreateConnection("flag", nil)
+	aConn := str.CreateConnection(AllFlagsDiscriminator, nil)
 	utils.WithTimeout(2*time.Second, func() {
 		pyl := <-sConn.Receive()
 		assert.True(t, pyl.(*model.ResponsePayload).Value.(bool))
@@ -92,10 +92,10 @@ func TestStream_Receive_Close(t *testing.T) {
 		assert.True(t, pyl.(map[string]*model.ResponsePayload)["flag"].Value.(bool))
 	})
 	str.Close()
-	_ = str.CreateSingleFlagConnection("flag", nil)
-	_ = str.CreateSingleFlagConnection("flag", nil)
-	_ = str.CreateAllFlagsConnection(nil)
-	_ = str.CreateAllFlagsConnection(nil)
+	_ = str.CreateConnection("flag", nil)
+	_ = str.CreateConnection("flag", nil)
+	_ = str.CreateConnection(AllFlagsDiscriminator, nil)
+	_ = str.CreateConnection(AllFlagsDiscriminator, nil)
 }
 
 func TestStream_Goroutines(t *testing.T) {
@@ -107,26 +107,26 @@ func TestStream_Goroutines(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 	count := runtime.NumGoroutine()
 
-	conn1 := str.CreateSingleFlagConnection("flag", nil)
-	conn2 := str.CreateSingleFlagConnection("flag", sdk.UserAttrs{"id": "1"})
-	conn3 := str.CreateSingleFlagConnection("flag", sdk.UserAttrs{"id": "1"})
-	conn4 := str.CreateSingleFlagConnection("flag", sdk.UserAttrs{"id": "2"})
-	conn5 := str.CreateSingleFlagConnection("flag", nil)
-	conn6 := str.CreateSingleFlagConnection("flag", nil)
-	conn7 := str.CreateAllFlagsConnection(nil)
-	conn8 := str.CreateAllFlagsConnection(nil)
-	conn9 := str.CreateAllFlagsConnection(nil)
+	conn1 := str.CreateConnection("flag", nil)
+	conn2 := str.CreateConnection("flag", sdk.UserAttrs{"id": "1"})
+	conn3 := str.CreateConnection("flag", sdk.UserAttrs{"id": "1"})
+	conn4 := str.CreateConnection("flag", sdk.UserAttrs{"id": "2"})
+	conn5 := str.CreateConnection("flag", nil)
+	conn6 := str.CreateConnection("flag", nil)
+	conn7 := str.CreateConnection(AllFlagsDiscriminator, nil)
+	conn8 := str.CreateConnection(AllFlagsDiscriminator, nil)
+	conn9 := str.CreateConnection(AllFlagsDiscriminator, nil)
 
 	defer func() {
-		str.CloseSingleFlagConnection(conn1, "flag")
-		str.CloseSingleFlagConnection(conn2, "flag")
-		str.CloseSingleFlagConnection(conn3, "flag")
-		str.CloseSingleFlagConnection(conn4, "flag")
-		str.CloseSingleFlagConnection(conn5, "flag")
-		str.CloseSingleFlagConnection(conn6, "flag")
-		str.CloseAllFlagsConnection(conn7)
-		str.CloseAllFlagsConnection(conn8)
-		str.CloseAllFlagsConnection(conn9)
+		str.CloseConnection(conn1, "flag")
+		str.CloseConnection(conn2, "flag")
+		str.CloseConnection(conn3, "flag")
+		str.CloseConnection(conn4, "flag")
+		str.CloseConnection(conn5, "flag")
+		str.CloseConnection(conn6, "flag")
+		str.CloseConnection(conn7, AllFlagsDiscriminator)
+		str.CloseConnection(conn8, AllFlagsDiscriminator)
+		str.CloseConnection(conn9, AllFlagsDiscriminator)
 	}()
 
 	time.Sleep(100 * time.Millisecond)

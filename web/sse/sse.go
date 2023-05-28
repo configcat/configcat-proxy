@@ -55,12 +55,12 @@ func (s *Server) SingleFlag(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	conn := str.CreateSingleFlagConnection(evalReq.Key, evalReq.User)
+	conn := str.CreateConnection(evalReq.Key, evalReq.User)
 	w.WriteHeader(http.StatusOK)
 	flusher.Flush()
 
 	if s.listenAndRespond(conn, w, r, flusher) {
-		str.CloseSingleFlagConnection(conn, evalReq.Key)
+		str.CloseConnection(conn, evalReq.Key)
 	}
 }
 
@@ -78,12 +78,12 @@ func (s *Server) AllFlags(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	conn := str.CreateAllFlagsConnection(evalReq.User)
+	conn := str.CreateConnection(stream.AllFlagsDiscriminator, evalReq.User)
 	w.WriteHeader(http.StatusOK)
 	flusher.Flush()
 
 	if s.listenAndRespond(conn, w, r, flusher) {
-		str.CloseAllFlagsConnection(conn)
+		str.CloseConnection(conn, stream.AllFlagsDiscriminator)
 	}
 }
 
