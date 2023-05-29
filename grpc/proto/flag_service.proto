@@ -6,44 +6,66 @@ package configcat;
 
 import "google/protobuf/empty.proto";
 
+// Service that contains feature flag evaluation procedures.
 service FlagService {
+  // Stream for getting notified when a feature flag's value changes.
   rpc EvalFlagStream(EvalRequest) returns (stream EvalResponse) {}
+  // Stream for getting notified when any feature flag's value changes.
   rpc EvalAllFlagsStream(EvalRequest) returns (stream EvalAllResponse) {}
 
+  // Evaluates a feature flag.
   rpc EvalFlag(EvalRequest) returns (EvalResponse) {}
+  // Evaluates each feature flag.
   rpc EvalAllFlags(EvalRequest) returns (EvalAllResponse) {}
+  // Requests the keys of each feature flag.
   rpc GetKeys(KeysRequest) returns (KeysResponse) {}
+  // Commands the underlying SDK to refresh its evaluation data.
   rpc Refresh(RefreshRequest) returns (google.protobuf.Empty) {}
 }
 
+// Feature flag evaluation request message.
 message EvalRequest {
+  // The SDK identifier.
   string sdk_id = 1;
+  // The feature flag's key to evaluate.
   string key = 2;
+  // The user object.
   map<string, string> user = 3;
 }
 
+// Feature flag evaluation response message.
 message EvalResponse {
+  // The evaluated value.
   oneof value {
     int32 int_value = 1;
     double double_value = 2;
     string string_value = 3;
     bool bool_value = 4;
   }
+  // The variation ID.
   string variation_id = 5;
 }
 
+// Response message that contains the evaluation result of each feature flag.
 message EvalAllResponse {
+  // The evaluated value of each feature flag.
   map<string, EvalResponse> values = 1;
 }
 
+// Request message for getting each available feature flag's key.
 message KeysRequest {
+  // The SDK identifier.
   string sdk_id = 1;
 }
 
+// Response message that contains each available feature flag's key.
 message KeysResponse {
+  // The keys of each feature flag.
   repeated string keys = 1;
 }
 
+// Request message for the given SDK to refresh its evaluation data.
 message RefreshRequest {
+  // The SDK identifier.
   string sdk_id = 1;
 }
