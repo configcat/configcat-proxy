@@ -2,8 +2,9 @@ syntax = "proto3";
 
 option go_package = "github.com/configcat/configcat-proxy/grpc/proto";
 
-import "google/protobuf/empty.proto";
 package configcat;
+
+import "google/protobuf/empty.proto";
 
 service FlagService {
   rpc EvalFlagStream(EvalRequest) returns (stream EvalResponse) {}
