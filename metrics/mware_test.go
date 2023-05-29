@@ -73,5 +73,5 @@ func TestIntercept(t *testing.T) {
 	body, _ := io.ReadAll(resp.Body)
 	_ = resp.Body.Close()
 
-	assert.Contains(t, string(body), "configcat_sdk_http_request_duration_seconds_bucket{env=\"test\",route=\""+srv.URL+"\",status=\"200 OK\",le=\"0.005\"} 1")
+	assert.Contains(t, string(body), "configcat_sdk_http_request_duration_seconds_bucket{route=\""+srv.URL+"\",sdk=\"test\",status=\"200 OK\",le=\"0.005\"} 1")
 }

@@ -15,8 +15,8 @@ import (
 )
 
 type Handler interface {
-	IncrementConnection(envId string, streamType string, flag string)
-	DecrementConnection(envId string, streamType string, flag string)
+	IncrementConnection(sdkId string, streamType string, flag string)
+	DecrementConnection(sdkId string, streamType string, flag string)
 
 	HttpHandler() http.Handler
 }
@@ -60,7 +60,7 @@ func NewHandler() Handler {
 	respTime := prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Namespace: "configcat",
 		Name:      "http_request_duration_seconds",
-		Help:      "Histogram of HTTP response time in seconds.",
+		Help:      "Histogram of Proxy HTTP response time in seconds.",
 		Buckets:   prometheus.DefBuckets,
 	}, []string{"route", "method", "status"})
 
@@ -69,13 +69,13 @@ func NewHandler() Handler {
 		Name:      "sdk_http_request_duration_seconds",
 		Help:      "Histogram of ConfigCat CDN HTTP response time in seconds.",
 		Buckets:   prometheus.DefBuckets,
-	}, []string{"env", "route", "status"})
+	}, []string{"sdk", "route", "status"})
 
 	connections := prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: "configcat",
 		Name:      "stream_connections",
 		Help:      "Number of active client connections per stream.",
-	}, []string{"env", "type", "flag"})
+	}, []string{"sdk", "type", "flag"})
 
 	reg.MustRegister(
 		collectors.NewGoCollector(),
@@ -122,10 +122,10 @@ func (h *handler) HttpHandler() http.Handler {
 	return promhttp.HandlerFor(h.registry, promhttp.HandlerOpts{Registry: h.registry})
 }
 
-func (h *handler) IncrementConnection(envId string, streamType string, flag string) {
-	h.connections.WithLabelValues(envId, streamType, flag).Inc()
+func (h *handler) IncrementConnection(sdkId string, streamType string, flag string) {
+	h.connections.WithLabelValues(sdkId, streamType, flag).Inc()
 }
 
-func (h *handler) DecrementConnection(envId string, streamType string, flag string) {
-	h.connections.WithLabelValues(envId, streamType, flag).Dec()
+func (h *handler) DecrementConnection(sdkId string, streamType string, flag string) {
+	h.connections.WithLabelValues(sdkId, streamType, flag).Dec()
 }
