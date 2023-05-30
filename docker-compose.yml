@@ -12,7 +12,7 @@ configs:
     file: internal/resources/monitor/grafana_ds.yml
   grafana_dashboards_2:
     file: internal/resources/monitor/dashboards.yml
-  grafana_dashboard_8:
+  grafana_dashboard_9:
     file: internal/resources/monitor/proxy_dashboard.json
 
 services:
@@ -70,7 +70,7 @@ services:
         target: /etc/grafana/provisioning/datasources/prometheus.yml
       - source: grafana_dashboards_2
         target: /etc/grafana/provisioning/dashboards/dashboards.yml
-      - source: grafana_dashboard_8
+      - source: grafana_dashboard_9
         target: /etc/grafana/provisioning/dashboards/proxy/proxy_dashboard.json
 
   redis:

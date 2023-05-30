@@ -22,8 +22,8 @@ export const options = {
 };
 
 export default function () {
-    const BASE_URL1 = "https://localhost:8050/api/env1";
-    const BASE_URL2 = "https://localhost:8050/api/env2";
+    const BASE_URL1 = "https://localhost:8050/api/sdk1";
+    const BASE_URL2 = "https://localhost:8050/api/sdk2";
 
     const payload = JSON.stringify({
         user: {

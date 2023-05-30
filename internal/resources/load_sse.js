@@ -8,7 +8,7 @@ export const options = {
 };
 
 export default function () {
-    const BASE_URL1 = "https://localhost:8050/sse/env1";
+    const BASE_URL1 = "https://localhost:8050/sse/sdk1/eval";
 
     const payload = {
         key: "textsetting",

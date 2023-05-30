@@ -25,12 +25,12 @@ export default function () {
     const responses = http.batch([
         [
             "GET",
-            `https://localhost:8050/configuration-files/env1/config_v5.json`,
+            `https://localhost:8050/configuration-files/sdk1/config_v5.json`,
             null,
         ],
         [
             "GET",
-            `https://localhost:8050/configuration-files/env2/config_v5.json`,
+            `https://localhost:8050/configuration-files/sdk2/config_v5.json`,
             null,
         ],
     ]);

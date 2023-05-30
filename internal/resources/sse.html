@@ -13,7 +13,7 @@
         }
     }
     const data = btoa(JSON.stringify(user))
-    const evtSource = new EventSource("https://localhost:8050/sse/env1/" + data);
+    const evtSource = new EventSource("https://localhost:8050/sse/sdk1/eval/" + data);
     evtSource.onmessage = (event) => {
         console.log(event.data);
     };
