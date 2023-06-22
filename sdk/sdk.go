@@ -39,7 +39,7 @@ type EvalData struct {
 }
 
 type Context struct {
-	EnvId          string
+	SdkId          string
 	SDKConf        *config.SDKConfig
 	ProxyConf      *config.HttpProxyConfig
 	CacheConf      *config.CacheConfig
@@ -63,14 +63,14 @@ type client struct {
 }
 
 func NewClient(sdkCtx *Context, log log.Logger) Client {
-	sdkLog := log.WithLevel(sdkCtx.SDKConf.Log.GetLevel()).WithPrefix("sdk-" + sdkCtx.EnvId)
+	sdkLog := log.WithLevel(sdkCtx.SDKConf.Log.GetLevel()).WithPrefix("sdk-" + sdkCtx.SdkId)
 	var offline = sdkCtx.SDKConf.Offline.Enabled
 	var storage store.CacheStorage
 	if offline && sdkCtx.SDKConf.Offline.Local.FilePath != "" {
-		storage = file.NewFileStorage(sdkCtx.EnvId, &sdkCtx.SDKConf.Offline.Local, sdkCtx.StatusReporter, log.WithLevel(sdkCtx.SDKConf.Offline.Log.GetLevel()))
+		storage = file.NewFileStorage(sdkCtx.SdkId, &sdkCtx.SDKConf.Offline.Local, sdkCtx.StatusReporter, log.WithLevel(sdkCtx.SDKConf.Offline.Log.GetLevel()))
 	} else if offline && sdkCtx.SDKConf.Offline.UseCache && sdkCtx.CacheConf.Redis.Enabled {
 		redisStore := redis.NewRedisStorage(sdkCtx.SDKConf.Key, &sdkCtx.CacheConf.Redis, sdkCtx.StatusReporter)
-		storage = cache.NewNotifyingCacheStorage(sdkCtx.EnvId, redisStore, &sdkCtx.SDKConf.Offline, sdkCtx.StatusReporter, log.WithLevel(sdkCtx.SDKConf.Offline.Log.GetLevel()))
+		storage = cache.NewNotifyingCacheStorage(sdkCtx.SdkId, redisStore, &sdkCtx.SDKConf.Offline, sdkCtx.StatusReporter, log.WithLevel(sdkCtx.SDKConf.Offline.Log.GetLevel()))
 	} else if !offline && sdkCtx.CacheConf.Redis.Enabled {
 		storage = redis.NewRedisStorage(sdkCtx.SDKConf.Key, &sdkCtx.CacheConf.Redis, sdkCtx.StatusReporter)
 	} else {
@@ -111,9 +111,9 @@ func NewClient(sdkCtx *Context, log log.Logger) Client {
 			client.signal()
 		}
 		if sdkCtx.MetricsHandler != nil {
-			clientConfig.Transport = metrics.InterceptSdk(sdkCtx.EnvId, sdkCtx.MetricsHandler, clientConfig.Transport)
+			clientConfig.Transport = metrics.InterceptSdk(sdkCtx.SdkId, sdkCtx.MetricsHandler, clientConfig.Transport)
 		}
-		clientConfig.Transport = status.InterceptSdk(sdkCtx.EnvId, sdkCtx.StatusReporter, clientConfig.Transport)
+		clientConfig.Transport = status.InterceptSdk(sdkCtx.SdkId, sdkCtx.StatusReporter, clientConfig.Transport)
 	} else {
 		clientConfig.PollingMode = configcat.Manual
 		close(client.ready) // in OFFLINE mode we are ready immediately
@@ -126,7 +126,7 @@ func NewClient(sdkCtx *Context, log log.Logger) Client {
 					user = userAttrs
 				}
 			}
-			sdkCtx.EvalReporter.ReportEvaluation(sdkCtx.EnvId, details.Data.Key, details.Value, user)
+			sdkCtx.EvalReporter.ReportEvaluation(sdkCtx.SdkId, details.Data.Key, details.Value, user)
 		}
 	}
 	if sdkCtx.SDKConf.DataGovernance == "eu" {

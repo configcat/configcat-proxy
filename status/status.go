@@ -92,18 +92,18 @@ func NewReporter(conf *config.Config) Reporter {
 		},
 	}
 	sdks := make(map[string]*SdkStatus, len(conf.SDKs))
-	for key, env := range conf.SDKs {
+	for key, sdk := range conf.SDKs {
 		status := &SdkStatus{
 			Mode:   Online,
-			SdkKey: utils.Obfuscate(env.Key, 5),
+			SdkKey: utils.Obfuscate(sdk.Key, 5),
 			Source: SdkSourceStatus{
 				Type:   RemoteSrc,
 				Status: Healthy,
 			},
 		}
-		if env.Offline.Enabled {
+		if sdk.Offline.Enabled {
 			status.Mode = Offline
-			if env.Offline.Local.FilePath != "" {
+			if sdk.Offline.Local.FilePath != "" {
 				status.Source.Type = FileSrc
 				r.status.Cache.Status = NA
 			} else {

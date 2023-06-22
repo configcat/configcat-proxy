@@ -229,35 +229,35 @@ func (c *Config) setDefaults() {
 }
 
 func (c *Config) fixupDefaults() {
-	for _, env := range c.SDKs {
-		if env == nil {
+	for _, sdk := range c.SDKs {
+		if sdk == nil {
 			continue
 		}
-		if env.WebhookSignatureValidFor == 0 {
-			env.WebhookSignatureValidFor = 300
+		if sdk.WebhookSignatureValidFor == 0 {
+			sdk.WebhookSignatureValidFor = 300
 		}
-		if env.PollInterval == 0 {
-			env.PollInterval = 30
+		if sdk.PollInterval == 0 {
+			sdk.PollInterval = 30
 		}
-		if env.Offline.Local.PollInterval == 0 {
-			env.Offline.Local.PollInterval = 5
+		if sdk.Offline.Local.PollInterval == 0 {
+			sdk.Offline.Local.PollInterval = 5
 		}
-		if env.Offline.CachePollInterval == 0 {
-			env.Offline.CachePollInterval = 5
+		if sdk.Offline.CachePollInterval == 0 {
+			sdk.Offline.CachePollInterval = 5
 		}
 	}
 }
 
 func (c *Config) fixupLogLevels(defLevel string) {
-	for _, env := range c.SDKs {
-		if env == nil {
+	for _, sdk := range c.SDKs {
+		if sdk == nil {
 			continue
 		}
-		if env.Log.GetLevel() == log.None {
-			env.Log.Level = defLevel
+		if sdk.Log.GetLevel() == log.None {
+			sdk.Log.Level = defLevel
 		}
-		if env.Offline.Log.GetLevel() == log.None {
-			env.Offline.Log.Level = defLevel
+		if sdk.Offline.Log.GetLevel() == log.None {
+			sdk.Offline.Log.Level = defLevel
 		}
 	}
 	if c.Http.Log.GetLevel() == log.None {

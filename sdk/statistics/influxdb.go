@@ -36,8 +36,8 @@ func NewInfluxDbReporter(conf *config.InfluxDbConfig) Reporter {
 	}
 }
 
-func (r *influxReporter) ReportEvaluation(envId string, flagKey string, value interface{}, attrs map[string]string) {
-	point := influxdb2.NewPointWithMeasurement(envId).
+func (r *influxReporter) ReportEvaluation(sdkId string, flagKey string, value interface{}, attrs map[string]string) {
+	point := influxdb2.NewPointWithMeasurement(sdkId).
 		AddTag("flag_key", flagKey).
 		AddTag("flag_eval_value", fmt.Sprintf("%v", value)).
 		AddField("value", 1).

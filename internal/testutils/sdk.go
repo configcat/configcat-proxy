@@ -40,6 +40,6 @@ func NewTestSdkContext(conf *config.SDKConfig, cacheConf *config.CacheConfig) *s
 		StatusReporter: status.NewNullReporter(),
 		MetricsHandler: nil,
 		EvalReporter:   nil,
-		EnvId:          "test",
+		SdkId:          "test",
 	}
 }

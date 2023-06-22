@@ -21,17 +21,17 @@ type notifyingCacheStorage struct {
 	reporter  status.Reporter
 	ctx       context.Context
 	ctxCancel func()
-	envId     string
+	sdkId     string
 }
 
-func NewNotifyingCacheStorage(envId string, cache store.CacheStorage, conf *config.OfflineConfig, reporter status.Reporter, log log.Logger) store.NotifyingStorage {
+func NewNotifyingCacheStorage(sdkId string, cache store.CacheStorage, conf *config.OfflineConfig, reporter status.Reporter, log log.Logger) store.NotifyingStorage {
 	nrLogger := log.WithPrefix("cache-poll")
 	n := &notifyingCacheStorage{
 		CacheStorage: cache,
 		Notifier:     store.NewNotifier(),
 		reporter:     reporter,
 		log:          nrLogger,
-		envId:        envId,
+		sdkId:        sdkId,
 		poller:       time.NewTicker(time.Duration(conf.CachePollInterval) * time.Second),
 	}
 	n.ctx, n.ctxCancel = context.WithCancel(context.Background())
@@ -57,25 +57,25 @@ func (n *notifyingCacheStorage) reload() bool {
 	data, err := n.CacheStorage.Get(n.ctx, "")
 	if err != nil {
 		n.log.Errorf("failed to read from redis: %s", err)
-		n.reporter.ReportError(n.envId, err)
+		n.reporter.ReportError(n.sdkId, err)
 		return false
 	}
 	if bytes.Equal(n.stored, data) {
-		n.reporter.ReportOk(n.envId, "config from cache not modified")
+		n.reporter.ReportOk(n.sdkId, "config from cache not modified")
 		return false
 	}
 	n.log.Debugf("new JSON received from redis, reloading")
 	var root store.RootNode
 	if err = json.Unmarshal(data, &root); err != nil {
 		n.log.Errorf("failed to parse JSON from redis: %s", err)
-		n.reporter.ReportError(n.envId, err)
+		n.reporter.ReportError(n.sdkId, err)
 		return false
 	}
 	n.stored = data
 	root.Fixup()
 	ser, _ := json.Marshal(root) // Re-serialize to enforce the JSON schema
 	n.StoreEntry(ser)
-	n.reporter.ReportOk(n.envId, "reload from cache succeeded")
+	n.reporter.ReportOk(n.sdkId, "reload from cache succeeded")
 	return true
 }
 

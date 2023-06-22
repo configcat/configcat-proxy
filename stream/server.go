@@ -7,7 +7,7 @@ import (
 )
 
 type Server interface {
-	GetStreamOrNil(envId string) Stream
+	GetStreamOrNil(sdkId string) Stream
 	Close()
 }
 
@@ -28,8 +28,8 @@ func NewServer(sdkClients map[string]sdk.Client, metrics metrics.Handler, log lo
 	}
 }
 
-func (s *server) GetStreamOrNil(envId string) Stream {
-	if stream, ok := s.streams[envId]; ok {
+func (s *server) GetStreamOrNil(sdkId string) Stream {
+	if stream, ok := s.streams[sdkId]; ok {
 		return stream
 	}
 	return nil

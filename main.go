@@ -53,15 +53,15 @@ func main() {
 
 	statusReporter := status.NewReporter(&conf)
 	sdkClients := make(map[string]sdk.Client)
-	for key, env := range conf.SDKs {
+	for key, sdkConf := range conf.SDKs {
 		sdkClients[key] = sdk.NewClient(&sdk.Context{
-			SDKConf:        env,
+			SDKConf:        sdkConf,
 			EvalReporter:   evalReporter,
 			MetricsHandler: metricsHandler,
 			StatusReporter: statusReporter,
 			ProxyConf:      &conf.HttpProxy,
 			CacheConf:      &conf.Cache,
-			EnvId:          key,
+			SdkId:          key,
 		}, logger)
 	}
 	router := web.NewRouter(sdkClients, metricsHandler, statusReporter, &conf.Http, logger)
