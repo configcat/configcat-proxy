@@ -81,9 +81,8 @@ Using with `docker-compose`:
 
 You can download the executables directly from <a target="_blank" href="https://github.com/configcat/configcat-proxy/releases">GitHub Releases</a> for your desired platform.
 
-
-> [!NOTE]\
-> After intallation, you can check the [status endpoint](https://configcat.com/docs/advanced/proxy/monitoring#status) of the Proxy to ensure it's working correctly: `http(s)://localhost:8050/status`
+## Health Check
+After intallation, you can check the [status endpoint](https://configcat.com/docs/advanced/proxy/monitoring#status) of the Proxy to ensure it's working correctly: `http(s)://localhost:8050/status`
 
 ## Need help?
 https://configcat.com/support
