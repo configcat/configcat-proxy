@@ -1,9 +1,10 @@
 package log
 
 import (
-	"github.com/configcat/go-sdk/v7"
+	"github.com/configcat/go-sdk/v8"
 	"io"
 	"log"
+	"os"
 )
 
 type Level int
@@ -42,6 +43,14 @@ type logger struct {
 
 func NewNullLogger() Logger {
 	return &logger{level: None}
+}
+
+func NewDebugLogger() Logger {
+	return &logger{
+		level:       Debug,
+		errorLogger: log.New(os.Stderr, "", log.Ldate),
+		outLogger:   log.New(os.Stdout, "", log.Ldate),
+	}
 }
 
 func NewLogger(err io.Writer, out io.Writer, level Level) Logger {

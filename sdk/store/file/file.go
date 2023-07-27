@@ -9,6 +9,7 @@ import (
 	"github.com/configcat/configcat-proxy/sdk/store"
 	"github.com/configcat/configcat-proxy/status"
 	"os"
+	"time"
 )
 
 type watcher interface {
@@ -97,13 +98,13 @@ func (f *fileStorage) reload() bool {
 	f.stored = data
 	root.Fixup()
 	ser, _ := json.Marshal(root) // Re-serialize to enforce the JSON schema
-	f.StoreEntry(ser)
+	f.StoreEntry(ser, time.Now().UTC(), "from-file-etag")
 	f.reporter.ReportOk(f.sdkId, "file source reloaded")
 	return true
 }
 
 func (f *fileStorage) Get(_ context.Context, _ string) ([]byte, error) {
-	return f.LoadEntry().CachedJson, nil
+	return f.ComposeBytes(), nil
 }
 
 func (f *fileStorage) Set(_ context.Context, _ string, _ []byte) error {

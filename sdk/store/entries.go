@@ -3,7 +3,9 @@ package store
 import (
 	"encoding/json"
 	"github.com/configcat/configcat-proxy/internal/utils"
+	"github.com/configcat/go-sdk/v8/configcatcache"
 	"sync/atomic"
+	"time"
 )
 
 type RootNode struct {
@@ -55,13 +57,15 @@ func (r *RootNode) Fixup() {
 
 type EntryStore interface {
 	LoadEntry() *EntryWithEtag
-	StoreEntry(data []byte)
-	GetLatestJson() *EntryWithEtag
+	ComposeBytes() []byte
+	StoreEntry(data []byte, fetchTime time.Time, eTag string)
 }
 
 type EntryWithEtag struct {
-	CachedJson []byte
-	Etag       string
+	ConfigJson    []byte
+	CachedETag    string
+	FetchTime     time.Time
+	GeneratedETag string
 }
 
 type entryStore struct {
@@ -76,7 +80,7 @@ func NewEntryStore() EntryStore {
 	root := RootNode{}
 	root.Fixup()
 	initial, _ := json.Marshal(root)
-	e.entry.Store(parseEntryWithEtag(initial))
+	e.entry.Store(parseEntryWithEtag(initial, time.Time{}, "initial-etag"))
 	return &e
 }
 
@@ -84,15 +88,19 @@ func (e *entryStore) LoadEntry() *EntryWithEtag {
 	return e.entry.Load()
 }
 
-func (e *entryStore) StoreEntry(data []byte) {
-	e.entry.Store(parseEntryWithEtag(data))
+func (e *entryStore) ComposeBytes() []byte {
+	entry := e.entry.Load()
+	return configcatcache.CacheSegmentsToBytes(entry.FetchTime, entry.CachedETag, entry.ConfigJson)
 }
 
-func (e *entryStore) GetLatestJson() *EntryWithEtag {
-	return e.LoadEntry()
+func (e *entryStore) StoreEntry(configJson []byte, fetchTime time.Time, eTag string) {
+	e.entry.Store(parseEntryWithEtag(configJson, fetchTime, eTag))
 }
 
-func parseEntryWithEtag(data []byte) *EntryWithEtag {
-	etag := "W/" + "\"" + utils.FastHashHex(data) + "\""
-	return &EntryWithEtag{CachedJson: data, Etag: etag}
+func parseEntryWithEtag(configJson []byte, fetchTime time.Time, eTag string) *EntryWithEtag {
+	return &EntryWithEtag{
+		ConfigJson:    configJson,
+		GeneratedETag: utils.GenerateEtag(configJson),
+		CachedETag:    eTag,
+		FetchTime:     fetchTime}
 }

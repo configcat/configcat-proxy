@@ -15,7 +15,7 @@ var defaultAllowedHeaders = strings.Join([]string{
 
 var defaultExposedHeaders = strings.Join([]string{
 	"Content-Length",
-	"ETag",
+	"GeneratedETag",
 	"Date",
 	"Content-Encoding",
 }, ",")

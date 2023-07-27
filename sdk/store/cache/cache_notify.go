@@ -1,13 +1,13 @@
 package cache
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/sdk/store"
 	"github.com/configcat/configcat-proxy/status"
+	"github.com/configcat/go-sdk/v8/configcatcache"
 	"time"
 )
 
@@ -16,19 +16,20 @@ type notifyingCacheStorage struct {
 	store.Notifier
 
 	poller    *time.Ticker
-	stored    []byte
 	log       log.Logger
 	reporter  status.Reporter
 	ctx       context.Context
 	ctxCancel func()
 	sdkId     string
+	cacheKey  string
 }
 
-func NewNotifyingCacheStorage(sdkId string, cache store.CacheStorage, conf *config.OfflineConfig, reporter status.Reporter, log log.Logger) store.NotifyingStorage {
+func NewNotifyingCacheStorage(sdkId string, sdkKey string, cache store.CacheStorage, conf *config.OfflineConfig, reporter status.Reporter, log log.Logger) store.NotifyingStorage {
 	nrLogger := log.WithPrefix("cache-poll")
 	n := &notifyingCacheStorage{
 		CacheStorage: cache,
 		Notifier:     store.NewNotifier(),
+		cacheKey:     configcatcache.ProduceCacheKey(sdkKey),
 		reporter:     reporter,
 		log:          nrLogger,
 		sdkId:        sdkId,
@@ -54,33 +55,39 @@ func (n *notifyingCacheStorage) run() {
 }
 
 func (n *notifyingCacheStorage) reload() bool {
-	data, err := n.CacheStorage.Get(n.ctx, "")
+	data, err := n.CacheStorage.Get(n.ctx, n.cacheKey)
 	if err != nil {
 		n.log.Errorf("failed to read from redis: %s", err)
 		n.reporter.ReportError(n.sdkId, err)
 		return false
 	}
-	if bytes.Equal(n.stored, data) {
+	fetchTime, eTag, configJson, err := configcatcache.CacheSegmentsFromBytes(data)
+	if err != nil {
+		n.log.Errorf("failed to recognise the cache format: %s", err)
+		n.reporter.ReportError(n.sdkId, err)
+		return false
+	}
+	if n.LoadEntry().CachedETag == eTag {
 		n.reporter.ReportOk(n.sdkId, "config from cache not modified")
 		return false
 	}
 	n.log.Debugf("new JSON received from redis, reloading")
+
 	var root store.RootNode
-	if err = json.Unmarshal(data, &root); err != nil {
+	if err = json.Unmarshal(configJson, &root); err != nil {
 		n.log.Errorf("failed to parse JSON from redis: %s", err)
 		n.reporter.ReportError(n.sdkId, err)
 		return false
 	}
-	n.stored = data
 	root.Fixup()
 	ser, _ := json.Marshal(root) // Re-serialize to enforce the JSON schema
-	n.StoreEntry(ser)
+	n.StoreEntry(ser, fetchTime, eTag)
 	n.reporter.ReportOk(n.sdkId, "reload from cache succeeded")
 	return true
 }
 
 func (n *notifyingCacheStorage) Get(_ context.Context, _ string) ([]byte, error) {
-	return n.LoadEntry().CachedJson, nil
+	return n.ComposeBytes(), nil
 }
 
 func (n *notifyingCacheStorage) Set(_ context.Context, _ string, _ []byte) error {

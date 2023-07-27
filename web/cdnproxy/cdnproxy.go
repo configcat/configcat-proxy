@@ -34,12 +34,12 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "max-age=0, must-revalidate")
 	etag := r.Header.Get("If-None-Match")
 	c := sdkClient.GetCachedJson()
-	if etag == "" || c.Etag != etag {
-		w.Header().Set("ETag", c.Etag)
+	if etag == "" || c.GeneratedETag != etag {
+		w.Header().Set("ETag", c.GeneratedETag)
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write(c.CachedJson)
+		_, _ = w.Write(c.ConfigJson)
 	} else {
-		w.Header().Set("ETag", c.Etag)
+		w.Header().Set("ETag", c.GeneratedETag)
 		w.WriteHeader(http.StatusNotModified)
 	}
 }

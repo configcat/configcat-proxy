@@ -5,7 +5,7 @@ go 1.20
 require (
 	github.com/alicebob/miniredis/v2 v2.30.0
 	github.com/cespare/xxhash/v2 v2.2.0
-	github.com/configcat/go-sdk/v7 v7.9.0
+	github.com/configcat/go-sdk/v8 v8.0.0
 	github.com/fsnotify/fsnotify v1.6.0
 	github.com/influxdata/influxdb-client-go/v2 v2.12.2
 	github.com/julienschmidt/httprouter v1.3.0
@@ -33,10 +33,10 @@ require (
 	github.com/prometheus/client_model v0.3.0 // indirect
 	github.com/prometheus/common v0.37.0 // indirect
 	github.com/prometheus/procfs v0.8.0 // indirect
-	github.com/sirupsen/logrus v1.9.0 // indirect
+	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/yuin/gopher-lua v0.0.0-20220504180219-658193537a64 // indirect
 	golang.org/x/net v0.7.0 // indirect
-	golang.org/x/sys v0.5.0 // indirect
+	golang.org/x/sys v0.10.0 // indirect
 	golang.org/x/text v0.7.0 // indirect
 	google.golang.org/genproto v0.0.0-20230216225411-c8e22ba71e44 // indirect
 )

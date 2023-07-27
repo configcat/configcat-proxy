@@ -32,7 +32,7 @@ func TestAPI_Eval(t *testing.T) {
 		assert.Equal(t, "Cache-Control,Content-Type,Content-Length,Accept-Encoding,If-None-Match", resp.Header.Get("Access-Control-Allow-Headers"))
 		assert.Equal(t, "600", resp.Header.Get("Access-Control-Max-Age"))
 		assert.Equal(t, "*", resp.Header.Get("Access-Control-Allow-Origin"))
-		assert.Equal(t, "Content-Length,ETag,Date,Content-Encoding", resp.Header.Get("Access-Control-Expose-Headers"))
+		assert.Equal(t, "Content-Length,GeneratedETag,Date,Content-Encoding", resp.Header.Get("Access-Control-Expose-Headers"))
 		assert.Equal(t, "v1", resp.Header.Get("h1"))
 	})
 	t.Run("missing auth", func(t *testing.T) {
@@ -40,7 +40,7 @@ func TestAPI_Eval(t *testing.T) {
 		resp, _ := client.Do(req)
 		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 		assert.Equal(t, "*", resp.Header.Get("Access-Control-Allow-Origin"))
-		assert.Equal(t, "Content-Length,ETag,Date,Content-Encoding", resp.Header.Get("Access-Control-Expose-Headers"))
+		assert.Equal(t, "Content-Length,GeneratedETag,Date,Content-Encoding", resp.Header.Get("Access-Control-Expose-Headers"))
 		assert.Equal(t, "v1", resp.Header.Get("h1"))
 	})
 	t.Run("ok", func(t *testing.T) {
@@ -52,7 +52,7 @@ func TestAPI_Eval(t *testing.T) {
 		_ = resp.Body.Close()
 		assert.Equal(t, `{"value":true,"variationId":"v_flag"}`, string(body))
 		assert.Equal(t, "*", resp.Header.Get("Access-Control-Allow-Origin"))
-		assert.Equal(t, "Content-Length,ETag,Date,Content-Encoding", resp.Header.Get("Access-Control-Expose-Headers"))
+		assert.Equal(t, "Content-Length,GeneratedETag,Date,Content-Encoding", resp.Header.Get("Access-Control-Expose-Headers"))
 		assert.Equal(t, "v1", resp.Header.Get("h1"))
 	})
 	t.Run("ok gzip", func(t *testing.T) {
@@ -70,7 +70,7 @@ func TestAPI_Eval(t *testing.T) {
 		_ = wr.Flush()
 		assert.Equal(t, buf.Bytes(), body)
 		assert.Equal(t, "*", resp.Header.Get("Access-Control-Allow-Origin"))
-		assert.Equal(t, "Content-Length,ETag,Date,Content-Encoding", resp.Header.Get("Access-Control-Expose-Headers"))
+		assert.Equal(t, "Content-Length,GeneratedETag,Date,Content-Encoding", resp.Header.Get("Access-Control-Expose-Headers"))
 		assert.Equal(t, "v1", resp.Header.Get("h1"))
 	})
 	t.Run("get not allowed", func(t *testing.T) {
@@ -143,7 +143,7 @@ func TestAPI_EvalAll(t *testing.T) {
 		assert.Equal(t, "Cache-Control,Content-Type,Content-Length,Accept-Encoding,If-None-Match", resp.Header.Get("Access-Control-Allow-Headers"))
 		assert.Equal(t, "600", resp.Header.Get("Access-Control-Max-Age"))
 		assert.Equal(t, "*", resp.Header.Get("Access-Control-Allow-Origin"))
-		assert.Equal(t, "Content-Length,ETag,Date,Content-Encoding", resp.Header.Get("Access-Control-Expose-Headers"))
+		assert.Equal(t, "Content-Length,GeneratedETag,Date,Content-Encoding", resp.Header.Get("Access-Control-Expose-Headers"))
 		assert.Equal(t, "v1", resp.Header.Get("h1"))
 	})
 	t.Run("missing auth", func(t *testing.T) {
@@ -151,7 +151,7 @@ func TestAPI_EvalAll(t *testing.T) {
 		resp, _ := client.Do(req)
 		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 		assert.Equal(t, "*", resp.Header.Get("Access-Control-Allow-Origin"))
-		assert.Equal(t, "Content-Length,ETag,Date,Content-Encoding", resp.Header.Get("Access-Control-Expose-Headers"))
+		assert.Equal(t, "Content-Length,GeneratedETag,Date,Content-Encoding", resp.Header.Get("Access-Control-Expose-Headers"))
 		assert.Equal(t, "v1", resp.Header.Get("h1"))
 	})
 	t.Run("ok", func(t *testing.T) {
@@ -163,7 +163,7 @@ func TestAPI_EvalAll(t *testing.T) {
 		_ = resp.Body.Close()
 		assert.Equal(t, `{"flag":{"value":true,"variationId":"v_flag"}}`, string(body))
 		assert.Equal(t, "*", resp.Header.Get("Access-Control-Allow-Origin"))
-		assert.Equal(t, "Content-Length,ETag,Date,Content-Encoding", resp.Header.Get("Access-Control-Expose-Headers"))
+		assert.Equal(t, "Content-Length,GeneratedETag,Date,Content-Encoding", resp.Header.Get("Access-Control-Expose-Headers"))
 		assert.Equal(t, "v1", resp.Header.Get("h1"))
 	})
 	t.Run("ok gzip", func(t *testing.T) {
@@ -181,7 +181,7 @@ func TestAPI_EvalAll(t *testing.T) {
 		_ = wr.Flush()
 		assert.Equal(t, buf.Bytes(), body)
 		assert.Equal(t, "*", resp.Header.Get("Access-Control-Allow-Origin"))
-		assert.Equal(t, "Content-Length,ETag,Date,Content-Encoding", resp.Header.Get("Access-Control-Expose-Headers"))
+		assert.Equal(t, "Content-Length,GeneratedETag,Date,Content-Encoding", resp.Header.Get("Access-Control-Expose-Headers"))
 		assert.Equal(t, "v1", resp.Header.Get("h1"))
 	})
 	t.Run("get not allowed", func(t *testing.T) {
@@ -254,7 +254,7 @@ func TestAPI_Keys(t *testing.T) {
 		assert.Equal(t, "Cache-Control,Content-Type,Content-Length,Accept-Encoding,If-None-Match", resp.Header.Get("Access-Control-Allow-Headers"))
 		assert.Equal(t, "600", resp.Header.Get("Access-Control-Max-Age"))
 		assert.Equal(t, "*", resp.Header.Get("Access-Control-Allow-Origin"))
-		assert.Equal(t, "Content-Length,ETag,Date,Content-Encoding", resp.Header.Get("Access-Control-Expose-Headers"))
+		assert.Equal(t, "Content-Length,GeneratedETag,Date,Content-Encoding", resp.Header.Get("Access-Control-Expose-Headers"))
 		assert.Equal(t, "v1", resp.Header.Get("h1"))
 	})
 	t.Run("missing auth", func(t *testing.T) {
@@ -262,7 +262,7 @@ func TestAPI_Keys(t *testing.T) {
 		resp, _ := client.Do(req)
 		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 		assert.Equal(t, "*", resp.Header.Get("Access-Control-Allow-Origin"))
-		assert.Equal(t, "Content-Length,ETag,Date,Content-Encoding", resp.Header.Get("Access-Control-Expose-Headers"))
+		assert.Equal(t, "Content-Length,GeneratedETag,Date,Content-Encoding", resp.Header.Get("Access-Control-Expose-Headers"))
 		assert.Equal(t, "v1", resp.Header.Get("h1"))
 	})
 	t.Run("ok", func(t *testing.T) {
@@ -274,7 +274,7 @@ func TestAPI_Keys(t *testing.T) {
 		_ = resp.Body.Close()
 		assert.Equal(t, `{"keys":["flag"]}`, string(body))
 		assert.Equal(t, "*", resp.Header.Get("Access-Control-Allow-Origin"))
-		assert.Equal(t, "Content-Length,ETag,Date,Content-Encoding", resp.Header.Get("Access-Control-Expose-Headers"))
+		assert.Equal(t, "Content-Length,GeneratedETag,Date,Content-Encoding", resp.Header.Get("Access-Control-Expose-Headers"))
 		assert.Equal(t, "v1", resp.Header.Get("h1"))
 	})
 	t.Run("ok gzip", func(t *testing.T) {
@@ -292,7 +292,7 @@ func TestAPI_Keys(t *testing.T) {
 		_ = wr.Flush()
 		assert.Equal(t, buf.Bytes(), body)
 		assert.Equal(t, "*", resp.Header.Get("Access-Control-Allow-Origin"))
-		assert.Equal(t, "Content-Length,ETag,Date,Content-Encoding", resp.Header.Get("Access-Control-Expose-Headers"))
+		assert.Equal(t, "Content-Length,GeneratedETag,Date,Content-Encoding", resp.Header.Get("Access-Control-Expose-Headers"))
 		assert.Equal(t, "v1", resp.Header.Get("h1"))
 	})
 	t.Run("post not allowed", func(t *testing.T) {
@@ -365,7 +365,7 @@ func TestAPI_Refresh(t *testing.T) {
 		assert.Equal(t, "Cache-Control,Content-Type,Content-Length,Accept-Encoding,If-None-Match", resp.Header.Get("Access-Control-Allow-Headers"))
 		assert.Equal(t, "600", resp.Header.Get("Access-Control-Max-Age"))
 		assert.Equal(t, "*", resp.Header.Get("Access-Control-Allow-Origin"))
-		assert.Equal(t, "Content-Length,ETag,Date,Content-Encoding", resp.Header.Get("Access-Control-Expose-Headers"))
+		assert.Equal(t, "Content-Length,GeneratedETag,Date,Content-Encoding", resp.Header.Get("Access-Control-Expose-Headers"))
 		assert.Equal(t, "v1", resp.Header.Get("h1"))
 	})
 	t.Run("missing auth", func(t *testing.T) {
@@ -373,7 +373,7 @@ func TestAPI_Refresh(t *testing.T) {
 		resp, _ := client.Do(req)
 		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 		assert.Equal(t, "*", resp.Header.Get("Access-Control-Allow-Origin"))
-		assert.Equal(t, "Content-Length,ETag,Date,Content-Encoding", resp.Header.Get("Access-Control-Expose-Headers"))
+		assert.Equal(t, "Content-Length,GeneratedETag,Date,Content-Encoding", resp.Header.Get("Access-Control-Expose-Headers"))
 		assert.Equal(t, "v1", resp.Header.Get("h1"))
 	})
 	t.Run("ok", func(t *testing.T) {
@@ -385,7 +385,7 @@ func TestAPI_Refresh(t *testing.T) {
 		_ = resp.Body.Close()
 		assert.Equal(t, "", string(body))
 		assert.Equal(t, "*", resp.Header.Get("Access-Control-Allow-Origin"))
-		assert.Equal(t, "Content-Length,ETag,Date,Content-Encoding", resp.Header.Get("Access-Control-Expose-Headers"))
+		assert.Equal(t, "Content-Length,GeneratedETag,Date,Content-Encoding", resp.Header.Get("Access-Control-Expose-Headers"))
 		assert.Equal(t, "v1", resp.Header.Get("h1"))
 	})
 	t.Run("get not allowed", func(t *testing.T) {

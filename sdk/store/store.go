@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"github.com/configcat/go-sdk/v8/configcatcache"
 )
 
 type CacheStorage interface {
@@ -26,11 +27,12 @@ func NewInMemoryStorage() CacheStorage {
 }
 
 func (r *inMemoryStorage) Get(_ context.Context, _ string) ([]byte, error) {
-	return r.LoadEntry().CachedJson, nil
+	return r.ComposeBytes(), nil
 }
 
 func (r *inMemoryStorage) Set(_ context.Context, _ string, value []byte) error {
-	r.StoreEntry(value)
+	fetchTime, etag, configJson, _ := configcatcache.CacheSegmentsFromBytes(value)
+	r.StoreEntry(configJson, fetchTime, etag)
 	return nil
 }
 

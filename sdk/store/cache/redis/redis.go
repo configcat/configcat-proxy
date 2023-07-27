@@ -4,9 +4,9 @@ import (
 	"context"
 	"crypto/tls"
 	"github.com/configcat/configcat-proxy/config"
-	"github.com/configcat/configcat-proxy/internal/utils"
 	"github.com/configcat/configcat-proxy/sdk/store"
 	"github.com/configcat/configcat-proxy/status"
+	"github.com/configcat/go-sdk/v8/configcatcache"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -14,11 +14,10 @@ type redisStorage struct {
 	store.EntryStore
 
 	redisDb  redis.UniversalClient
-	cacheKey string
 	reporter status.Reporter
 }
 
-func NewRedisStorage(sdkKey string, conf *config.RedisConfig, reporter status.Reporter) store.CacheStorage {
+func NewRedisStorage(conf *config.RedisConfig, reporter status.Reporter) store.CacheStorage {
 	opts := &redis.UniversalOptions{
 		Addrs:    conf.Addresses,
 		Password: conf.Password,
@@ -41,14 +40,13 @@ func NewRedisStorage(sdkKey string, conf *config.RedisConfig, reporter status.Re
 	}
 	return &redisStorage{
 		redisDb:    redis.NewUniversalClient(opts),
-		cacheKey:   utils.Sha1Hex([]byte(sdkKey + "_config_v5")),
 		EntryStore: store.NewEntryStore(),
 		reporter:   reporter,
 	}
 }
 
-func (r *redisStorage) Get(ctx context.Context, _ string) ([]byte, error) {
-	b, err := r.redisDb.Get(ctx, r.cacheKey).Bytes()
+func (r *redisStorage) Get(ctx context.Context, key string) ([]byte, error) {
+	b, err := r.redisDb.Get(ctx, key).Bytes()
 	if err != nil {
 		r.reporter.ReportError(status.Cache, err)
 	} else {
@@ -57,9 +55,13 @@ func (r *redisStorage) Get(ctx context.Context, _ string) ([]byte, error) {
 	return b, err
 }
 
-func (r *redisStorage) Set(ctx context.Context, _ string, value []byte) error {
-	r.StoreEntry(value)
-	err := r.redisDb.Set(ctx, r.cacheKey, value, 0).Err()
+func (r *redisStorage) Set(ctx context.Context, key string, value []byte) error {
+	fetchTime, etag, configJson, err := configcatcache.CacheSegmentsFromBytes(value)
+	if err != nil {
+		r.reporter.ReportError(status.Cache, err)
+	}
+	r.StoreEntry(configJson, fetchTime, etag)
+	err = r.redisDb.Set(ctx, key, value, 0).Err()
 	if err != nil {
 		r.reporter.ReportError(status.Cache, err)
 	} else {

@@ -11,7 +11,7 @@ import (
 	"github.com/configcat/configcat-proxy/sdk/store/cache/redis"
 	"github.com/configcat/configcat-proxy/sdk/store/file"
 	"github.com/configcat/configcat-proxy/status"
-	"github.com/configcat/go-sdk/v7"
+	"github.com/configcat/go-sdk/v8"
 	"net/http"
 	"net/url"
 	"sync"
@@ -51,7 +51,6 @@ type Context struct {
 type client struct {
 	configCatClient *configcat.Client
 	subscriptions   map[string]chan struct{}
-	ready           chan struct{}
 	readyOnce       sync.Once
 	log             log.Logger
 	cache           store.CacheStorage
@@ -69,17 +68,16 @@ func NewClient(sdkCtx *Context, log log.Logger) Client {
 	if offline && sdkCtx.SDKConf.Offline.Local.FilePath != "" {
 		storage = file.NewFileStorage(sdkCtx.SdkId, &sdkCtx.SDKConf.Offline.Local, sdkCtx.StatusReporter, log.WithLevel(sdkCtx.SDKConf.Offline.Log.GetLevel()))
 	} else if offline && sdkCtx.SDKConf.Offline.UseCache && sdkCtx.CacheConf.Redis.Enabled {
-		redisStore := redis.NewRedisStorage(sdkCtx.SDKConf.Key, &sdkCtx.CacheConf.Redis, sdkCtx.StatusReporter)
-		storage = cache.NewNotifyingCacheStorage(sdkCtx.SdkId, redisStore, &sdkCtx.SDKConf.Offline, sdkCtx.StatusReporter, log.WithLevel(sdkCtx.SDKConf.Offline.Log.GetLevel()))
+		redisStore := redis.NewRedisStorage(&sdkCtx.CacheConf.Redis, sdkCtx.StatusReporter)
+		storage = cache.NewNotifyingCacheStorage(sdkCtx.SdkId, sdkCtx.SDKConf.Key, redisStore, &sdkCtx.SDKConf.Offline, sdkCtx.StatusReporter, log.WithLevel(sdkCtx.SDKConf.Offline.Log.GetLevel()))
 	} else if !offline && sdkCtx.CacheConf.Redis.Enabled {
-		storage = redis.NewRedisStorage(sdkCtx.SDKConf.Key, &sdkCtx.CacheConf.Redis, sdkCtx.StatusReporter)
+		storage = redis.NewRedisStorage(&sdkCtx.CacheConf.Redis, sdkCtx.StatusReporter)
 	} else {
 		storage = store.NewInMemoryStorage()
 	}
 	client := &client{
 		log:           sdkLog,
 		subscriptions: make(map[string]chan struct{}),
-		ready:         make(chan struct{}),
 		cache:         storage,
 		sdkCtx:        sdkCtx,
 	}
@@ -116,7 +114,6 @@ func NewClient(sdkCtx *Context, log log.Logger) Client {
 		clientConfig.Transport = status.InterceptSdk(sdkCtx.SdkId, sdkCtx.StatusReporter, clientConfig.Transport)
 	} else {
 		clientConfig.PollingMode = configcat.Manual
-		close(client.ready) // in OFFLINE mode we are ready immediately
 	}
 	if sdkCtx.EvalReporter != nil {
 		clientConfig.Hooks.OnFlagEvaluated = func(details *configcat.EvaluationDetails) {
@@ -163,7 +160,6 @@ func (c *client) signal() {
 	// we don't want to notify subscribers in ONLINE mode
 	// about the first change upon SDK initialization
 	if !c.sdkCtx.SDKConf.Offline.Enabled && c.initialized.CompareAndSwap(false, true) {
-		close(c.ready)
 		return
 	}
 	// force the SDK to reload local values in OFFLINE mode
@@ -196,11 +192,11 @@ func (c *client) Keys() []string {
 func (c *client) GetCachedJson() *store.EntryWithEtag {
 	c.readyOnce.Do(func() {
 		select {
-		case <-c.ready:
+		case <-c.configCatClient.Ready():
 		case <-c.ctx.Done():
 		}
 	})
-	return c.cache.GetLatestJson()
+	return c.cache.LoadEntry()
 }
 
 func (c *client) SubConfigChanged(id string) <-chan struct{} {
@@ -227,7 +223,7 @@ func (c *client) Refresh() error {
 }
 
 func (c *client) Ready() <-chan struct{} {
-	return c.ready
+	return c.configCatClient.Ready()
 }
 
 func (c *client) WebhookSigningKey() string {

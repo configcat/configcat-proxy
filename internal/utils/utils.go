@@ -66,6 +66,10 @@ func FastHashHex(b []byte) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
+func GenerateEtag(b []byte) string {
+	return "W/" + "\"" + FastHashHex(b) + "\""
+}
+
 func Obfuscate(str string, clearLen int) string {
 	l := len(str)
 	if l < clearLen {

@@ -2,9 +2,11 @@ package store
 
 import (
 	"context"
-	"crypto/sha1"
+	"github.com/configcat/configcat-proxy/internal/utils"
+	"github.com/configcat/go-sdk/v8/configcatcache"
 	"github.com/stretchr/testify/assert"
 	"testing"
+	"time"
 )
 
 func TestInMemoryStore(t *testing.T) {
@@ -12,18 +14,21 @@ func TestInMemoryStore(t *testing.T) {
 		e := NewInMemoryStorage()
 		r, err := e.Get(context.Background(), "")
 		assert.NoError(t, err)
+		_, _, j, err := configcatcache.CacheSegmentsFromBytes(r)
 		assert.NotNil(t, r)
-		assert.Equal(t, r, e.GetLatestJson().CachedJson)
+		assert.Equal(t, j, e.LoadEntry().ConfigJson)
 	})
 	t.Run("store, check etag", func(t *testing.T) {
 		e := NewInMemoryStorage()
 		data := []byte("test")
-		etag := sha1.Sum(data)
-		err := e.Set(context.Background(), "", data)
+		etag := "W/" + "\"" + utils.FastHashHex(data) + "\""
+		c := configcatcache.CacheSegmentsToBytes(time.Now(), "etag", data)
+		err := e.Set(context.Background(), "", c)
 		assert.NoError(t, err)
 		r, err := e.Get(context.Background(), "")
+		_, _, j, _ := configcatcache.CacheSegmentsFromBytes(r)
 		assert.NoError(t, err)
-		assert.Equal(t, data, r)
-		assert.NotNil(t, etag, e.LoadEntry().Etag)
+		assert.Equal(t, data, j)
+		assert.Equal(t, etag, e.LoadEntry().GeneratedETag)
 	})
 }
