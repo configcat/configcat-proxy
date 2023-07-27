@@ -35,11 +35,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Download executables
-        uses: actions/download-artifact@v3
-        with:
-          name: executables
-
       - name: Get version from tag
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
 
