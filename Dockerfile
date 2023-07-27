@@ -1,4 +1,4 @@
-FROM golang:1.20-alpine3.17 as build
+FROM golang:1.20-alpine3.17 AS build
 
 WORKDIR /go/src/configcat_proxy
 
