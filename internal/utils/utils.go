@@ -2,7 +2,6 @@ package utils
 
 import (
 	"context"
-	"crypto/sha1"
 	"encoding/base64"
 	"encoding/hex"
 	"github.com/cespare/xxhash/v2"
@@ -46,12 +45,6 @@ func Min(args ...int) int {
 		}
 	}
 	return min
-}
-
-func Sha1Hex(data []byte) string {
-	h := sha1.New()
-	h.Write(data)
-	return hex.EncodeToString(h.Sum(nil))
 }
 
 func FastHash(b []byte) uint64 {

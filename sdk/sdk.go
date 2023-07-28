@@ -101,7 +101,7 @@ func NewClient(sdkCtx *Context, log log.Logger) Client {
 		SDKKey:         sdkCtx.SDKConf.Key,
 		DataGovernance: configcat.Global,
 		Logger:         sdkLog,
-		Transport:      transport,
+		Transport:      OverrideUserAgent(transport),
 		Hooks:          &configcat.Hooks{},
 	}
 	if !sdkCtx.SDKConf.Offline.Enabled {
