@@ -12,7 +12,7 @@ It's a small Go application that communicates with ConfigCat's CDN network and c
 The *config JSON* contains all the data that is needed for ConfigCat SDKs to evaluate feature flags.
 
 The ConfigCat Proxy provides the following:
-- **Performance**: The Proxy can be deployed close to your applications and can serve the downloaded *config JSON* files from memory. ConfigCat SDKs then can operate on the [proxied *config JSON*](https://configcat.com/docs/advanced/proxy/endpoints#cdn-proxy). This can reduce the duration of feature flag evaluation for stateless or short lived applications.
+- **Performance**: The Proxy can be deployed close to your applications and can serve the downloaded *config JSON* files from memory. ConfigCat SDKs then can operate on the [proxied *config JSON*](https://configcat.com/docs/advanced/proxy/endpoints#cdn-proxy). This can reduce the duration of feature flag evaluation for stateless or short-lived applications.
 - **Reliability**: The Proxy can store the downloaded *config JSON* files in an external [cache](https://configcat.com/docs/advanced/proxy/proxy-overview#cache). It can fall back to operating on the cached *config JSON* if the ConfigCat CDN network becomes inaccessible.
 - **Security**: The Proxy can act as a [server side flag evaluation](https://configcat.com/docs/advanced/proxy/endpoints#api) component. Using it like that can prevent the exposure of *config JSON* files to frontend and mobile applications.
 - **Scalability**: Horizontal scaling allows you to align with the load coming from your applications accordingly.
@@ -31,7 +31,7 @@ Within the Proxy, the underlying SDK instances can run in the following modes:
 
 There are three ways how the Proxy is informed about the availability of new feature flag evaluation data:
 - **Polling**: The ConfigCat SDKs within the Proxy are regularly polling the ConfigCat CDN for new *config JSON* versions.
-- **Webhook**: The Proxy has [webhook endpoints](https://configcat.com/docs/advanced/proxy/endpoints#webhook) (for each underlying SDK) which can be set on the <a target="_blank" href="https://app.configcat.com/product/webhooks">ConfigCat Dashboard</a> to be invoked when someone saves & publishes new feature flag changes.
+- **Webhook**: The Proxy has [webhook endpoints](https://configcat.com/docs/advanced/proxy/endpoints#webhook) (for each underlying SDK), which can be set on the <a target="_blank" href="https://app.configcat.com/product/webhooks">ConfigCat Dashboard</a> to be invoked when someone saves & publishes new feature flag changes.
 - **Cache polling / file watching**: In [offline mode](https://configcat.com/docs/advanced/proxy/proxy-overview#offline-mode), the Proxy can regularly poll a cache or watch a file for new *config JSON* versions.
 
 These are the ports used by the Proxy by default:
@@ -83,19 +83,19 @@ Using with `docker-compose`:
 You can download the executables directly from <a target="_blank" href="https://github.com/configcat/configcat-proxy/releases">GitHub Releases</a> for your desired platform.
 
 ## Health Check
-After intallation, you can check the [status endpoint](https://configcat.com/docs/advanced/proxy/monitoring#status) of the Proxy to ensure it's working correctly: `http(s)://localhost:8050/status`
+After installation, you can check the [status endpoint](https://configcat.com/docs/advanced/proxy/monitoring#status) of the Proxy to ensure it's working correctly: `http(s)://localhost:8050/status`
 
 ## Need help?
 https://configcat.com/support
 
 ## Contributing
-Contributions are welcome. For more info please read the [Contribution Guideline](CONTRIBUTING.md).
+Contributions are welcome. Please read the [Contribution Guideline](CONTRIBUTING.md) for more info.
 
 ## About ConfigCat
 
 ConfigCat is a feature flag, feature toggle, and configuration management service that lets you launch new features and change your software configuration remotely without actually (re)deploying code. ConfigCat even helps you do controlled roll-outs like canary releases and blue-green deployments.
 
-ConfigCat is a [hosted feature flag service](https://configcat.com). Manage feature toggles across frontend, backend, mobile, desktop apps. [Alternative to LaunchDarkly](https://configcat.com). Management app + feature flag SDKs.
+ConfigCat is a [hosted feature flag service](https://configcat.com). Manage feature toggles across frontend, backend, mobile, and desktop apps. [Alternative to LaunchDarkly](https://configcat.com). Management app + feature flag SDKs.
 
 - [Documentation](https://configcat.com/docs)
 - [Blog](https://blog.configcat.com)
