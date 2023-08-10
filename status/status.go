@@ -150,7 +150,6 @@ func (r *reporter) getStatus() Status {
 	overallStatus := Healthy
 	for key := range r.conf.SDKs {
 		if sdk, ok := r.records[key]; ok {
-			stat := current.SDKs[key].Source.Status
 			rec, stat := r.checkStatus(sdk)
 			current.SDKs[key].Source.Records = rec
 			current.SDKs[key].Source.Status = stat
