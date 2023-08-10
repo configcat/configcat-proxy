@@ -52,7 +52,6 @@ func (c *Config) loadEnv() {
 	c.Log.loadEnv(envPrefix)
 	c.Tls.loadEnv(envPrefix)
 	c.Metrics.loadEnv(envPrefix)
-	c.EvalStats.loadEnv(envPrefix)
 	c.Cache.loadEnv(envPrefix)
 }
 
@@ -93,11 +92,6 @@ func (c *CacheConfig) loadEnv(prefix string) {
 	c.Redis.loadEnv(prefix)
 }
 
-func (e *EvalStatsConfig) loadEnv(prefix string) {
-	prefix = concatPrefix(prefix, "EVAL_STATS")
-	e.InfluxDb.loadEnv(prefix)
-}
-
 func (o *OfflineConfig) loadEnv(prefix string) {
 	prefix = concatPrefix(prefix, "OFFLINE")
 	readEnv(prefix, "ENABLED", &o.Enabled, toBool)
@@ -122,16 +116,6 @@ func (r *RedisConfig) loadEnv(prefix string) {
 	readEnv(prefix, "ENABLED", &r.Enabled, toBool)
 	readEnv(prefix, "ADDRESSES", &r.Addresses, toStringSlice)
 	r.Tls.loadEnv(prefix)
-}
-
-func (i *InfluxDbConfig) loadEnv(prefix string) {
-	prefix = concatPrefix(prefix, "INFLUX_DB")
-	readEnvString(prefix, "URL", &i.Url)
-	readEnvString(prefix, "ORGANIZATION", &i.Organization)
-	readEnvString(prefix, "AUTH_TOKEN", &i.AuthToken)
-	readEnvString(prefix, "BUCKET", &i.Bucket)
-	readEnv(prefix, "ENABLED", &i.Enabled, toBool)
-	i.Tls.loadEnv(prefix)
 }
 
 func (s *SseConfig) loadEnv(prefix string) {

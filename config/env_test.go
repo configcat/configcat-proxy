@@ -74,34 +74,6 @@ func TestCacheConfig_ENV(t *testing.T) {
 	assert.Equal(t, "./key2", conf.Cache.Redis.Tls.Certificates[1].Key)
 }
 
-func TestInfluxDbConfig_ENV(t *testing.T) {
-	t.Setenv("CONFIGCAT_EVAL_STATS_INFLUX_DB_ENABLED", "true")
-	t.Setenv("CONFIGCAT_EVAL_STATS_INFLUX_DB_URL", "https://localhost:8086")
-	t.Setenv("CONFIGCAT_EVAL_STATS_INFLUX_DB_ORGANIZATION", "org")
-	t.Setenv("CONFIGCAT_EVAL_STATS_INFLUX_DB_AUTH_TOKEN", "auth")
-	t.Setenv("CONFIGCAT_EVAL_STATS_INFLUX_DB_BUCKET", "bucket")
-	t.Setenv("CONFIGCAT_EVAL_STATS_INFLUX_DB_TLS_ENABLED", "true")
-	t.Setenv("CONFIGCAT_EVAL_STATS_INFLUX_DB_TLS_MIN_VERSION", "1.1")
-	t.Setenv("CONFIGCAT_EVAL_STATS_INFLUX_DB_TLS_SERVER_NAME", "serv")
-	t.Setenv("CONFIGCAT_EVAL_STATS_INFLUX_DB_TLS_CERTIFICATES", `[{"key":"./key1","cert":"./cert1"},{"key":"./key2","cert":"./cert2"}]`)
-
-	conf, err := LoadConfigFromFileAndEnvironment("")
-	require.NoError(t, err)
-
-	assert.True(t, conf.EvalStats.InfluxDb.Enabled)
-	assert.Equal(t, "https://localhost:8086", conf.EvalStats.InfluxDb.Url)
-	assert.Equal(t, "org", conf.EvalStats.InfluxDb.Organization)
-	assert.Equal(t, "bucket", conf.EvalStats.InfluxDb.Bucket)
-	assert.Equal(t, "auth", conf.EvalStats.InfluxDb.AuthToken)
-	assert.True(t, conf.EvalStats.InfluxDb.Tls.Enabled)
-	assert.Equal(t, tls.VersionTLS11, int(conf.EvalStats.InfluxDb.Tls.GetVersion()))
-	assert.Equal(t, "serv", conf.EvalStats.InfluxDb.Tls.ServerName)
-	assert.Equal(t, "./cert1", conf.EvalStats.InfluxDb.Tls.Certificates[0].Cert)
-	assert.Equal(t, "./key1", conf.EvalStats.InfluxDb.Tls.Certificates[0].Key)
-	assert.Equal(t, "./cert2", conf.EvalStats.InfluxDb.Tls.Certificates[1].Cert)
-	assert.Equal(t, "./key2", conf.EvalStats.InfluxDb.Tls.Certificates[1].Key)
-}
-
 func TestTlsConfig_ENV(t *testing.T) {
 	t.Setenv("CONFIGCAT_TLS_ENABLED", "true")
 	t.Setenv("CONFIGCAT_TLS_MIN_VERSION", "1.1")

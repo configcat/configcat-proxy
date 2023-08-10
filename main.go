@@ -46,10 +46,8 @@ func main() {
 		metricServer.Listen()
 	}
 
+	// in the future we might implement an evaluation statistics reporter
 	var evalReporter statistics.Reporter
-	if conf.EvalStats.InfluxDb.Enabled {
-		evalReporter = statistics.NewInfluxDbReporter(&conf.EvalStats.InfluxDb)
-	}
 
 	statusReporter := status.NewReporter(&conf)
 	sdkClients := make(map[string]sdk.Client)

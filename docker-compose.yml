@@ -39,11 +39,6 @@ services:
       - CONFIGCAT_TLS_ENABLED=true
       - CONFIGCAT_TLS_CERTIFICATES=[{"key":"./cert/localhost.key","cert":"./cert/localhost.crt"}]
       - CONFIGCAT_HTTP_PROXY_URL=http://squid:3128
-#      - CONFIGCAT_EVAL_STATS_INFLUX_DB_ENABLED=true
-#      - CONFIGCAT_EVAL_STATS_INFLUX_DB_URL=http://influxdb:8086
-#      - CONFIGCAT_EVAL_STATS_INFLUX_DB_ORGANIZATION=configcat
-#      - CONFIGCAT_EVAL_STATS_INFLUX_DB_BUCKET=flag_eval_stats
-#      - CONFIGCAT_EVAL_STATS_INFLUX_DB_AUTH_TOKEN=cD1ZfZr7-fHBGMd0Zcb2DaJBCqiD9Y47-HI8yK343BsvN0Og6TXU7-bCmL0kxD77JqR7OkjViYBOt1zhFD5D1w==
     ports:
       - "8050:8050"
       - "8051:8051"
@@ -90,16 +85,3 @@ services:
     image: ubuntu/squid
     ports:
       - "3128:3128"
-
-#  influxdb:
-#    image: influxdb
-#    ports:
-#      - "8086:8086"
-#    volumes:
-#      - influxdb:/var/lib/influxdb
-#    environment:
-#      - DOCKER_INFLUXDB_INIT_MODE=setup
-#      - DOCKER_INFLUXDB_INIT_USERNAME=admin
-#      - DOCKER_INFLUXDB_INIT_PASSWORD=admin1234
-#      - DOCKER_INFLUXDB_INIT_ORG=configcat
-#      - DOCKER_INFLUXDB_INIT_BUCKET=flag_eval_stats

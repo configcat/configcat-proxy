@@ -24,9 +24,6 @@ func (c *Config) Validate() error {
 	if err := c.Cache.Redis.validate(); err != nil {
 		return err
 	}
-	if err := c.EvalStats.InfluxDb.validate(); err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -54,28 +51,6 @@ func (r *RedisConfig) validate() error {
 		return fmt.Errorf("redis: at least 1 server address required")
 	}
 	if err := r.Tls.validate(); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (i *InfluxDbConfig) validate() error {
-	if !i.Enabled {
-		return nil
-	}
-	if i.Url == "" {
-		return fmt.Errorf("influxdb: URL is required")
-	}
-	if i.Organization == "" {
-		return fmt.Errorf("influxdb: organization is required")
-	}
-	if i.Bucket == "" {
-		return fmt.Errorf("influxdb: bucket is required")
-	}
-	if i.AuthToken == "" {
-		return fmt.Errorf("influxdb: auth token is required")
-	}
-	if err := i.Tls.validate(); err != nil {
 		return err
 	}
 	return nil

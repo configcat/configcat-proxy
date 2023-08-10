@@ -32,7 +32,6 @@ type Config struct {
 	Metrics   MetricsConfig
 	Http      HttpConfig
 	HttpProxy HttpProxyConfig `yaml:"http_proxy"`
-	EvalStats EvalStatsConfig `yaml:"eval_stats"`
 	Cache     CacheConfig
 }
 
@@ -45,19 +44,6 @@ type SDKConfig struct {
 	WebhookSigningKey        string `yaml:"webhook_signing_key"`
 	Offline                  OfflineConfig
 	Log                      LogConfig
-}
-
-type EvalStatsConfig struct {
-	InfluxDb InfluxDbConfig `yaml:"influx_db"`
-}
-
-type InfluxDbConfig struct {
-	Enabled      bool   `yaml:"enabled"`
-	Url          string `yaml:"url"`
-	AuthToken    string `yaml:"auth_token"`
-	Organization string `yaml:"organization"`
-	Bucket       string `yaml:"bucket"`
-	Tls          TlsConfig
 }
 
 type GrpcConfig struct {
@@ -277,8 +263,5 @@ func (c *Config) fixupTlsMinVersions(defVersion float64) {
 	}
 	if _, ok := allowedTlsVersions[c.Cache.Redis.Tls.MinVersion]; !ok {
 		c.Cache.Redis.Tls.MinVersion = defVersion
-	}
-	if _, ok := allowedTlsVersions[c.EvalStats.InfluxDb.Tls.MinVersion]; !ok {
-		c.EvalStats.InfluxDb.Tls.MinVersion = defVersion
 	}
 }

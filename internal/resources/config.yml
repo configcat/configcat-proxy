@@ -17,14 +17,6 @@ cache:
   redis:
     enabled: false
 
-eval_stats:
-  influx_db:
-    enabled: true
-    url: http://localhost:8086
-    organization: configcat
-    bucket: flag_eval_stats
-    auth_token: cD1ZfZr7-fHBGMd0Zcb2DaJBCqiD9Y47-HI8yK343BsvN0Og6TXU7-bCmL0kxD77JqR7OkjViYBOt1zhFD5D1w==
-
 log:
   level: "debug"
 
