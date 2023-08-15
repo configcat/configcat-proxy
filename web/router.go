@@ -82,7 +82,7 @@ func (s *HttpRouter) setupSSERoutes(conf *config.SseConfig, sdkClients map[strin
 		s.router.HandlerFunc(endpoint.method, endpoint.path, endpoint.handler)
 		s.router.HandlerFunc(http.MethodOptions, endpoint.path, endpoint.handler)
 	}
-	l.Reportf("SSE enabled, listening on path: /sse/*")
+	l.Reportf("SSE enabled, listening on path: /sse/:sdkId/*")
 }
 
 func (s *HttpRouter) setupWebhookRoutes(conf *config.WebhookConfig, sdkClients map[string]sdk.Client, l log.Logger) {
@@ -172,5 +172,5 @@ func (s *HttpRouter) setupAPIRoutes(conf *config.ApiConfig, sdkClients map[strin
 		s.router.HandlerFunc(endpoint.method, endpoint.path, endpoint.handler)
 		s.router.HandlerFunc(http.MethodOptions, endpoint.path, endpoint.handler)
 	}
-	l.Reportf("API enabled, accepting requests on path: /api/:sdk/*")
+	l.Reportf("API enabled, accepting requests on path: /api/:sdkId/*")
 }
