@@ -25,23 +25,25 @@ var allowedTlsVersions = map[float64]uint16{
 }
 
 type Config struct {
-	Log       LogConfig
-	SDKs      map[string]*SDKConfig
-	Grpc      GrpcConfig
-	Tls       TlsConfig
-	Metrics   MetricsConfig
-	Http      HttpConfig
-	HttpProxy HttpProxyConfig `yaml:"http_proxy"`
-	Cache     CacheConfig
+	Log          LogConfig
+	SDKs         map[string]*SDKConfig
+	Grpc         GrpcConfig
+	Tls          TlsConfig
+	Metrics      MetricsConfig
+	Http         HttpConfig
+	HttpProxy    HttpProxyConfig `yaml:"http_proxy"`
+	Cache        CacheConfig
+	DefaultAttrs map[string]string `yaml:"default_user_attributes"`
 }
 
 type SDKConfig struct {
-	Key                      string `yaml:"key"`
-	BaseUrl                  string `yaml:"base_url"`
-	PollInterval             int    `yaml:"poll_interval"`
-	DataGovernance           string `yaml:"data_governance"`
-	WebhookSignatureValidFor int    `yaml:"webhook_signature_valid_for"`
-	WebhookSigningKey        string `yaml:"webhook_signing_key"`
+	Key                      string            `yaml:"key"`
+	BaseUrl                  string            `yaml:"base_url"`
+	PollInterval             int               `yaml:"poll_interval"`
+	DataGovernance           string            `yaml:"data_governance"`
+	WebhookSignatureValidFor int               `yaml:"webhook_signature_valid_for"`
+	WebhookSigningKey        string            `yaml:"webhook_signing_key"`
+	DefaultAttrs             map[string]string `yaml:"default_user_attributes"`
 	Offline                  OfflineConfig
 	Log                      LogConfig
 }

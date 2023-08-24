@@ -24,6 +24,7 @@ func TestSDKConfig_ENV(t *testing.T) {
 	t.Setenv("CONFIGCAT_SDK1_OFFLINE_CACHE_POLL_INTERVAL", "200")
 	t.Setenv("CONFIGCAT_SDK1_WEBHOOK_SIGNING_KEY", "key")
 	t.Setenv("CONFIGCAT_SDK1_WEBHOOK_SIGNATURE_VALID_FOR", "600")
+	t.Setenv("CONFIGCAT_SDK1_DEFAULT_USER_ATTRIBUTES", `{"attr_1": "attr_value1", "attr2": "attr_value2"}`)
 
 	conf, err := LoadConfigFromFileAndEnvironment("")
 	require.NoError(t, err)
@@ -43,6 +44,8 @@ func TestSDKConfig_ENV(t *testing.T) {
 	assert.Equal(t, 200, conf.SDKs["sdk1"].Offline.CachePollInterval)
 	assert.Equal(t, "key", conf.SDKs["sdk1"].WebhookSigningKey)
 	assert.Equal(t, 600, conf.SDKs["sdk1"].WebhookSignatureValidFor)
+	assert.Equal(t, "attr_value1", conf.SDKs["sdk1"].DefaultAttrs["attr_1"])
+	assert.Equal(t, "attr_value2", conf.SDKs["sdk1"].DefaultAttrs["attr2"])
 }
 
 func TestCacheConfig_ENV(t *testing.T) {
@@ -183,4 +186,15 @@ func TestHttpProxyConfig_ENV(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, "proxy-url", conf.HttpProxy.Url)
+}
+
+func TestGlobalDefaultAttributesConfig_ENV(t *testing.T) {
+	t.Setenv("CONFIGCAT_LOG_LEVEL", "error")
+	t.Setenv("CONFIGCAT_DEFAULT_USER_ATTRIBUTES", `{"attr_1": "attr_value1", "attr2": "attr_value2"}`)
+
+	conf, err := LoadConfigFromFileAndEnvironment("")
+	require.NoError(t, err)
+
+	assert.Equal(t, "attr_value1", conf.DefaultAttrs["attr_1"])
+	assert.Equal(t, "attr_value2", conf.DefaultAttrs["attr2"])
 }

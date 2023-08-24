@@ -40,6 +40,21 @@ func TestConfig_Defaults(t *testing.T) {
 
 	assert.Equal(t, uint16(tls.VersionTLS12), conf.Tls.GetVersion())
 	assert.Equal(t, uint16(tls.VersionTLS12), conf.Cache.Redis.Tls.GetVersion())
+
+	assert.Nil(t, conf.DefaultAttrs)
+}
+
+func TestConfig_DefaultAttrs(t *testing.T) {
+	utils.UseTempFile(`
+sdks:
+  test_sdk:
+    key: key
+`, func(file string) {
+		conf, err := LoadConfigFromFileAndEnvironment(file)
+		require.NoError(t, err)
+
+		assert.Nil(t, conf.SDKs["test_sdk"].DefaultAttrs)
+	})
 }
 
 func TestConfig_LogLevelFixup(t *testing.T) {
@@ -127,6 +142,11 @@ sdks:
     data_governance: "eu"
     webhook_signing_key: "key"
     webhook_signature_valid_for: 600
+    default_user_attributes:
+      attr_1: "attr_value1"
+      attr2: "attr_value2"
+      attr3: 
+      attr 4: "attr value4"
     log:
       level: "error"
     offline:
@@ -158,6 +178,12 @@ sdks:
 		assert.Equal(t, 100, conf.SDKs["test_sdk"].Offline.Local.PollInterval)
 		assert.True(t, conf.SDKs["test_sdk"].Offline.UseCache)
 		assert.Equal(t, 200, conf.SDKs["test_sdk"].Offline.CachePollInterval)
+		assert.Equal(t, 200, conf.SDKs["test_sdk"].Offline.CachePollInterval)
+
+		assert.Equal(t, "attr_value1", conf.SDKs["test_sdk"].DefaultAttrs["attr_1"])
+		assert.Equal(t, "attr_value2", conf.SDKs["test_sdk"].DefaultAttrs["attr2"])
+		assert.Equal(t, "", conf.SDKs["test_sdk"].DefaultAttrs["attr3"])
+		assert.Equal(t, "attr value4", conf.SDKs["test_sdk"].DefaultAttrs["attr 4"])
 	})
 }
 
@@ -347,5 +373,23 @@ http_proxy:
 		require.NoError(t, err)
 
 		assert.Equal(t, "proxy-url", conf.HttpProxy.Url)
+	})
+}
+
+func TestDefaultAttributesConfig_YAML(t *testing.T) {
+	utils.UseTempFile(`
+default_user_attributes:
+  attr_1: "attr_value1"
+  attr2: "attr_value2"
+  attr3:
+  attr 4: "attr value4"
+`, func(file string) {
+		conf, err := LoadConfigFromFileAndEnvironment(file)
+		require.NoError(t, err)
+
+		assert.Equal(t, "attr_value1", conf.DefaultAttrs["attr_1"])
+		assert.Equal(t, "attr_value2", conf.DefaultAttrs["attr2"])
+		assert.Equal(t, "", conf.DefaultAttrs["attr3"])
+		assert.Equal(t, "attr value4", conf.DefaultAttrs["attr 4"])
 	})
 }
