@@ -36,20 +36,23 @@ type Client interface {
 type EvalData struct {
 	Value       interface{}
 	VariationId string
+	User        configcat.User
 }
 
 type Context struct {
-	SdkId          string
-	SDKConf        *config.SDKConfig
-	ProxyConf      *config.HttpProxyConfig
-	CacheConf      *config.CacheConfig
-	MetricsHandler metrics.Handler
-	StatusReporter status.Reporter
-	EvalReporter   statistics.Reporter
+	SdkId              string
+	SDKConf            *config.SDKConfig
+	ProxyConf          *config.HttpProxyConfig
+	CacheConf          *config.CacheConfig
+	GlobalDefaultAttrs UserAttrs
+	MetricsHandler     metrics.Handler
+	StatusReporter     status.Reporter
+	EvalReporter       statistics.Reporter
 }
 
 type client struct {
 	configCatClient *configcat.Client
+	defaultAttrs    UserAttrs
 	subscriptions   map[string]chan struct{}
 	readyOnce       sync.Once
 	log             log.Logger
@@ -80,6 +83,7 @@ func NewClient(sdkCtx *Context, log log.Logger) Client {
 		subscriptions: make(map[string]chan struct{}),
 		cache:         storage,
 		sdkCtx:        sdkCtx,
+		defaultAttrs:  MergeUserAttrs(sdkCtx.GlobalDefaultAttrs, sdkCtx.SDKConf.DefaultAttrs),
 	}
 	client.ctx, client.ctxCancel = context.WithCancel(context.Background())
 	var transport = http.DefaultTransport.(*http.Transport)
@@ -123,7 +127,11 @@ func NewClient(sdkCtx *Context, log log.Logger) Client {
 					user = userAttrs
 				}
 			}
-			sdkCtx.EvalReporter.ReportEvaluation(sdkCtx.SdkId, details.Data.Key, details.Value, user)
+			sdkCtx.EvalReporter.ReportEvaluation(&statistics.EvalEvent{
+				SdkId:     sdkCtx.SdkId,
+				FlagKey:   details.Data.Key,
+				Value:     details.Value,
+				UserAttrs: user})
 		}
 	}
 	if sdkCtx.SDKConf.DataGovernance == "eu" {
@@ -172,15 +180,17 @@ func (c *client) signal() {
 }
 
 func (c *client) Eval(key string, user UserAttrs) (EvalData, error) {
-	details := c.configCatClient.Snapshot(user).GetValueDetails(key)
-	return EvalData{Value: details.Value, VariationId: details.Data.VariationID}, details.Data.Error
+	mergedUser := MergeUserAttrs(c.defaultAttrs, user)
+	details := c.configCatClient.Snapshot(mergedUser).GetValueDetails(key)
+	return EvalData{Value: details.Value, VariationId: details.Data.VariationID, User: details.Data.User}, details.Data.Error
 }
 
 func (c *client) EvalAll(user UserAttrs) map[string]EvalData {
-	allDetails := c.configCatClient.Snapshot(user).GetAllValueDetails()
+	mergedUser := MergeUserAttrs(c.defaultAttrs, user)
+	allDetails := c.configCatClient.Snapshot(mergedUser).GetAllValueDetails()
 	result := make(map[string]EvalData, len(allDetails))
 	for _, details := range allDetails {
-		result[details.Data.Key] = EvalData{Value: details.Value, VariationId: details.Data.VariationID}
+		result[details.Data.Key] = EvalData{Value: details.Value, VariationId: details.Data.VariationID, User: details.Data.User}
 	}
 	return result
 }

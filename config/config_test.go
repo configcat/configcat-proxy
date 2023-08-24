@@ -40,6 +40,21 @@ func TestConfig_Defaults(t *testing.T) {
 
 	assert.Equal(t, uint16(tls.VersionTLS12), conf.Tls.GetVersion())
 	assert.Equal(t, uint16(tls.VersionTLS12), conf.Cache.Redis.Tls.GetVersion())
+
+	assert.Nil(t, conf.DefaultAttrs)
+}
+
+func TestConfig_DefaultAttrs(t *testing.T) {
+	utils.UseTempFile(`
+sdks:
+  test_sdk:
+    key: key
+`, func(file string) {
+		conf, err := LoadConfigFromFileAndEnvironment(file)
+		require.NoError(t, err)
+
+		assert.Nil(t, conf.SDKs["test_sdk"].DefaultAttrs)
+	})
 }
 
 func TestConfig_LogLevelFixup(t *testing.T) {
@@ -347,5 +362,21 @@ http_proxy:
 		require.NoError(t, err)
 
 		assert.Equal(t, "proxy-url", conf.HttpProxy.Url)
+	})
+}
+
+func TestDefaultAttributesConfig_YAML(t *testing.T) {
+	utils.UseTempFile(`
+default_user_attributes:
+  attr_1: "attr_value1"
+  attr2: "attr_value2"
+  attr3:
+`, func(file string) {
+		conf, err := LoadConfigFromFileAndEnvironment(file)
+		require.NoError(t, err)
+
+		assert.Equal(t, "attr_value1", conf.DefaultAttrs["attr_1"])
+		assert.Equal(t, "attr_value2", conf.DefaultAttrs["attr2"])
+		assert.Equal(t, "", conf.DefaultAttrs["attr3"])
 	})
 }

@@ -1,6 +1,13 @@
 package statistics
 
+type EvalEvent struct {
+	SdkId     string
+	FlagKey   string
+	Value     interface{}
+	UserAttrs map[string]string
+}
+
 type Reporter interface {
-	ReportEvaluation(sdkId string, flagKey string, value interface{}, attrs map[string]string)
+	ReportEvaluation(event *EvalEvent)
 	Close()
 }

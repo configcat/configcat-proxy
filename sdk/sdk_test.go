@@ -6,6 +6,7 @@ import (
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/internal/utils"
 	"github.com/configcat/configcat-proxy/log"
+	"github.com/configcat/configcat-proxy/sdk/statistics"
 	"github.com/configcat/configcat-proxy/status"
 	"github.com/configcat/go-sdk/v8/configcatcache"
 	"github.com/configcat/go-sdk/v8/configcattest"
@@ -321,6 +322,52 @@ func TestSdk_Keys(t *testing.T) {
 	assert.Equal(t, "flag2", keys[1])
 }
 
+func TestSdk_EvalStatsReporter(t *testing.T) {
+	key := configcattest.RandomSDKKey()
+	var h configcattest.Handler
+	_ = h.SetFlags(key, map[string]*configcattest.Flag{
+		"flag1": {
+			Default: "v1",
+		},
+	})
+	srv := httptest.NewServer(&h)
+	defer srv.Close()
+
+	reporter := NewTestReporter()
+	ctx := newTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key}, nil)
+	ctx.EvalReporter = reporter
+	client := NewClient(ctx, log.NewNullLogger())
+	defer client.Close()
+
+	_, _ = client.Eval("flag1", UserAttrs{"e": "h"})
+
+	var event *statistics.EvalEvent
+	utils.WithTimeout(2*time.Second, func() {
+		event = <-reporter.Latest()
+	})
+	assert.Equal(t, map[string]string{"e": "h"}, event.UserAttrs)
+}
+
+func TestSdk_DefaultAttrs(t *testing.T) {
+	key := configcattest.RandomSDKKey()
+	var h configcattest.Handler
+	_ = h.SetFlags(key, map[string]*configcattest.Flag{
+		"flag1": {
+			Default: "v1",
+		},
+	})
+	srv := httptest.NewServer(&h)
+	defer srv.Close()
+
+	ctx := newTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key, DefaultAttrs: map[string]string{"a": "g"}}, nil)
+	ctx.GlobalDefaultAttrs = map[string]string{"a": "b", "c": "d", "e": "f"}
+	client := NewClient(ctx, log.NewNullLogger())
+	defer client.Close()
+
+	evalData, _ := client.Eval("flag1", UserAttrs{"e": "h"})
+	assert.Equal(t, UserAttrs{"a": "g", "c": "d", "e": "h"}, evalData.User.(UserAttrs))
+}
+
 func newTestSdkContext(conf *config.SDKConfig, cacheConf *config.CacheConfig) *Context {
 	if cacheConf == nil {
 		cacheConf = &config.CacheConfig{}
@@ -335,3 +382,21 @@ func newTestSdkContext(conf *config.SDKConfig, cacheConf *config.CacheConfig) *C
 		SdkId:          "test",
 	}
 }
+
+type TestReporter struct {
+	events chan *statistics.EvalEvent
+}
+
+func NewTestReporter() *TestReporter {
+	return &TestReporter{events: make(chan *statistics.EvalEvent)}
+}
+
+func (r *TestReporter) ReportEvaluation(event *statistics.EvalEvent) {
+	r.events <- event
+}
+
+func (r *TestReporter) Latest() <-chan *statistics.EvalEvent {
+	return r.events
+}
+
+func (r *TestReporter) Close() {}

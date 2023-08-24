@@ -53,6 +53,8 @@ func (c *Config) loadEnv() {
 	c.Tls.loadEnv(envPrefix)
 	c.Metrics.loadEnv(envPrefix)
 	c.Cache.loadEnv(envPrefix)
+
+	readEnv(envPrefix, "DEFAULT_USER_ATTRIBUTES", &c.DefaultAttrs, toStringMap)
 }
 
 func (s *SDKConfig) loadEnv(prefix string) {
@@ -61,6 +63,7 @@ func (s *SDKConfig) loadEnv(prefix string) {
 	readEnvString(prefix, "WEBHOOK_SIGNING_KEY", &s.WebhookSigningKey)
 	readEnv(prefix, "WEBHOOK_SIGNATURE_VALID_FOR", &s.WebhookSignatureValidFor, toInt)
 	readEnv(prefix, "POLL_INTERVAL", &s.PollInterval, toInt)
+	readEnv(prefix, "DEFAULT_USER_ATTRIBUTES", &s.DefaultAttrs, toStringMap)
 	s.Offline.loadEnv(prefix)
 	s.Log.loadEnv(prefix)
 }
