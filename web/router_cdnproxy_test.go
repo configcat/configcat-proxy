@@ -28,7 +28,7 @@ func TestCDNProxy_Options_CORS(t *testing.T) {
 	assert.Equal(t, "Cache-Control,Content-Type,Content-Length,Accept-Encoding,If-None-Match", resp.Header.Get("Access-Control-Allow-Headers"))
 	assert.Equal(t, "600", resp.Header.Get("Access-Control-Max-Age"))
 	assert.Equal(t, "*", resp.Header.Get("Access-Control-Allow-Origin"))
-	assert.Equal(t, "Content-Length,GeneratedETag,Date,Content-Encoding", resp.Header.Get("Access-Control-Expose-Headers"))
+	assert.Equal(t, "Content-Length,ETag,Date,Content-Encoding", resp.Header.Get("Access-Control-Expose-Headers"))
 	assert.Equal(t, "v1", resp.Header.Get("h1"))
 }
 
@@ -62,7 +62,7 @@ func TestCDNProxy_GET_CORS(t *testing.T) {
 	assert.Empty(t, resp.Header.Get("Access-Control-Allow-Headers"))
 	assert.Empty(t, resp.Header.Get("Access-Control-Max-Age"))
 	assert.Equal(t, "*", resp.Header.Get("Access-Control-Allow-Origin"))
-	assert.Equal(t, "Content-Length,GeneratedETag,Date,Content-Encoding", resp.Header.Get("Access-Control-Expose-Headers"))
+	assert.Equal(t, "Content-Length,ETag,Date,Content-Encoding", resp.Header.Get("Access-Control-Expose-Headers"))
 	assert.Equal(t, "v1", resp.Header.Get("h1"))
 }
 

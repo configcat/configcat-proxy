@@ -23,7 +23,7 @@ func TestCORS(t *testing.T) {
 		assert.Equal(t, "Cache-Control,Content-Type,Content-Length,Accept-Encoding,If-None-Match", resp.Header.Get("Access-Control-Allow-Headers"))
 		assert.Equal(t, "600", resp.Header.Get("Access-Control-Max-Age"))
 		assert.Equal(t, "*", resp.Header.Get("Access-Control-Allow-Origin"))
-		assert.Equal(t, "Content-Length,GeneratedETag,Date,Content-Encoding", resp.Header.Get("Access-Control-Expose-Headers"))
+		assert.Equal(t, "Content-Length,ETag,Date,Content-Encoding", resp.Header.Get("Access-Control-Expose-Headers"))
 	})
 	t.Run("custom origin, options", func(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodOptions, srv.URL, http.NoBody)
@@ -35,14 +35,14 @@ func TestCORS(t *testing.T) {
 		assert.Equal(t, "Cache-Control,Content-Type,Content-Length,Accept-Encoding,If-None-Match", resp.Header.Get("Access-Control-Allow-Headers"))
 		assert.Equal(t, "600", resp.Header.Get("Access-Control-Max-Age"))
 		assert.Equal(t, "http://localhost", resp.Header.Get("Access-Control-Allow-Origin"))
-		assert.Equal(t, "Content-Length,GeneratedETag,Date,Content-Encoding", resp.Header.Get("Access-Control-Expose-Headers"))
+		assert.Equal(t, "Content-Length,ETag,Date,Content-Encoding", resp.Header.Get("Access-Control-Expose-Headers"))
 	})
 	t.Run("* origin, get", func(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodGet, srv.URL, http.NoBody)
 		resp, _ := client.Do(req)
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 		assert.Equal(t, "*", resp.Header.Get("Access-Control-Allow-Origin"))
-		assert.Equal(t, "Content-Length,GeneratedETag,Date,Content-Encoding", resp.Header.Get("Access-Control-Expose-Headers"))
+		assert.Equal(t, "Content-Length,ETag,Date,Content-Encoding", resp.Header.Get("Access-Control-Expose-Headers"))
 	})
 	t.Run("custom origin, get", func(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodGet, srv.URL, http.NoBody)
@@ -50,6 +50,6 @@ func TestCORS(t *testing.T) {
 		resp, _ := client.Do(req)
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 		assert.Equal(t, "http://localhost", resp.Header.Get("Access-Control-Allow-Origin"))
-		assert.Equal(t, "Content-Length,GeneratedETag,Date,Content-Encoding", resp.Header.Get("Access-Control-Expose-Headers"))
+		assert.Equal(t, "Content-Length,ETag,Date,Content-Encoding", resp.Header.Get("Access-Control-Expose-Headers"))
 	})
 }
