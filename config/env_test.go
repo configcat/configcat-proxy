@@ -115,6 +115,19 @@ func TestMetricsConfig_ENV(t *testing.T) {
 	assert.Equal(t, 8091, conf.Metrics.Port)
 }
 
+func TestGlobalOfflineConfig_ENV(t *testing.T) {
+	t.Setenv("CONFIGCAT_OFFLINE_ENABLED", "true")
+	t.Setenv("CONFIGCAT_OFFLINE_CACHE_POLL_INTERVAL", "200")
+	t.Setenv("CONFIGCAT_OFFLINE_LOG_LEVEL", "info")
+
+	conf, err := LoadConfigFromFileAndEnvironment("")
+	require.NoError(t, err)
+
+	assert.True(t, conf.GlobalOfflineConfig.Enabled)
+	assert.Equal(t, 200, conf.GlobalOfflineConfig.CachePollInterval)
+	assert.Equal(t, log.Info, conf.GlobalOfflineConfig.Log.GetLevel())
+}
+
 func TestHttpConfig_ENV(t *testing.T) {
 	t.Setenv("CONFIGCAT_HTTP_PORT", "8090")
 	t.Setenv("CONFIGCAT_HTTP_LOG_LEVEL", "info")

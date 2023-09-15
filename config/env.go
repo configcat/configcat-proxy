@@ -53,6 +53,7 @@ func (c *Config) loadEnv() {
 	c.Tls.loadEnv(envPrefix)
 	c.Metrics.loadEnv(envPrefix)
 	c.Cache.loadEnv(envPrefix)
+	c.GlobalOfflineConfig.loadEnv(envPrefix)
 
 	readEnv(envPrefix, "DEFAULT_USER_ATTRIBUTES", &c.DefaultAttrs, toStringMap)
 }
@@ -93,6 +94,13 @@ func (h *HttpProxyConfig) loadEnv(prefix string) {
 func (c *CacheConfig) loadEnv(prefix string) {
 	prefix = concatPrefix(prefix, "CACHE")
 	c.Redis.loadEnv(prefix)
+}
+
+func (g *GlobalOfflineConfig) loadEnv(prefix string) {
+	prefix = concatPrefix(prefix, "OFFLINE")
+	readEnv(prefix, "ENABLED", &g.Enabled, toBool)
+	readEnv(prefix, "CACHE_POLL_INTERVAL", &g.CachePollInterval, toInt)
+	g.Log.loadEnv(prefix)
 }
 
 func (o *OfflineConfig) loadEnv(prefix string) {

@@ -25,15 +25,16 @@ var allowedTlsVersions = map[float64]uint16{
 }
 
 type Config struct {
-	Log          LogConfig
-	SDKs         map[string]*SDKConfig
-	Grpc         GrpcConfig
-	Tls          TlsConfig
-	Metrics      MetricsConfig
-	Http         HttpConfig
-	HttpProxy    HttpProxyConfig `yaml:"http_proxy"`
-	Cache        CacheConfig
-	DefaultAttrs map[string]string `yaml:"default_user_attributes"`
+	Log                 LogConfig
+	SDKs                map[string]*SDKConfig
+	Grpc                GrpcConfig
+	Tls                 TlsConfig
+	Metrics             MetricsConfig
+	Http                HttpConfig
+	Cache               CacheConfig
+	HttpProxy           HttpProxyConfig     `yaml:"http_proxy"`
+	GlobalOfflineConfig GlobalOfflineConfig `yaml:"offline"`
+	DefaultAttrs        map[string]string   `yaml:"default_user_attributes"`
 }
 
 type SDKConfig struct {
@@ -116,6 +117,12 @@ type OfflineConfig struct {
 	Local             LocalConfig
 }
 
+type GlobalOfflineConfig struct {
+	Enabled           bool `yaml:"enabled"`
+	CachePollInterval int  `yaml:"cache_poll_interval"`
+	Log               LogConfig
+}
+
 type CacheConfig struct {
 	Redis RedisConfig
 }
@@ -178,6 +185,7 @@ func LoadConfigFromFileAndEnvironment(filePath string) (Config, error) {
 	config.fixupLogLevels(config.Log.Level)
 	config.fixupDefaults()
 	config.fixupTlsMinVersions(1.2)
+	config.fixupOffline()
 	return config, nil
 }
 
@@ -234,6 +242,26 @@ func (c *Config) fixupDefaults() {
 			sdk.Offline.CachePollInterval = 5
 		}
 	}
+	if c.GlobalOfflineConfig.CachePollInterval == 0 {
+		c.GlobalOfflineConfig.CachePollInterval = 5
+	}
+}
+
+func (c *Config) fixupOffline() {
+	if !c.GlobalOfflineConfig.Enabled {
+		return
+	}
+	for _, sdk := range c.SDKs {
+		if sdk == nil {
+			continue
+		}
+		if !sdk.Offline.Enabled {
+			sdk.Offline.Enabled = true
+			sdk.Offline.UseCache = true
+			sdk.Offline.CachePollInterval = c.GlobalOfflineConfig.CachePollInterval
+			sdk.Offline.Log = c.GlobalOfflineConfig.Log
+		}
+	}
 }
 
 func (c *Config) fixupLogLevels(defLevel string) {
@@ -256,6 +284,9 @@ func (c *Config) fixupLogLevels(defLevel string) {
 	}
 	if c.Grpc.Log.GetLevel() == log.None {
 		c.Grpc.Log.Level = defLevel
+	}
+	if c.GlobalOfflineConfig.Log.GetLevel() == log.None {
+		c.GlobalOfflineConfig.Log.Level = defLevel
 	}
 }
 
