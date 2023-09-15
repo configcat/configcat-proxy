@@ -42,8 +42,16 @@ func TestConfig_Validate(t *testing.T) {
 		require.ErrorContains(t, conf.Validate(), "sdk-env1: offline mode enabled with cache, but no cache is configured")
 	})
 	t.Run("offline cache invalid poll interval", func(t *testing.T) {
-		conf := Config{SDKs: map[string]*SDKConfig{"env1": {Key: "Key", Offline: OfflineConfig{Enabled: true, UseCache: true, CachePollInterval: 0}}}, Cache: CacheConfig{Redis: RedisConfig{}}}
-		require.ErrorContains(t, conf.Validate(), "sdk-env1: offline mode enabled with cache, but no cache is configured")
+		conf := Config{SDKs: map[string]*SDKConfig{"env1": {Key: "Key", Offline: OfflineConfig{Enabled: true, UseCache: true, CachePollInterval: 0}}}, Cache: CacheConfig{Redis: RedisConfig{Enabled: true, Addresses: []string{"localhost"}}}}
+		require.ErrorContains(t, conf.Validate(), "sdk-env1: cache poll interval must be greater than 1 seconds")
+	})
+	t.Run("global offline cache invalid poll interval", func(t *testing.T) {
+		conf := Config{SDKs: map[string]*SDKConfig{"env1": {Key: "Key"}}, Cache: CacheConfig{Redis: RedisConfig{Enabled: true, Addresses: []string{"localhost"}}}, GlobalOfflineConfig: GlobalOfflineConfig{Enabled: true, CachePollInterval: -1}}
+		require.ErrorContains(t, conf.Validate(), "offline: cache poll interval must be greater than 1 seconds")
+	})
+	t.Run("global offline cache without cache", func(t *testing.T) {
+		conf := Config{SDKs: map[string]*SDKConfig{"env1": {Key: "Key"}}, GlobalOfflineConfig: GlobalOfflineConfig{Enabled: true}}
+		require.ErrorContains(t, conf.Validate(), "offline: global offline mode enabled, but no cache is configured")
 	})
 	t.Run("redis enabled without addresses", func(t *testing.T) {
 		conf := Config{SDKs: map[string]*SDKConfig{"env1": {Key: "Key"}}, Cache: CacheConfig{Redis: RedisConfig{Enabled: true}}}

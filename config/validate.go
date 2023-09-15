@@ -24,6 +24,9 @@ func (c *Config) Validate() error {
 	if err := c.Cache.Redis.validate(); err != nil {
 		return err
 	}
+	if err := c.GlobalOfflineConfig.validate(&c.Cache); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -76,6 +79,19 @@ func (o *OfflineConfig) validate(c *CacheConfig, sdkId string) error {
 	}
 	if o.UseCache && o.CachePollInterval < 1 {
 		return fmt.Errorf("sdk-" + sdkId + ": cache poll interval must be greater than 1 seconds")
+	}
+	return nil
+}
+
+func (g *GlobalOfflineConfig) validate(c *CacheConfig) error {
+	if !g.Enabled {
+		return nil
+	}
+	if !c.Redis.Enabled {
+		return fmt.Errorf("offline: global offline mode enabled, but no cache is configured")
+	}
+	if g.CachePollInterval < 1 {
+		return fmt.Errorf("offline: cache poll interval must be greater than 1 seconds")
 	}
 	return nil
 }

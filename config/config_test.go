@@ -32,6 +32,9 @@ func TestConfig_Defaults(t *testing.T) {
 
 	assert.True(t, conf.Http.Webhook.Enabled)
 
+	assert.False(t, conf.GlobalOfflineConfig.Enabled)
+	assert.Equal(t, 5, conf.GlobalOfflineConfig.CachePollInterval)
+
 	assert.Equal(t, 0, conf.Cache.Redis.DB)
 	assert.Equal(t, "localhost:6379", conf.Cache.Redis.Addresses[0])
 
@@ -75,6 +78,7 @@ log:
 			assert.Equal(t, log.Info, conf.Http.Log.GetLevel())
 			assert.Equal(t, log.Info, conf.Http.Sse.Log.GetLevel())
 			assert.Equal(t, log.Info, conf.Grpc.Log.GetLevel())
+			assert.Equal(t, log.Info, conf.GlobalOfflineConfig.Log.GetLevel())
 		})
 	})
 
@@ -95,6 +99,7 @@ log:
 			assert.Equal(t, log.Warn, conf.Http.Log.GetLevel())
 			assert.Equal(t, log.Warn, conf.Http.Sse.Log.GetLevel())
 			assert.Equal(t, log.Warn, conf.Grpc.Log.GetLevel())
+			assert.Equal(t, log.Warn, conf.GlobalOfflineConfig.Log.GetLevel())
 		})
 	})
 
@@ -118,6 +123,10 @@ http:
 grpc:
   log:
     level: "debug"
+
+offline:
+  log:
+    level: "debug"
 `, func(file string) {
 			conf, err := LoadConfigFromFileAndEnvironment(file)
 			require.NoError(t, err)
@@ -128,6 +137,7 @@ grpc:
 			assert.Equal(t, log.Debug, conf.Http.Log.GetLevel())
 			assert.Equal(t, log.Debug, conf.Http.Sse.Log.GetLevel())
 			assert.Equal(t, log.Debug, conf.Grpc.Log.GetLevel())
+			assert.Equal(t, log.Debug, conf.GlobalOfflineConfig.Log.GetLevel())
 		})
 	})
 }
@@ -187,6 +197,88 @@ sdks:
 	})
 }
 
+func TestSDKWithGlobalOffline_YAML(t *testing.T) {
+	utils.UseTempFile(`
+sdks:
+  test_sdk_1:
+    poll_interval: 30
+    base_url: "test"
+    key: "sdkKey1"
+  test_sdk_2:
+    key: "sdkKey2"
+    offline:
+      enabled: true
+      local:
+        file_path: "./local.json"
+  test_sdk_3:
+    key: "sdkKey3"
+    offline:
+      enabled: true
+      use_cache: true
+      cache_poll_interval: 20
+      
+
+offline:
+  enabled: true
+  cache_poll_interval: 10
+`, func(file string) {
+		conf, err := LoadConfigFromFileAndEnvironment(file)
+		require.NoError(t, err)
+
+		assert.True(t, conf.SDKs["test_sdk_1"].Offline.Enabled)
+		assert.True(t, conf.SDKs["test_sdk_1"].Offline.UseCache)
+		assert.Equal(t, 10, conf.SDKs["test_sdk_1"].Offline.CachePollInterval)
+
+		assert.True(t, conf.SDKs["test_sdk_2"].Offline.Enabled)
+		assert.False(t, conf.SDKs["test_sdk_2"].Offline.UseCache)
+		assert.Equal(t, "./local.json", conf.SDKs["test_sdk_2"].Offline.Local.FilePath)
+
+		assert.True(t, conf.SDKs["test_sdk_3"].Offline.Enabled)
+		assert.True(t, conf.SDKs["test_sdk_3"].Offline.UseCache)
+		assert.Equal(t, 20, conf.SDKs["test_sdk_3"].Offline.CachePollInterval)
+	})
+}
+
+func TestSDKWithGlobalOfflineAndEnv_YAML(t *testing.T) {
+	utils.UseTempFile(`
+sdks:
+  test_sdk_1:
+    poll_interval: 30
+    base_url: "test"
+    key: "sdkKey1"
+  test_sdk_2:
+    key: "sdkKey2"
+    offline:
+      enabled: true
+      local:
+        file_path: "./local.json"
+  test_sdk_3:
+    key: "sdkKey3"
+    offline:
+      enabled: true
+      use_cache: true
+      cache_poll_interval: 20
+`, func(file string) {
+		t.Setenv("CONFIGCAT_OFFLINE_ENABLED", "true")
+		t.Setenv("CONFIGCAT_OFFLINE_CACHE_POLL_INTERVAL", "10")
+
+		conf, err := LoadConfigFromFileAndEnvironment(file)
+		require.NoError(t, err)
+
+		assert.True(t, conf.SDKs["test_sdk_1"].Offline.Enabled)
+		assert.True(t, conf.SDKs["test_sdk_1"].Offline.UseCache)
+		assert.Equal(t, 10, conf.SDKs["test_sdk_1"].Offline.CachePollInterval)
+
+		assert.True(t, conf.SDKs["test_sdk_2"].Offline.Enabled)
+		assert.False(t, conf.SDKs["test_sdk_2"].Offline.UseCache)
+		assert.Equal(t, "./local.json", conf.SDKs["test_sdk_2"].Offline.Local.FilePath)
+
+		assert.True(t, conf.SDKs["test_sdk_3"].Offline.Enabled)
+		assert.True(t, conf.SDKs["test_sdk_3"].Offline.UseCache)
+		assert.Equal(t, 20, conf.SDKs["test_sdk_3"].Offline.CachePollInterval)
+	})
+}
+
 func TestCacheConfig_YAML(t *testing.T) {
 	utils.UseTempFile(`
 cache:
@@ -222,6 +314,23 @@ cache:
 		assert.Equal(t, "./key1", conf.Cache.Redis.Tls.Certificates[0].Key)
 		assert.Equal(t, "./cert2", conf.Cache.Redis.Tls.Certificates[1].Cert)
 		assert.Equal(t, "./key2", conf.Cache.Redis.Tls.Certificates[1].Key)
+	})
+}
+
+func TestGlobalOfflineConfig_YAML(t *testing.T) {
+	utils.UseTempFile(`
+offline:
+  enabled: true
+  cache_poll_interval: 200
+  log:
+    level: "error"
+`, func(file string) {
+		conf, err := LoadConfigFromFileAndEnvironment(file)
+		require.NoError(t, err)
+
+		assert.True(t, conf.GlobalOfflineConfig.Enabled)
+		assert.Equal(t, 200, conf.GlobalOfflineConfig.CachePollInterval)
+		assert.Equal(t, log.Error, conf.GlobalOfflineConfig.Log.GetLevel())
 	})
 }
 
