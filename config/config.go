@@ -7,8 +7,14 @@ import (
 	"github.com/configcat/configcat-proxy/log"
 	"gopkg.in/yaml.v3"
 	"os"
+	"path"
 	"path/filepath"
+	"runtime"
 )
+
+const defaultConfigName = "options.yml"
+const defaultVendorName = "configcat"
+const defaultProductName = "proxy"
 
 var allowedLogLevels = map[string]log.Level{
 	"debug": log.Debug,
@@ -171,10 +177,22 @@ func LoadConfigFromFileAndEnvironment(filePath string) (Config, error) {
 		if err != nil {
 			return Config{}, fmt.Errorf("failed to read config file %s: %s", realPath, err)
 		}
-
 		err = yaml.Unmarshal(data, &config)
 		if err != nil {
 			return Config{}, fmt.Errorf("failed to parse YAML from config file %s: %s", realPath, err)
+		}
+	} else if defaultPath, ok := defaultConfigPath(); ok {
+		fmt.Println(defaultPath)
+		_, err := os.Stat(defaultPath)
+		if !errors.Is(err, os.ErrNotExist) {
+			data, err := os.ReadFile(defaultPath)
+			if err != nil {
+				return Config{}, fmt.Errorf("failed to read config file %s: %s", defaultPath, err)
+			}
+			err = yaml.Unmarshal(data, &config)
+			if err != nil {
+				return Config{}, fmt.Errorf("failed to parse YAML from config file %s: %s", defaultPath, err)
+			}
 		}
 	}
 
@@ -297,4 +315,17 @@ func (c *Config) fixupTlsMinVersions(defVersion float64) {
 	if _, ok := allowedTlsVersions[c.Cache.Redis.Tls.MinVersion]; !ok {
 		c.Cache.Redis.Tls.MinVersion = defVersion
 	}
+}
+
+func defaultConfigPath() (string, bool) {
+	switch runtime.GOOS {
+	case "windows":
+		rootDir := os.Getenv("PROGRAMDATA")
+		return path.Join(rootDir, defaultVendorName, defaultProductName, defaultConfigName), true
+	case "darwin":
+		return path.Join("/Library/Application Support", defaultVendorName, defaultProductName, defaultConfigName), true
+	case "linux":
+		return path.Join("/etc", defaultVendorName, defaultProductName, defaultConfigName), true
+	}
+	return "", false
 }
