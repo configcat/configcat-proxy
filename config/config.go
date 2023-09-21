@@ -182,7 +182,6 @@ func LoadConfigFromFileAndEnvironment(filePath string) (Config, error) {
 			return Config{}, fmt.Errorf("failed to parse YAML from config file %s: %s", realPath, err)
 		}
 	} else if defaultPath, ok := defaultConfigPath(); ok {
-		fmt.Println(defaultPath)
 		_, err := os.Stat(defaultPath)
 		if !errors.Is(err, os.ErrNotExist) {
 			data, err := os.ReadFile(defaultPath)
