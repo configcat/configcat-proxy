@@ -132,25 +132,25 @@ func (r *RedisConfig) loadEnv(prefix string) {
 func (s *SseConfig) loadEnv(prefix string) {
 	prefix = concatPrefix(prefix, "SSE")
 	readEnv(prefix, "ENABLED", &s.Enabled, toBool)
-	readEnv(prefix, "ALLOW_CORS", &s.AllowCORS, toBool)
 	readEnv(prefix, "HEADERS", &s.Headers, toStringMap)
 	readEnv(prefix, "HEARTBEAT_INTERVAL", &s.HeartBeatInterval, toInt)
+	s.CORS.loadEnv(prefix)
 	s.Log.loadEnv(prefix)
 }
 
 func (a *ApiConfig) loadEnv(prefix string) {
 	prefix = concatPrefix(prefix, "API")
 	readEnv(prefix, "ENABLED", &a.Enabled, toBool)
-	readEnv(prefix, "ALLOW_CORS", &a.AllowCORS, toBool)
 	readEnv(prefix, "HEADERS", &a.Headers, toStringMap)
 	readEnv(prefix, "AUTH_HEADERS", &a.AuthHeaders, toStringMap)
+	a.CORS.loadEnv(prefix)
 }
 
 func (c *CdnProxyConfig) loadEnv(prefix string) {
 	prefix = concatPrefix(prefix, "CDN_PROXY")
 	readEnv(prefix, "ENABLED", &c.Enabled, toBool)
-	readEnv(prefix, "ALLOW_CORS", &c.AllowCORS, toBool)
 	readEnv(prefix, "HEADERS", &c.Headers, toStringMap)
+	c.CORS.loadEnv(prefix)
 }
 
 func (w *WebhookConfig) loadEnv(prefix string) {
@@ -164,6 +164,12 @@ func (a *AuthConfig) loadEnv(prefix string) {
 	prefix = concatPrefix(prefix, "AUTH")
 	readEnvString(prefix, "USER", &a.User)
 	readEnvString(prefix, "PASSWORD", &a.Password)
+}
+
+func (c *CORSConfig) loadEnv(prefix string) {
+	prefix = concatPrefix(prefix, "CORS")
+	readEnv(prefix, "ENABLED", &c.Enabled, toBool)
+	readEnv(prefix, "ALLOWED_ORIGINS", &c.AllowedOrigins, toStringSlice)
 }
 
 func (t *TlsConfig) loadEnv(prefix string) {

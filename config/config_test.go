@@ -22,13 +22,13 @@ func TestConfig_Defaults(t *testing.T) {
 	assert.True(t, conf.Metrics.Enabled)
 
 	assert.True(t, conf.Http.Sse.Enabled)
-	assert.True(t, conf.Http.Sse.AllowCORS)
+	assert.True(t, conf.Http.Sse.CORS.Enabled)
 
 	assert.True(t, conf.Http.CdnProxy.Enabled)
-	assert.True(t, conf.Http.CdnProxy.AllowCORS)
+	assert.True(t, conf.Http.CdnProxy.CORS.Enabled)
 
 	assert.True(t, conf.Http.Api.Enabled)
-	assert.True(t, conf.Http.Api.AllowCORS)
+	assert.True(t, conf.Http.Api.CORS.Enabled)
 
 	assert.True(t, conf.Http.Webhook.Enabled)
 
@@ -404,7 +404,8 @@ http:
     headers:
       CUSTOM-HEADER1: "cdn-val1"
       CUSTOM-HEADER2: "cdn-val2"
-    allow_cors: true
+    cors: 
+      enabled: true
   api:
     enabled: true
     allow_cors: true
@@ -414,11 +415,15 @@ http:
     auth_headers:
       X-API-KEY1: "api-auth1"
       X-API-KEY2: "api-auth2"
+    cors: 
+      enabled: true
+      allowed_origins:
+        - https://example1.com
+        - https://example2.com
   sse:
     log: 
       level: "warn"
     enabled: true
-    allow_cors: true
     heart_beat_interval: 5
     headers:
       CUSTOM-HEADER1: "sse-val1"
@@ -436,19 +441,23 @@ http:
 		assert.Equal(t, "auth2", conf.Http.Webhook.AuthHeaders["X-API-KEY2"])
 
 		assert.True(t, conf.Http.CdnProxy.Enabled)
-		assert.True(t, conf.Http.CdnProxy.AllowCORS)
+		assert.True(t, conf.Http.CdnProxy.CORS.Enabled)
+		assert.Nil(t, conf.Http.CdnProxy.CORS.AllowedOrigins)
 		assert.Equal(t, "cdn-val1", conf.Http.CdnProxy.Headers["CUSTOM-HEADER1"])
 		assert.Equal(t, "cdn-val2", conf.Http.CdnProxy.Headers["CUSTOM-HEADER2"])
 
 		assert.True(t, conf.Http.Sse.Enabled)
-		assert.True(t, conf.Http.Sse.AllowCORS)
+		assert.True(t, conf.Http.Sse.CORS.Enabled)
+		assert.Nil(t, conf.Http.Sse.CORS.AllowedOrigins)
 		assert.Equal(t, log.Warn, conf.Http.Sse.Log.GetLevel())
 		assert.Equal(t, "sse-val1", conf.Http.Sse.Headers["CUSTOM-HEADER1"])
 		assert.Equal(t, "sse-val2", conf.Http.Sse.Headers["CUSTOM-HEADER2"])
 		assert.Equal(t, 5, conf.Http.Sse.HeartBeatInterval)
 
 		assert.True(t, conf.Http.Api.Enabled)
-		assert.True(t, conf.Http.Api.AllowCORS)
+		assert.True(t, conf.Http.Api.CORS.Enabled)
+		assert.Equal(t, "https://example1.com", conf.Http.Api.CORS.AllowedOrigins[0])
+		assert.Equal(t, "https://example2.com", conf.Http.Api.CORS.AllowedOrigins[1])
 		assert.Equal(t, "api-val1", conf.Http.Api.Headers["CUSTOM-HEADER1"])
 		assert.Equal(t, "api-val2", conf.Http.Api.Headers["CUSTOM-HEADER2"])
 		assert.Equal(t, "api-auth1", conf.Http.Api.AuthHeaders["X-API-KEY1"])

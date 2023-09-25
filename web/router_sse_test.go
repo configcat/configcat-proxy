@@ -14,7 +14,7 @@ import (
 )
 
 func TestSSE_EvalFlag_Options_CORS(t *testing.T) {
-	router := newSSERouter(t, config.SseConfig{Enabled: true, AllowCORS: true, Headers: map[string]string{"h1": "v1"}})
+	router := newSSERouter(t, config.SseConfig{Enabled: true, CORS: config.CORSConfig{Enabled: true}, Headers: map[string]string{"h1": "v1"}})
 	srv := httptest.NewServer(router.Handler())
 	client := http.Client{}
 	data := base64.URLEncoding.EncodeToString([]byte(`{"key":"flag"}`))
@@ -32,7 +32,7 @@ func TestSSE_EvalFlag_Options_CORS(t *testing.T) {
 }
 
 func TestSSE_EvalFlag_GET_CORS(t *testing.T) {
-	router := newSSERouter(t, config.SseConfig{Enabled: true, AllowCORS: true, Headers: map[string]string{"h1": "v1"}})
+	router := newSSERouter(t, config.SseConfig{Enabled: true, CORS: config.CORSConfig{Enabled: true}, Headers: map[string]string{"h1": "v1"}})
 	srv := httptest.NewServer(router.Handler())
 	client := http.Client{}
 	data := base64.URLEncoding.EncodeToString([]byte(`{"key":"flag"}`))
@@ -49,7 +49,7 @@ func TestSSE_EvalFlag_GET_CORS(t *testing.T) {
 }
 
 func TestSSE_EvalFlag_Not_Allowed_Methods(t *testing.T) {
-	router := newSSERouter(t, config.SseConfig{Enabled: true, AllowCORS: true})
+	router := newSSERouter(t, config.SseConfig{Enabled: true, CORS: config.CORSConfig{Enabled: true}})
 	srv := httptest.NewServer(router.Handler())
 	client := http.Client{}
 	data := base64.URLEncoding.EncodeToString([]byte(`{"key":"flag"}`))
@@ -77,7 +77,7 @@ func TestSSE_EvalFlag_Not_Allowed_Methods(t *testing.T) {
 }
 
 func TestSSE_EvalAllFlags_Options_CORS(t *testing.T) {
-	router := newSSERouter(t, config.SseConfig{Enabled: true, AllowCORS: true, Headers: map[string]string{"h1": "v1"}})
+	router := newSSERouter(t, config.SseConfig{Enabled: true, CORS: config.CORSConfig{Enabled: true}, Headers: map[string]string{"h1": "v1"}})
 	srv := httptest.NewServer(router.Handler())
 	client := http.Client{}
 	req, _ := http.NewRequest(http.MethodOptions, fmt.Sprintf("%s/sse/test/eval-all", srv.URL), http.NoBody)
@@ -107,7 +107,7 @@ func TestSSE_EvalAllFlags_Options_CORS(t *testing.T) {
 }
 
 func TestSSE_EvalAllFlags_GET_CORS(t *testing.T) {
-	router := newSSERouter(t, config.SseConfig{Enabled: true, AllowCORS: true, Headers: map[string]string{"h1": "v1"}})
+	router := newSSERouter(t, config.SseConfig{Enabled: true, CORS: config.CORSConfig{Enabled: true}, Headers: map[string]string{"h1": "v1"}})
 	srv := httptest.NewServer(router.Handler())
 	client := http.Client{}
 	req, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/sse/test/eval-all", srv.URL), http.NoBody)
@@ -135,7 +135,7 @@ func TestSSE_EvalAllFlags_GET_CORS(t *testing.T) {
 }
 
 func TestSSE_EvalAllFlags_Not_Allowed_Methods(t *testing.T) {
-	router := newSSERouter(t, config.SseConfig{Enabled: true, AllowCORS: true})
+	router := newSSERouter(t, config.SseConfig{Enabled: true, CORS: config.CORSConfig{Enabled: true}})
 	srv := httptest.NewServer(router.Handler())
 	client := http.Client{}
 	data := base64.URLEncoding.EncodeToString([]byte(`{"key":"flag"}`))

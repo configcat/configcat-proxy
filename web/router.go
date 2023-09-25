@@ -73,8 +73,8 @@ func (s *HttpRouter) setupSSERoutes(conf *config.SseConfig, sdkClients map[strin
 		if len(conf.Headers) > 0 {
 			endpoint.handler = mware.ExtraHeaders(conf.Headers, endpoint.handler)
 		}
-		if conf.AllowCORS {
-			endpoint.handler = mware.CORS([]string{endpoint.method, http.MethodOptions}, endpoint.handler)
+		if conf.CORS.Enabled {
+			endpoint.handler = mware.CORS([]string{endpoint.method, http.MethodOptions}, conf.CORS.AllowedOrigins, endpoint.handler)
 		}
 		if l.Level() == log.Debug {
 			endpoint.handler = mware.DebugLog(l, endpoint.handler)
@@ -113,8 +113,8 @@ func (s *HttpRouter) setupCDNProxyRoutes(conf *config.CdnProxyConfig, sdkClients
 	if len(conf.Headers) > 0 {
 		handler = mware.ExtraHeaders(conf.Headers, handler)
 	}
-	if conf.AllowCORS {
-		handler = mware.CORS([]string{http.MethodGet, http.MethodOptions}, handler)
+	if conf.CORS.Enabled {
+		handler = mware.CORS([]string{http.MethodGet, http.MethodOptions}, conf.CORS.AllowedOrigins, handler)
 	}
 	if s.metrics != nil {
 		handler = metrics.Measure(s.metrics, handler)
@@ -160,8 +160,8 @@ func (s *HttpRouter) setupAPIRoutes(conf *config.ApiConfig, sdkClients map[strin
 		if len(conf.Headers) > 0 {
 			endpoint.handler = mware.ExtraHeaders(conf.Headers, endpoint.handler)
 		}
-		if conf.AllowCORS {
-			endpoint.handler = mware.CORS([]string{endpoint.method, http.MethodOptions}, endpoint.handler)
+		if conf.CORS.Enabled {
+			endpoint.handler = mware.CORS([]string{endpoint.method, http.MethodOptions}, conf.CORS.AllowedOrigins, endpoint.handler)
 		}
 		if s.metrics != nil {
 			endpoint.handler = metrics.Measure(s.metrics, endpoint.handler)
