@@ -23,25 +23,25 @@ var defaultExposedHeaders = strings.Join([]string{
 
 var defaultAllowedOrigin = "*"
 
-func CORS(allowedMethods []string, allowedDomains []string, next http.HandlerFunc) http.HandlerFunc {
+func CORS(allowedMethods []string, allowedOrigins []string, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
 		if r.Method == http.MethodOptions {
-			setOptionsCORSHeaders(w, origin, allowedDomains, allowedMethods)
+			setOptionsCORSHeaders(w, origin, allowedOrigins, allowedMethods)
 		} else {
-			setDefaultCORSHeaders(w, origin, allowedDomains)
+			setDefaultCORSHeaders(w, origin, allowedOrigins)
 		}
 		next(w, r)
 	}
 }
 
-func setDefaultCORSHeaders(w http.ResponseWriter, requestOrigin string, allowedDomains []string) {
-	w.Header().Set("Access-Control-Allow-Origin", determineOrigin(requestOrigin, allowedDomains))
+func setDefaultCORSHeaders(w http.ResponseWriter, requestOrigin string, allowedOrigins []string) {
+	w.Header().Set("Access-Control-Allow-Origin", determineOrigin(requestOrigin, allowedOrigins))
 	w.Header().Set("Access-Control-Expose-Headers", defaultExposedHeaders)
 }
 
-func setOptionsCORSHeaders(w http.ResponseWriter, requestOrigin string, allowedDomains []string, allowedMethods []string) {
-	setDefaultCORSHeaders(w, requestOrigin, allowedDomains)
+func setOptionsCORSHeaders(w http.ResponseWriter, requestOrigin string, allowedOrigins []string, allowedMethods []string) {
+	setDefaultCORSHeaders(w, requestOrigin, allowedOrigins)
 	w.Header().Set("Access-Control-Allow-Credentials", "false")
 	w.Header().Set("Access-Control-Max-Age", "600")
 	w.Header().Set("Access-Control-Allow-Headers", defaultAllowedHeaders)

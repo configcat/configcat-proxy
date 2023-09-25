@@ -104,7 +104,7 @@ type ApiConfig struct {
 
 type CORSConfig struct {
 	Enabled        bool
-	AllowedDomains []string `yaml:"allowed_domains"`
+	AllowedOrigins []string `yaml:"allowed_origins"`
 }
 
 type LogConfig struct {

@@ -417,7 +417,7 @@ http:
       X-API-KEY2: "api-auth2"
     cors: 
       enabled: true
-      allowed_domains:
+      allowed_origins:
         - https://example1.com
         - https://example2.com
   sse:
@@ -442,13 +442,13 @@ http:
 
 		assert.True(t, conf.Http.CdnProxy.Enabled)
 		assert.True(t, conf.Http.CdnProxy.CORS.Enabled)
-		assert.Nil(t, conf.Http.CdnProxy.CORS.AllowedDomains)
+		assert.Nil(t, conf.Http.CdnProxy.CORS.AllowedOrigins)
 		assert.Equal(t, "cdn-val1", conf.Http.CdnProxy.Headers["CUSTOM-HEADER1"])
 		assert.Equal(t, "cdn-val2", conf.Http.CdnProxy.Headers["CUSTOM-HEADER2"])
 
 		assert.True(t, conf.Http.Sse.Enabled)
 		assert.True(t, conf.Http.Sse.CORS.Enabled)
-		assert.Nil(t, conf.Http.Sse.CORS.AllowedDomains)
+		assert.Nil(t, conf.Http.Sse.CORS.AllowedOrigins)
 		assert.Equal(t, log.Warn, conf.Http.Sse.Log.GetLevel())
 		assert.Equal(t, "sse-val1", conf.Http.Sse.Headers["CUSTOM-HEADER1"])
 		assert.Equal(t, "sse-val2", conf.Http.Sse.Headers["CUSTOM-HEADER2"])
@@ -456,8 +456,8 @@ http:
 
 		assert.True(t, conf.Http.Api.Enabled)
 		assert.True(t, conf.Http.Api.CORS.Enabled)
-		assert.Equal(t, "https://example1.com", conf.Http.Api.CORS.AllowedDomains[0])
-		assert.Equal(t, "https://example2.com", conf.Http.Api.CORS.AllowedDomains[1])
+		assert.Equal(t, "https://example1.com", conf.Http.Api.CORS.AllowedOrigins[0])
+		assert.Equal(t, "https://example2.com", conf.Http.Api.CORS.AllowedOrigins[1])
 		assert.Equal(t, "api-val1", conf.Http.Api.Headers["CUSTOM-HEADER1"])
 		assert.Equal(t, "api-val2", conf.Http.Api.Headers["CUSTOM-HEADER2"])
 		assert.Equal(t, "api-auth1", conf.Http.Api.AuthHeaders["X-API-KEY1"])
