@@ -64,9 +64,9 @@ type GrpcConfig struct {
 type SseConfig struct {
 	Enabled           bool              `yaml:"enabled"`
 	Headers           map[string]string `yaml:"headers"`
-	AllowCORS         bool              `yaml:"allow_cors"`
 	HeartBeatInterval int               `yaml:"heart_beat_interval"`
 	Log               LogConfig
+	CORS              CORSConfig
 }
 
 type CertConfig struct {
@@ -90,16 +90,21 @@ type WebhookConfig struct {
 }
 
 type CdnProxyConfig struct {
-	Headers   map[string]string `yaml:"headers"`
-	Enabled   bool              `yaml:"enabled"`
-	AllowCORS bool              `yaml:"allow_cors"`
+	Headers map[string]string `yaml:"headers"`
+	Enabled bool              `yaml:"enabled"`
+	CORS    CORSConfig
 }
 
 type ApiConfig struct {
 	AuthHeaders map[string]string `yaml:"auth_headers"`
 	Headers     map[string]string `yaml:"headers"`
 	Enabled     bool              `yaml:"enabled"`
-	AllowCORS   bool              `yaml:"allow_cors"`
+	CORS        CORSConfig
+}
+
+type CORSConfig struct {
+	Enabled        bool
+	AllowedDomains []string `yaml:"allowed_domains"`
 }
 
 type LogConfig struct {
@@ -227,13 +232,13 @@ func (c *Config) setDefaults() {
 	c.Metrics.Port = 8051
 
 	c.Http.Sse.Enabled = true
-	c.Http.Sse.AllowCORS = true
+	c.Http.Sse.CORS.Enabled = true
 
 	c.Http.CdnProxy.Enabled = true
-	c.Http.CdnProxy.AllowCORS = true
+	c.Http.CdnProxy.CORS.Enabled = true
 
 	c.Http.Api.Enabled = true
-	c.Http.Api.AllowCORS = true
+	c.Http.Api.CORS.Enabled = true
 
 	c.Http.Webhook.Enabled = true
 
