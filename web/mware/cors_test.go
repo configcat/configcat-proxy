@@ -113,7 +113,6 @@ func TestCORS(t *testing.T) {
 		req, _ = http.NewRequest(http.MethodOptions, srv.URL, http.NoBody)
 		resp, _ = client.Do(req)
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
-		assert.Equal(t, http.StatusOK, resp.StatusCode)
 		assert.Equal(t, "GET,OPTIONS", resp.Header.Get("Access-Control-Allow-Methods"))
 		assert.Equal(t, "false", resp.Header.Get("Access-Control-Allow-Credentials"))
 		assert.Equal(t, "Cache-Control,Content-Type,Content-Length,Accept-Encoding,If-None-Match", resp.Header.Get("Access-Control-Allow-Headers"))
