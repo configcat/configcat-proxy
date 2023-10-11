@@ -9,6 +9,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"runtime"
 )
 
@@ -103,8 +104,16 @@ type ApiConfig struct {
 }
 
 type CORSConfig struct {
-	Enabled        bool
-	AllowedOrigins []string `yaml:"allowed_origins"`
+	Enabled             bool
+	AllowedOrigins      []string          `yaml:"allowed_origins"`
+	AllowedOriginsRegex OriginRegexConfig `yaml:"allowed_origins_regex"`
+}
+
+type OriginRegexConfig struct {
+	IfNoMatch string `yaml:"if_no_match"`
+	Patterns  []string
+
+	Regexes []*regexp.Regexp `yaml:"-"`
 }
 
 type LogConfig struct {
@@ -208,6 +217,9 @@ func LoadConfigFromFileAndEnvironment(filePath string) (Config, error) {
 	config.fixupDefaults()
 	config.fixupTlsMinVersions(1.2)
 	config.fixupOffline()
+	if err := config.compileOriginRegexes(); err != nil {
+		return Config{}, err
+	}
 	return config, nil
 }
 
@@ -319,6 +331,35 @@ func (c *Config) fixupTlsMinVersions(defVersion float64) {
 	if _, ok := allowedTlsVersions[c.Cache.Redis.Tls.MinVersion]; !ok {
 		c.Cache.Redis.Tls.MinVersion = defVersion
 	}
+}
+
+func (c *Config) compileOriginRegexes() error {
+	if err := c.Http.Api.CORS.compileRegexes(); err != nil {
+		return err
+	}
+	if err := c.Http.CdnProxy.CORS.compileRegexes(); err != nil {
+		return err
+	}
+	if err := c.Http.Sse.CORS.compileRegexes(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *CORSConfig) compileRegexes() error {
+	if !c.Enabled {
+		return nil
+	}
+	if c.AllowedOriginsRegex.Patterns != nil && len(c.AllowedOriginsRegex.Patterns) > 0 {
+		for _, pattern := range c.AllowedOriginsRegex.Patterns {
+			reg, err := regexp.Compile(pattern)
+			if err != nil {
+				return err
+			}
+			c.AllowedOriginsRegex.Regexes = append(c.AllowedOriginsRegex.Regexes, reg)
+		}
+	}
+	return nil
 }
 
 func defaultConfigPath() (string, bool) {

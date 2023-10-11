@@ -18,7 +18,13 @@ func (c *Config) Validate() error {
 	if err := c.Tls.validate(); err != nil {
 		return err
 	}
-	if err := c.Http.Webhook.validate(); err != nil {
+	if err := c.Http.validate(); err != nil {
+		return err
+	}
+	if err := c.Metrics.validate(); err != nil {
+		return err
+	}
+	if err := c.Grpc.validate(); err != nil {
 		return err
 	}
 	if err := c.Cache.Redis.validate(); err != nil {
@@ -108,6 +114,25 @@ func (t *TlsConfig) validate() error {
 	return nil
 }
 
+func (h *HttpConfig) validate() error {
+	if h.Port < 1 || h.Port > 65535 {
+		return fmt.Errorf("http: invalid port %d", h.Port)
+	}
+	if err := h.Webhook.validate(); err != nil {
+		return err
+	}
+	if err := h.Api.CORS.validate(); err != nil {
+		return err
+	}
+	if err := h.Sse.CORS.validate(); err != nil {
+		return err
+	}
+	if err := h.CdnProxy.CORS.validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (w *WebhookConfig) validate() error {
 	if !w.Enabled {
 		return nil
@@ -118,12 +143,43 @@ func (w *WebhookConfig) validate() error {
 	return nil
 }
 
+func (c *CORSConfig) validate() error {
+	if !c.Enabled {
+		return nil
+	}
+	if err := c.AllowedOriginsRegex.validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (o *OriginRegexConfig) validate() error {
+	if o.Patterns != nil && len(o.Patterns) > 0 && o.IfNoMatch == "" {
+		return fmt.Errorf("cors: the 'if no watch' field is required when allowed origins regex is set")
+	}
+	return nil
+}
+
 func (l *LocalConfig) validate(sdkId string) error {
 	if _, err := os.Stat(l.FilePath); errors.Is(err, os.ErrNotExist) {
 		return fmt.Errorf("sdk-"+sdkId+": couldn't find the local file %s", l.FilePath)
 	}
 	if l.Polling && l.PollInterval < 1 {
 		return fmt.Errorf("sdk-" + sdkId + ": local file poll interval must be greater than 1 seconds")
+	}
+	return nil
+}
+
+func (m *MetricsConfig) validate() error {
+	if m.Port < 1 || m.Port > 65535 {
+		return fmt.Errorf("metrics: invalid port %d", m.Port)
+	}
+	return nil
+}
+
+func (g *GrpcConfig) validate() error {
+	if g.Port < 1 || g.Port > 65535 {
+		return fmt.Errorf("grpc: invalid port %d", g.Port)
 	}
 	return nil
 }

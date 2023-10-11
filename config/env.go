@@ -170,6 +170,13 @@ func (c *CORSConfig) loadEnv(prefix string) {
 	prefix = concatPrefix(prefix, "CORS")
 	readEnv(prefix, "ENABLED", &c.Enabled, toBool)
 	readEnv(prefix, "ALLOWED_ORIGINS", &c.AllowedOrigins, toStringSlice)
+	c.AllowedOriginsRegex.loadEnv(prefix)
+}
+
+func (o *OriginRegexConfig) loadEnv(prefix string) {
+	prefix = concatPrefix(prefix, "ALLOWED_ORIGINS_REGEX")
+	readEnvString(prefix, "IF_NO_MATCH", &o.IfNoMatch)
+	readEnv(prefix, "PATTERNS", &o.Patterns, toStringSlice)
 }
 
 func (t *TlsConfig) loadEnv(prefix string) {
