@@ -137,10 +137,8 @@ func TestHttpConfig_ENV(t *testing.T) {
 	t.Setenv("CONFIGCAT_HTTP_WEBHOOK_AUTH_HEADERS", `{"X-API-KEY1": "auth1", "X-API-KEY2": "auth2"}`)
 	t.Setenv("CONFIGCAT_HTTP_CDN_PROXY_ENABLED", "true")
 	t.Setenv("CONFIGCAT_HTTP_CDN_PROXY_HEADERS", `{"CUSTOM-HEADER1": "cdn-val1", "CUSTOM-HEADER2": "cdn-val2"}`)
-	t.Setenv("CONFIGCAT_HTTP_CDN_PROXY_CORS_ENABLED", "true")
 	t.Setenv("CONFIGCAT_HTTP_SSE_ENABLED", "true")
 	t.Setenv("CONFIGCAT_HTTP_SSE_LOG_LEVEL", "warn")
-	t.Setenv("CONFIGCAT_HTTP_SSE_ALLOW_CORS", "true")
 	t.Setenv("CONFIGCAT_HTTP_SSE_HEARTBEAT_INTERVAL", "5")
 	t.Setenv("CONFIGCAT_HTTP_SSE_HEADERS", `{"CUSTOM-HEADER1": "sse-val1", "CUSTOM-HEADER2": "sse-val2"}`)
 	t.Setenv("CONFIGCAT_HTTP_API_ENABLED", "true")
@@ -182,6 +180,38 @@ func TestHttpConfig_ENV(t *testing.T) {
 	assert.Equal(t, "api-val2", conf.Http.Api.Headers["CUSTOM-HEADER2"])
 	assert.Equal(t, "api-auth1", conf.Http.Api.AuthHeaders["X-API-KEY1"])
 	assert.Equal(t, "api-auth2", conf.Http.Api.AuthHeaders["X-API-KEY2"])
+}
+
+func TestCORSConfig_ENV(t *testing.T) {
+	t.Setenv("CONFIGCAT_HTTP_CDN_PROXY_CORS_ENABLED", "true")
+	t.Setenv("CONFIGCAT_HTTP_SSE_ENABLED", "true")
+	t.Setenv("CONFIGCAT_HTTP_SSE_LOG_LEVEL", "warn")
+	t.Setenv("CONFIGCAT_HTTP_SSE_ALLOW_CORS", "true")
+	t.Setenv("CONFIGCAT_HTTP_SSE_HEARTBEAT_INTERVAL", "5")
+	t.Setenv("CONFIGCAT_HTTP_SSE_CORS_ALLOWED_ORIGINS", `["https://example1.com","https://example2.com"]`)
+	t.Setenv("CONFIGCAT_HTTP_API_CORS_ENABLED", "true")
+	t.Setenv("CONFIGCAT_HTTP_API_CORS_ALLOWED_ORIGINS", `["https://example1.com","https://example2.com"]`)
+	t.Setenv("CONFIGCAT_HTTP_API_CORS_ALLOWED_ORIGINS_REGEX_PATTERNS", `[".*\\.example1\\.com",".*\\.example2\\.com"]`)
+	t.Setenv("CONFIGCAT_HTTP_API_CORS_ALLOWED_ORIGINS_REGEX_IF_NO_MATCH", "https://example1.com")
+
+	conf, err := LoadConfigFromFileAndEnvironment("")
+	require.NoError(t, err)
+
+	assert.True(t, conf.Http.CdnProxy.CORS.Enabled)
+	assert.Nil(t, conf.Http.CdnProxy.CORS.AllowedOrigins)
+
+	assert.True(t, conf.Http.Sse.CORS.Enabled)
+	assert.Equal(t, "https://example1.com", conf.Http.Sse.CORS.AllowedOrigins[0])
+	assert.Equal(t, "https://example2.com", conf.Http.Sse.CORS.AllowedOrigins[1])
+	assert.Nil(t, conf.Http.Sse.CORS.AllowedOriginsRegex.Patterns)
+	assert.Equal(t, "", conf.Http.Sse.CORS.AllowedOriginsRegex.IfNoMatch)
+
+	assert.True(t, conf.Http.Api.CORS.Enabled)
+	assert.Equal(t, "https://example1.com", conf.Http.Api.CORS.AllowedOrigins[0])
+	assert.Equal(t, "https://example2.com", conf.Http.Api.CORS.AllowedOrigins[1])
+	assert.Equal(t, `.*\.example1\.com`, conf.Http.Api.CORS.AllowedOriginsRegex.Patterns[0])
+	assert.Equal(t, `.*\.example2\.com`, conf.Http.Api.CORS.AllowedOriginsRegex.Patterns[1])
+	assert.Equal(t, "https://example1.com", conf.Http.Api.CORS.AllowedOriginsRegex.IfNoMatch)
 }
 
 func TestGrpcConfig_ENV(t *testing.T) {

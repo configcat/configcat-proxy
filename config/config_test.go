@@ -408,7 +408,6 @@ http:
       enabled: true
   api:
     enabled: true
-    allow_cors: true
     headers:
       CUSTOM-HEADER1: "api-val1"
       CUSTOM-HEADER2: "api-val2"
@@ -462,6 +461,52 @@ http:
 		assert.Equal(t, "api-val2", conf.Http.Api.Headers["CUSTOM-HEADER2"])
 		assert.Equal(t, "api-auth1", conf.Http.Api.AuthHeaders["X-API-KEY1"])
 		assert.Equal(t, "api-auth2", conf.Http.Api.AuthHeaders["X-API-KEY2"])
+	})
+}
+
+func TestCORSConfig_YAML(t *testing.T) {
+	utils.UseTempFile(`
+http:
+  cdn_proxy:
+    cors: 
+      enabled: true
+  api:
+    cors: 
+      enabled: true
+      allowed_origins:
+        - https://example1.com
+        - https://example2.com
+  sse:
+    cors: 
+      enabled: true
+      allowed_origins:
+        - https://example1.com
+        - https://example2.com
+      allowed_origins_regex:
+        patterns:
+          - .*\.example1\.com
+          - .*\.example2\.com
+        if_no_match: https://example1.com
+`, func(file string) {
+		conf, err := LoadConfigFromFileAndEnvironment(file)
+		require.NoError(t, err)
+
+		assert.True(t, conf.Http.CdnProxy.CORS.Enabled)
+		assert.Nil(t, conf.Http.CdnProxy.CORS.AllowedOrigins)
+
+		assert.True(t, conf.Http.Api.CORS.Enabled)
+		assert.Equal(t, "https://example1.com", conf.Http.Api.CORS.AllowedOrigins[0])
+		assert.Equal(t, "https://example2.com", conf.Http.Api.CORS.AllowedOrigins[1])
+		assert.Nil(t, conf.Http.Api.CORS.AllowedOriginsRegex.Patterns)
+		assert.Equal(t, "", conf.Http.Api.CORS.AllowedOriginsRegex.IfNoMatch)
+
+		assert.True(t, conf.Http.Sse.CORS.Enabled)
+		assert.Equal(t, "https://example1.com", conf.Http.Sse.CORS.AllowedOrigins[0])
+		assert.Equal(t, "https://example2.com", conf.Http.Sse.CORS.AllowedOrigins[1])
+		assert.Equal(t, `.*\.example1\.com`, conf.Http.Sse.CORS.AllowedOriginsRegex.Patterns[0])
+		assert.Equal(t, `.*\.example2\.com`, conf.Http.Sse.CORS.AllowedOriginsRegex.Patterns[1])
+		assert.Equal(t, "https://example1.com", conf.Http.Sse.CORS.AllowedOriginsRegex.IfNoMatch)
+
 	})
 }
 
