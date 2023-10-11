@@ -506,7 +506,22 @@ http:
 		assert.Equal(t, `.*\.example1\.com`, conf.Http.Sse.CORS.AllowedOriginsRegex.Patterns[0])
 		assert.Equal(t, `.*\.example2\.com`, conf.Http.Sse.CORS.AllowedOriginsRegex.Patterns[1])
 		assert.Equal(t, "https://example1.com", conf.Http.Sse.CORS.AllowedOriginsRegex.IfNoMatch)
+	})
+}
 
+func TestCORSConfigInvalidRegex_YAML(t *testing.T) {
+	utils.UseTempFile(`
+http:
+  sse:
+    cors: 
+      enabled: true
+      allowed_origins_regex:
+        patterns:
+          - "*"
+        if_no_match: https://example1.com
+`, func(file string) {
+		_, err := LoadConfigFromFileAndEnvironment(file)
+		require.ErrorContains(t, err, "error parsing regexp: missing argument to repetition operator: `*`")
 	})
 }
 
