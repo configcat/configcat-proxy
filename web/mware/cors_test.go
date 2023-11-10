@@ -13,7 +13,7 @@ import (
 
 func TestCORS(t *testing.T) {
 	t.Run("* origin, options", func(t *testing.T) {
-		handler := CORS([]string{http.MethodGet, http.MethodOptions}, nil, nil, func(writer http.ResponseWriter, request *http.Request) {
+		handler := CORS([]string{http.MethodGet, http.MethodOptions}, nil, nil, nil, nil, func(writer http.ResponseWriter, request *http.Request) {
 			writer.WriteHeader(http.StatusOK)
 		})
 		srv := httptest.NewServer(handler)
@@ -30,7 +30,7 @@ func TestCORS(t *testing.T) {
 		assert.Equal(t, "Content-Length,ETag,Date,Content-Encoding", resp.Header.Get("Access-Control-Expose-Headers"))
 	})
 	t.Run("custom origin, options", func(t *testing.T) {
-		handler := CORS([]string{http.MethodGet, http.MethodOptions}, []string{"http://localhost"}, nil, func(writer http.ResponseWriter, request *http.Request) {
+		handler := CORS([]string{http.MethodGet, http.MethodOptions}, []string{"http://localhost"}, nil, nil, nil, func(writer http.ResponseWriter, request *http.Request) {
 			writer.WriteHeader(http.StatusOK)
 		})
 		srv := httptest.NewServer(handler)
@@ -48,7 +48,7 @@ func TestCORS(t *testing.T) {
 		assert.Equal(t, "Content-Length,ETag,Date,Content-Encoding", resp.Header.Get("Access-Control-Expose-Headers"))
 	})
 	t.Run("* origin, get", func(t *testing.T) {
-		handler := CORS([]string{http.MethodGet, http.MethodOptions}, nil, nil, func(writer http.ResponseWriter, request *http.Request) {
+		handler := CORS([]string{http.MethodGet, http.MethodOptions}, nil, nil, nil, nil, func(writer http.ResponseWriter, request *http.Request) {
 			writer.WriteHeader(http.StatusOK)
 		})
 		srv := httptest.NewServer(handler)
@@ -61,7 +61,7 @@ func TestCORS(t *testing.T) {
 		assert.Equal(t, "Content-Length,ETag,Date,Content-Encoding", resp.Header.Get("Access-Control-Expose-Headers"))
 	})
 	t.Run("custom origin, get", func(t *testing.T) {
-		handler := CORS([]string{http.MethodGet, http.MethodOptions}, []string{"http://localhost"}, nil, func(writer http.ResponseWriter, request *http.Request) {
+		handler := CORS([]string{http.MethodGet, http.MethodOptions}, []string{"http://localhost"}, nil, nil, nil, func(writer http.ResponseWriter, request *http.Request) {
 			writer.WriteHeader(http.StatusOK)
 		})
 		srv := httptest.NewServer(handler)
@@ -75,7 +75,7 @@ func TestCORS(t *testing.T) {
 		assert.Equal(t, "Content-Length,ETag,Date,Content-Encoding", resp.Header.Get("Access-Control-Expose-Headers"))
 	})
 	t.Run("custom origin, options, multiple origins", func(t *testing.T) {
-		handler := CORS([]string{http.MethodGet, http.MethodOptions}, []string{"https://test1.com", "https://test2.com"}, nil, func(writer http.ResponseWriter, request *http.Request) {
+		handler := CORS([]string{http.MethodGet, http.MethodOptions}, []string{"https://test1.com", "https://test2.com"}, []string{"h1", "ETag"}, []string{"X-AUTH"}, nil, func(writer http.ResponseWriter, request *http.Request) {
 			writer.WriteHeader(http.StatusOK)
 		})
 		srv := httptest.NewServer(handler)
@@ -87,10 +87,10 @@ func TestCORS(t *testing.T) {
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 		assert.Equal(t, "GET,OPTIONS", resp.Header.Get("Access-Control-Allow-Methods"))
 		assert.Equal(t, "false", resp.Header.Get("Access-Control-Allow-Credentials"))
-		assert.Equal(t, "Cache-Control,Content-Type,Content-Length,Accept-Encoding,If-None-Match", resp.Header.Get("Access-Control-Allow-Headers"))
+		assert.Equal(t, "Cache-Control,Content-Type,Content-Length,Accept-Encoding,If-None-Match,X-AUTH", resp.Header.Get("Access-Control-Allow-Headers"))
 		assert.Equal(t, "600", resp.Header.Get("Access-Control-Max-Age"))
 		assert.Equal(t, "https://test1.com", resp.Header.Get("Access-Control-Allow-Origin"))
-		assert.Equal(t, "Content-Length,ETag,Date,Content-Encoding", resp.Header.Get("Access-Control-Expose-Headers"))
+		assert.Equal(t, "Content-Length,ETag,Date,Content-Encoding,h1", resp.Header.Get("Access-Control-Expose-Headers"))
 
 		req, _ = http.NewRequest(http.MethodOptions, srv.URL, http.NoBody)
 		req.Header.Set("Origin", "https://test2.com")
@@ -98,10 +98,10 @@ func TestCORS(t *testing.T) {
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 		assert.Equal(t, "GET,OPTIONS", resp.Header.Get("Access-Control-Allow-Methods"))
 		assert.Equal(t, "false", resp.Header.Get("Access-Control-Allow-Credentials"))
-		assert.Equal(t, "Cache-Control,Content-Type,Content-Length,Accept-Encoding,If-None-Match", resp.Header.Get("Access-Control-Allow-Headers"))
+		assert.Equal(t, "Cache-Control,Content-Type,Content-Length,Accept-Encoding,If-None-Match,X-AUTH", resp.Header.Get("Access-Control-Allow-Headers"))
 		assert.Equal(t, "600", resp.Header.Get("Access-Control-Max-Age"))
 		assert.Equal(t, "https://test2.com", resp.Header.Get("Access-Control-Allow-Origin"))
-		assert.Equal(t, "Content-Length,ETag,Date,Content-Encoding", resp.Header.Get("Access-Control-Expose-Headers"))
+		assert.Equal(t, "Content-Length,ETag,Date,Content-Encoding,h1", resp.Header.Get("Access-Control-Expose-Headers"))
 
 		req, _ = http.NewRequest(http.MethodOptions, srv.URL, http.NoBody)
 		req.Header.Set("Origin", "something-else")
@@ -109,23 +109,23 @@ func TestCORS(t *testing.T) {
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 		assert.Equal(t, "GET,OPTIONS", resp.Header.Get("Access-Control-Allow-Methods"))
 		assert.Equal(t, "false", resp.Header.Get("Access-Control-Allow-Credentials"))
-		assert.Equal(t, "Cache-Control,Content-Type,Content-Length,Accept-Encoding,If-None-Match", resp.Header.Get("Access-Control-Allow-Headers"))
+		assert.Equal(t, "Cache-Control,Content-Type,Content-Length,Accept-Encoding,If-None-Match,X-AUTH", resp.Header.Get("Access-Control-Allow-Headers"))
 		assert.Equal(t, "600", resp.Header.Get("Access-Control-Max-Age"))
 		assert.Equal(t, "https://test1.com", resp.Header.Get("Access-Control-Allow-Origin"))
-		assert.Equal(t, "Content-Length,ETag,Date,Content-Encoding", resp.Header.Get("Access-Control-Expose-Headers"))
+		assert.Equal(t, "Content-Length,ETag,Date,Content-Encoding,h1", resp.Header.Get("Access-Control-Expose-Headers"))
 
 		req, _ = http.NewRequest(http.MethodOptions, srv.URL, http.NoBody)
 		resp, _ = client.Do(req)
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 		assert.Equal(t, "GET,OPTIONS", resp.Header.Get("Access-Control-Allow-Methods"))
 		assert.Equal(t, "false", resp.Header.Get("Access-Control-Allow-Credentials"))
-		assert.Equal(t, "Cache-Control,Content-Type,Content-Length,Accept-Encoding,If-None-Match", resp.Header.Get("Access-Control-Allow-Headers"))
+		assert.Equal(t, "Cache-Control,Content-Type,Content-Length,Accept-Encoding,If-None-Match,X-AUTH", resp.Header.Get("Access-Control-Allow-Headers"))
 		assert.Equal(t, "600", resp.Header.Get("Access-Control-Max-Age"))
 		assert.Equal(t, "https://test1.com", resp.Header.Get("Access-Control-Allow-Origin"))
-		assert.Equal(t, "Content-Length,ETag,Date,Content-Encoding", resp.Header.Get("Access-Control-Expose-Headers"))
+		assert.Equal(t, "Content-Length,ETag,Date,Content-Encoding,h1", resp.Header.Get("Access-Control-Expose-Headers"))
 	})
 	t.Run("custom origin, get, multiple origins", func(t *testing.T) {
-		handler := CORS([]string{http.MethodGet, http.MethodOptions}, []string{"https://test1.com", "https://test2.com"}, nil, func(writer http.ResponseWriter, request *http.Request) {
+		handler := CORS([]string{http.MethodGet, http.MethodOptions}, []string{"https://test1.com", "https://test2.com"}, nil, nil, nil, func(writer http.ResponseWriter, request *http.Request) {
 			writer.WriteHeader(http.StatusOK)
 		})
 		srv := httptest.NewServer(handler)
@@ -162,7 +162,7 @@ func TestCORS(t *testing.T) {
 		regex1, _ := regexp.Compile(".*test1\\.com")
 		regex2, _ := regexp.Compile(".*test2\\.com")
 		t.Run("only regex", func(t *testing.T) {
-			handler := CORS([]string{http.MethodGet, http.MethodOptions}, nil, &config.OriginRegexConfig{
+			handler := CORS([]string{http.MethodGet, http.MethodOptions}, nil, nil, nil, &config.OriginRegexConfig{
 				Regexes: []*regexp.Regexp{
 					regex1,
 					regex2,
@@ -199,7 +199,7 @@ func TestCORS(t *testing.T) {
 			assert.Equal(t, "https://test3.com", resp.Header.Get("Access-Control-Allow-Origin"))
 		})
 		t.Run("both", func(t *testing.T) {
-			handler := CORS([]string{http.MethodGet, http.MethodOptions}, []string{"https://test3.com", "https://test4.com"}, &config.OriginRegexConfig{
+			handler := CORS([]string{http.MethodGet, http.MethodOptions}, []string{"https://test3.com", "https://test4.com"}, nil, nil, &config.OriginRegexConfig{
 				Regexes: []*regexp.Regexp{
 					regex1,
 					regex2,
@@ -268,7 +268,7 @@ http:
 			conf, err := config.LoadConfigFromFileAndEnvironment(file)
 			require.NoError(t, err)
 
-			handler := CORS([]string{http.MethodGet, http.MethodOptions}, conf.Http.Api.CORS.AllowedOrigins, &conf.Http.Api.CORS.AllowedOriginsRegex, func(writer http.ResponseWriter, request *http.Request) {
+			handler := CORS([]string{http.MethodGet, http.MethodOptions}, conf.Http.Api.CORS.AllowedOrigins, nil, nil, &conf.Http.Api.CORS.AllowedOriginsRegex, func(writer http.ResponseWriter, request *http.Request) {
 				writer.WriteHeader(http.StatusOK)
 			})
 			srv := httptest.NewServer(handler)

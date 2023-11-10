@@ -2,50 +2,76 @@ package mware
 
 import (
 	"github.com/configcat/configcat-proxy/config"
+	"github.com/configcat/configcat-proxy/internal/utils"
 	"net/http"
 	"slices"
 	"strings"
 )
 
-var defaultAllowedHeaders = strings.Join([]string{
+var defaultAllowedHeaders = []string{
 	"Cache-Control",
 	"Content-Type",
 	"Content-Length",
 	"Accept-Encoding",
 	"If-None-Match",
-}, ",")
+}
 
-var defaultExposedHeaders = strings.Join([]string{
+var defaultExposedHeaders = []string{
 	"Content-Length",
 	"ETag",
 	"Date",
 	"Content-Encoding",
-}, ",")
+}
 
 var defaultAllowedOrigin = "*"
 
-func CORS(allowedMethods []string, allowedOrigins []string, originRegexConfig *config.OriginRegexConfig, next http.HandlerFunc) http.HandlerFunc {
+func CORS(allowedMethods []string, allowedOrigins []string, headers []string, authHeaders []string, originRegexConfig *config.OriginRegexConfig, next http.HandlerFunc) http.HandlerFunc {
+	var exposedHeaders = defaultExposedHeaders
+	if len(headers) > 0 {
+		exposedHeaders = append(exposedHeaders, headers...)
+		exposedHeaders = utils.DedupStringSlice(exposedHeaders)
+	}
+
+	var allowedHeaders = defaultAllowedHeaders
+	if len(authHeaders) > 0 {
+		allowedHeaders = append(allowedHeaders, authHeaders...)
+		allowedHeaders = utils.DedupStringSlice(allowedHeaders)
+	}
+
+	exposedHeadersString := strings.Join(exposedHeaders, ",")
+	allowedHeadersString := strings.Join(allowedHeaders, ",")
+
 	return func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
 		if r.Method == http.MethodOptions {
-			setOptionsCORSHeaders(w, origin, allowedOrigins, originRegexConfig, allowedMethods)
+			setOptionsCORSHeaders(w, origin, allowedOrigins, originRegexConfig, allowedMethods, exposedHeadersString, allowedHeadersString)
 		} else {
-			setDefaultCORSHeaders(w, origin, allowedOrigins, originRegexConfig)
+			setDefaultCORSHeaders(w, origin, allowedOrigins, exposedHeadersString, originRegexConfig)
 		}
 		next(w, r)
 	}
 }
 
-func setDefaultCORSHeaders(w http.ResponseWriter, requestOrigin string, allowedOrigins []string, originRegexConfig *config.OriginRegexConfig) {
+func setDefaultCORSHeaders(w http.ResponseWriter,
+	requestOrigin string,
+	allowedOrigins []string,
+	exposedHeaders string,
+	originRegexConfig *config.OriginRegexConfig) {
 	w.Header().Set("Access-Control-Allow-Origin", determineOrigin(requestOrigin, allowedOrigins, originRegexConfig))
-	w.Header().Set("Access-Control-Expose-Headers", defaultExposedHeaders)
+	w.Header().Set("Access-Control-Expose-Headers", exposedHeaders)
 }
 
-func setOptionsCORSHeaders(w http.ResponseWriter, requestOrigin string, allowedOrigins []string, originRegexConfig *config.OriginRegexConfig, allowedMethods []string) {
-	setDefaultCORSHeaders(w, requestOrigin, allowedOrigins, originRegexConfig)
+func setOptionsCORSHeaders(w http.ResponseWriter,
+	requestOrigin string,
+	allowedOrigins []string,
+	originRegexConfig *config.OriginRegexConfig,
+	allowedMethods []string,
+	exposeHeaders string,
+	allowedHeaders string) {
+	setDefaultCORSHeaders(w, requestOrigin, allowedOrigins, exposeHeaders, originRegexConfig)
 	w.Header().Set("Access-Control-Allow-Credentials", "false")
 	w.Header().Set("Access-Control-Max-Age", "600")
-	w.Header().Set("Access-Control-Allow-Headers", defaultAllowedHeaders)
+	w.Header().Set("Access-Control-Allow-Headers", allowedHeaders)
 	if allowedMethods != nil && len(allowedMethods) > 0 {
 		w.Header().Set("Access-Control-Allow-Methods", strings.Join(allowedMethods, ","))
 	}

@@ -77,3 +77,23 @@ func AddSdkIdContextParam(r *http.Request) {
 	ctx := context.WithValue(context.Background(), httprouter.ParamsKey, params)
 	*r = *r.WithContext(ctx)
 }
+
+func Keys[M ~map[K]V, K comparable, V any](m M) []K {
+	r := make([]K, 0, len(m))
+	for k := range m {
+		r = append(r, k)
+	}
+	return r
+}
+
+func DedupStringSlice[T string](strings []T) []T {
+	keys := make(map[T]bool)
+	var list []T
+	for _, item := range strings {
+		if _, value := keys[item]; !value {
+			keys[item] = true
+			list = append(list, item)
+		}
+	}
+	return list
+}
