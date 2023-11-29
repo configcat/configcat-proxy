@@ -1,7 +1,6 @@
 package web
 
 import (
-	"bytes"
 	"compress/gzip"
 	"fmt"
 	"github.com/configcat/configcat-proxy/config"
@@ -126,19 +125,15 @@ func TestCDNProxy_Get_Body(t *testing.T) {
 func TestCDNProxy_Get_Body_GZip(t *testing.T) {
 	router := newCDNProxyRouter(t, config.CdnProxyConfig{Enabled: true, CORS: config.CORSConfig{Enabled: true}, Headers: map[string]string{"h1": "v1"}})
 	srv := httptest.NewServer(router.Handler())
-	client := http.Client{}
 	req, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/configuration-files/test/config_v5.json", srv.URL), http.NoBody)
 	req.Header.Set("Accept-Encoding", "gzip")
-	resp, _ := client.Do(req)
+	resp, _ := http.DefaultClient.Do(req)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
-	body, _ := io.ReadAll(resp.Body)
-	_ = resp.Body.Close()
 	assert.Equal(t, "gzip", resp.Header.Get("Content-Encoding"))
-	var buf bytes.Buffer
-	wr := gzip.NewWriter(&buf)
-	_, _ = wr.Write([]byte(`{"f":{"flag":{"i":"v_flag","v":true,"t":0,"r":[],"p":null}},"p":null}`))
-	_ = wr.Flush()
-	assert.Equal(t, buf.Bytes(), body)
+	gzipReader, err := gzip.NewReader(resp.Body)
+	assert.NoError(t, err)
+	body, _ := io.ReadAll(gzipReader)
+	assert.Equal(t, `{"f":{"flag":{"i":"v_flag","v":true,"t":0,"r":[],"p":null}},"p":null}`, string(body))
 	assert.Equal(t, "v1", resp.Header.Get("h1"))
 }
 

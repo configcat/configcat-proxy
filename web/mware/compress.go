@@ -28,9 +28,11 @@ func GZip(next http.HandlerFunc) http.HandlerFunc {
 			w.Header().Set("Vary", "Accept-Encoding")
 			writer := pool.Get().(*gzip.Writer)
 			writer.Reset(w)
-			gz := gzipWriter{writer: writer, ResponseWriter: w}
-			defer gz.close()
-			next(&gz, r)
+			gz := &gzipWriter{writer: writer, ResponseWriter: w}
+			defer func() {
+				_ = gz.Close()
+			}()
+			next(gz, r)
 		} else {
 			next(w, r)
 		}
@@ -47,18 +49,17 @@ func (w *gzipWriter) Write(b []byte) (int, error) {
 	if !w.headersDone {
 		w.WriteHeader(http.StatusOK)
 	}
-	i, e := w.writer.Write(b)
-	_ = w.writer.Flush()
-	return i, e
+	return w.writer.Write(b)
 }
 
 func (w *gzipWriter) Flush() {
+	_ = w.writer.Flush()
 	if flusher, ok := w.ResponseWriter.(http.Flusher); ok {
 		flusher.Flush()
 	}
 }
 
-func (w *gzipWriter) close() {
-	w.writer.Reset(io.Discard)
-	pool.Put(w.writer)
+func (w *gzipWriter) Close() error {
+	defer pool.Put(w.writer)
+	return w.writer.Close()
 }

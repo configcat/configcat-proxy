@@ -1,7 +1,6 @@
 package mware
 
 import (
-	"bytes"
 	"compress/gzip"
 	"github.com/stretchr/testify/assert"
 	"io"
@@ -15,25 +14,21 @@ func TestGZip(t *testing.T) {
 		_, _ = writer.Write([]byte("test"))
 	})
 	srv := httptest.NewServer(handler)
-	client := http.Client{}
 
 	t.Run("with gzip", func(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodGet, srv.URL, http.NoBody)
 		req.Header.Set("Accept-Encoding", "gzip")
-		resp, _ := client.Do(req)
+		resp, _ := http.DefaultClient.Do(req)
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
-		body, _ := io.ReadAll(resp.Body)
-		_ = resp.Body.Close()
 		assert.Equal(t, "gzip", resp.Header.Get("Content-Encoding"))
-		var buf bytes.Buffer
-		wr := gzip.NewWriter(&buf)
-		_, _ = wr.Write([]byte("test"))
-		_ = wr.Flush()
-		assert.Equal(t, buf.Bytes(), body)
+		gzipReader, err := gzip.NewReader(resp.Body)
+		assert.NoError(t, err)
+		body, _ := io.ReadAll(gzipReader)
+		assert.Equal(t, "test", string(body))
 	})
 	t.Run("without gzip", func(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodGet, srv.URL, http.NoBody)
-		resp, _ := client.Do(req)
+		resp, _ := http.DefaultClient.Do(req)
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 		body, _ := io.ReadAll(resp.Body)
 		_ = resp.Body.Close()
