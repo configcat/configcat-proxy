@@ -7,7 +7,7 @@ import (
 
 type UserAttrs map[string]string
 
-func (attrs UserAttrs) GetAttribute(attr string) string { // for the SDK
+func (attrs UserAttrs) GetAttribute(attr string) interface{} { // for the SDK
 	return attrs[attr]
 }
 

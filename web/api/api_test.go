@@ -6,7 +6,7 @@ import (
 	"github.com/configcat/configcat-proxy/internal/utils"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/sdk"
-	"github.com/configcat/go-sdk/v8/configcattest"
+	"github.com/configcat/go-sdk/v9/configcattest"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
@@ -38,7 +38,7 @@ func TestAPI_Eval(t *testing.T) {
 		assert.Equal(t, http.StatusInternalServerError, res.Code)
 	})
 	t.Run("offline", func(t *testing.T) {
-		utils.UseTempFile(`{"f":{"flag":{"i":"","v":true,"t":0,"r":[],"p":[]}}}`, func(path string) {
+		utils.UseTempFile(`{"f":{"flag":{"i":"","v":{"b":true},"t":0}}}`, func(path string) {
 			res := httptest.NewRecorder()
 			req, _ := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"key":"flag"}`))
 
@@ -88,7 +88,7 @@ func TestAPI_EvalAll(t *testing.T) {
 		assert.Equal(t, "{}", res.Body.String())
 	})
 	t.Run("offline", func(t *testing.T) {
-		utils.UseTempFile(`{"f":{"flag":{"i":"","v":true,"t":0,"r":[],"p":[]}}}`, func(path string) {
+		utils.UseTempFile(`{"f":{"flag":{"i":"","v":{"b":true},"t":0}}}`, func(path string) {
 			res := httptest.NewRecorder()
 			req, _ := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"key":"flag"}`))
 
@@ -139,7 +139,7 @@ func TestAPI_Keys(t *testing.T) {
 		assert.Equal(t, `{"keys":[]}`, res.Body.String())
 	})
 	t.Run("offline", func(t *testing.T) {
-		utils.UseTempFile(`{"f":{"flag":{"i":"","v":true,"t":0,"r":[],"p":[]}}}`, func(path string) {
+		utils.UseTempFile(`{"f":{"flag":{"i":"","v":{"b":true},"t":0}}}`, func(path string) {
 			res := httptest.NewRecorder()
 			req, _ := http.NewRequest(http.MethodGet, "/", http.NoBody)
 

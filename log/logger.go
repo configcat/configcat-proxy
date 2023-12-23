@@ -1,7 +1,7 @@
 package log
 
 import (
-	"github.com/configcat/go-sdk/v8"
+	"github.com/configcat/go-sdk/v9"
 	"io"
 	"log"
 	"os"
@@ -158,6 +158,8 @@ func (level Level) prefix() string {
 		return "[warning]"
 	case Error:
 		return "[error]"
+	case None:
+		return ""
 	}
 	return "-"
 }

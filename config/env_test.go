@@ -34,6 +34,7 @@ func TestSDKConfig_ENV(t *testing.T) {
 	assert.Equal(t, 300, conf.SDKs["sdk1"].PollInterval)
 	assert.Equal(t, "eu", conf.SDKs["sdk1"].DataGovernance)
 	assert.Equal(t, log.Error, conf.SDKs["sdk1"].Log.GetLevel())
+	assert.Equal(t, V5, conf.SDKs["sdk1"].SDKVersion)
 
 	assert.True(t, conf.SDKs["sdk1"].Offline.Enabled)
 	assert.Equal(t, log.Debug, conf.SDKs["sdk1"].Offline.Log.GetLevel())
@@ -46,6 +47,16 @@ func TestSDKConfig_ENV(t *testing.T) {
 	assert.Equal(t, 600, conf.SDKs["sdk1"].WebhookSignatureValidFor)
 	assert.Equal(t, "attr_value1", conf.SDKs["sdk1"].DefaultAttrs["attr_1"])
 	assert.Equal(t, "attr_value2", conf.SDKs["sdk1"].DefaultAttrs["attr2"])
+}
+
+func TestSDKConfigV6_ENV(t *testing.T) {
+	t.Setenv("CONFIGCAT_SDKS", `{"sdk1": "configcat-sdk-1/sdkKey"}`)
+
+	conf, err := LoadConfigFromFileAndEnvironment("")
+	require.NoError(t, err)
+
+	assert.Equal(t, "configcat-sdk-1/sdkKey", conf.SDKs["sdk1"].Key)
+	assert.Equal(t, V6, conf.SDKs["sdk1"].SDKVersion)
 }
 
 func TestCacheConfig_ENV(t *testing.T) {

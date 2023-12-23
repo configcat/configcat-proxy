@@ -5,7 +5,7 @@ import (
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/sdk"
 	"github.com/configcat/configcat-proxy/status"
-	"github.com/configcat/go-sdk/v8/configcattest"
+	"github.com/configcat/go-sdk/v9/configcattest"
 	"net/http/httptest"
 	"testing"
 )
@@ -19,7 +19,7 @@ func NewTestSdkClient(t *testing.T) (map[string]sdk.Client, *configcattest.Handl
 		},
 	})
 	srv := httptest.NewServer(&h)
-	opts := config.SDKConfig{BaseUrl: srv.URL, Key: key}
+	opts := config.SDKConfig{BaseUrl: srv.URL, Key: key, SDKVersion: config.V6}
 	ctx := NewTestSdkContext(&opts, &config.CacheConfig{})
 	client := sdk.NewClient(ctx, log.NewNullLogger())
 	t.Cleanup(func() {

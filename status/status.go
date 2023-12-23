@@ -15,8 +15,7 @@ type HealthStatus string
 type SDKMode string
 
 const (
-	Cache    = "cache"
-	InfluxDb = "influxdb"
+	Cache = "cache"
 
 	FileSrc   SDKSource = "file"
 	RemoteSrc SDKSource = "remote"

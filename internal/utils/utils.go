@@ -78,6 +78,12 @@ func AddSdkIdContextParam(r *http.Request) {
 	*r = *r.WithContext(ctx)
 }
 
+func AddContextParam(r *http.Request, param string) {
+	params := httprouter.Params{httprouter.Param{Key: "sdkId", Value: param}}
+	ctx := context.WithValue(context.Background(), httprouter.ParamsKey, params)
+	*r = *r.WithContext(ctx)
+}
+
 func Keys[M ~map[K]V, K comparable, V any](m M) []K {
 	r := make([]K, 0, len(m))
 	for k := range m {

@@ -2,40 +2,42 @@ package store
 
 import (
 	"context"
-	"github.com/configcat/go-sdk/v8/configcatcache"
+	"github.com/configcat/configcat-proxy/config"
+	configcat "github.com/configcat/go-sdk/v9"
+	"github.com/configcat/go-sdk/v9/configcatcache"
 )
 
-type CacheStorage interface {
+type CacheEntryStore interface {
 	EntryStore
+	configcat.ConfigCache
 
-	Get(ctx context.Context, key string) ([]byte, error)
-	Set(ctx context.Context, key string, value []byte) error
+	CacheKey() string
+}
+
+type ClosableStore interface {
 	Close()
 }
 
-type NotifyingStorage interface {
-	CacheStorage
+type NotifyingStore interface {
+	EntryStore
 	Notifier
+	configcat.ConfigCache
 }
 
-type inMemoryStorage struct {
+type inMemoryStore struct {
 	EntryStore
 }
 
-func NewInMemoryStorage() CacheStorage {
-	return &inMemoryStorage{EntryStore: NewEntryStore()}
+func NewInMemoryStorage(version config.SDKVersion) configcat.ConfigCache {
+	return &inMemoryStore{EntryStore: NewEntryStore(version)}
 }
 
-func (r *inMemoryStorage) Get(_ context.Context, _ string) ([]byte, error) {
-	return r.ComposeBytes(), nil
+func (r *inMemoryStore) Get(_ context.Context, _ string) ([]byte, error) {
+	return r.ComposeBytes(config.V6), nil
 }
 
-func (r *inMemoryStorage) Set(_ context.Context, _ string, value []byte) error {
+func (r *inMemoryStore) Set(_ context.Context, _ string, value []byte) error {
 	fetchTime, etag, configJson, _ := configcatcache.CacheSegmentsFromBytes(value)
 	r.StoreEntry(configJson, fetchTime, etag)
 	return nil
-}
-
-func (r *inMemoryStorage) Close() {
-	// do nothing
 }

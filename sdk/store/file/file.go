@@ -5,9 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/configcat/configcat-proxy/config"
+	"github.com/configcat/configcat-proxy/internal/utils"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/sdk/store"
 	"github.com/configcat/configcat-proxy/status"
+	configcat "github.com/configcat/go-sdk/v9"
 	"os"
 	"time"
 )
@@ -21,7 +23,7 @@ type nullWatcher struct {
 	modified chan struct{}
 }
 
-type fileStorage struct {
+type fileStore struct {
 	store.EntryStore
 	store.Notifier
 
@@ -34,7 +36,9 @@ type fileStorage struct {
 	sdkId    string
 }
 
-func NewFileStorage(sdkId string, conf *config.LocalConfig, reporter status.Reporter, log log.Logger) store.NotifyingStorage {
+var _ store.NotifyingStore = &fileStore{}
+
+func NewFileStore(sdkId string, sdkVersion config.SDKVersion, conf *config.LocalConfig, reporter status.Reporter, log log.Logger) configcat.ConfigCache {
 	fileLogger := log.WithPrefix("file-store")
 	var watch watcher
 	var err error
@@ -49,8 +53,8 @@ func NewFileStorage(sdkId string, conf *config.LocalConfig, reporter status.Repo
 	if err != nil {
 		watch = &nullWatcher{modified: make(chan struct{})}
 	}
-	f := &fileStorage{
-		EntryStore: store.NewEntryStore(),
+	f := &fileStore{
+		EntryStore: store.NewEntryStore(sdkVersion),
 		Notifier:   store.NewNotifier(),
 		watcher:    watch,
 		log:        fileLogger,
@@ -64,7 +68,7 @@ func NewFileStorage(sdkId string, conf *config.LocalConfig, reporter status.Repo
 	return f
 }
 
-func (f *fileStorage) run() {
+func (f *fileStore) run() {
 	for {
 		select {
 		case <-f.watcher.Modified():
@@ -77,7 +81,7 @@ func (f *fileStorage) run() {
 	}
 }
 
-func (f *fileStorage) reload() bool {
+func (f *fileStore) reload() bool {
 	data, err := os.ReadFile(f.conf.FilePath)
 	if err != nil {
 		f.log.Errorf("failed to read file %s: %s", f.conf.FilePath, err)
@@ -89,29 +93,28 @@ func (f *fileStorage) reload() bool {
 		return false
 	}
 	f.log.Debugf("local JSON (%s) modified, reloading", f.conf.FilePath)
-	var root store.RootNode
+	var root configcat.ConfigJson
 	if err = json.Unmarshal(data, &root); err != nil {
 		f.log.Errorf("failed to parse JSON from file %s: %s", f.conf.FilePath, err)
 		f.reporter.ReportError(f.sdkId, err)
 		return false
 	}
 	f.stored = data
-	root.Fixup()
 	ser, _ := json.Marshal(root) // Re-serialize to enforce the JSON schema
-	f.StoreEntry(ser, time.Now().UTC(), "from-file-etag")
+	f.StoreEntry(ser, time.Now().UTC(), utils.GenerateEtag(ser))
 	f.reporter.ReportOk(f.sdkId, "file source reloaded")
 	return true
 }
 
-func (f *fileStorage) Get(_ context.Context, _ string) ([]byte, error) {
-	return f.ComposeBytes(), nil
+func (f *fileStore) Get(_ context.Context, _ string) ([]byte, error) {
+	return f.ComposeBytes(config.V6), nil
 }
 
-func (f *fileStorage) Set(_ context.Context, _ string, _ []byte) error {
+func (f *fileStore) Set(_ context.Context, _ string, _ []byte) error {
 	return nil // do nothing
 }
 
-func (f *fileStorage) Close() {
+func (f *fileStore) Close() {
 	f.Notifier.Close()
 	f.watcher.Close()
 	f.log.Reportf("shutdown complete")

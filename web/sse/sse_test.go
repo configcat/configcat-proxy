@@ -7,7 +7,8 @@ import (
 	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/sdk"
-	"github.com/configcat/go-sdk/v8/configcattest"
+	configcat "github.com/configcat/go-sdk/v9"
+	"github.com/configcat/go-sdk/v9/configcattest"
 	"github.com/julienschmidt/httprouter"
 	"github.com/stretchr/testify/assert"
 	"net/http"
@@ -75,7 +76,7 @@ func TestSSE_Get_User(t *testing.T) {
 		"flag": {
 			Default: true,
 			Rules: []configcattest.Rule{
-				{Value: false, Comparator: configcattest.OpContains, ComparisonValue: "test", ComparisonAttribute: "Identifier"},
+				{Value: false, Comparator: configcat.OpContains, ComparisonValue: "test", ComparisonAttribute: "Identifier"},
 			},
 		},
 	})
@@ -108,7 +109,7 @@ func TestSSE_Get_All_User(t *testing.T) {
 		"flag": {
 			Default: true,
 			Rules: []configcattest.Rule{
-				{Value: false, Comparator: configcattest.OpContains, ComparisonValue: "test", ComparisonAttribute: "Identifier"},
+				{Value: false, Comparator: configcat.OpContains, ComparisonValue: "test", ComparisonAttribute: "Identifier"},
 			},
 		},
 	})

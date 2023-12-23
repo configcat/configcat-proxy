@@ -1,7 +1,7 @@
 package store
 
 import (
-	"github.com/configcat/configcat-proxy/internal/utils"
+	"github.com/configcat/configcat-proxy/config"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
@@ -9,17 +9,15 @@ import (
 
 func TestEntryStore(t *testing.T) {
 	t.Run("load default", func(t *testing.T) {
-		e := NewEntryStore()
-		assert.NotNil(t, e.LoadEntry().ConfigJson)
+		e := NewEntryStore(config.V6)
+		assert.NotNil(t, e.LoadEntry(config.V6).ConfigJson)
 	})
 	t.Run("store, check etag", func(t *testing.T) {
-		e := NewEntryStore()
+		e := NewEntryStore(config.V6)
 		data := []byte("test")
-		etag := "W/" + "\"" + utils.FastHashHex(data) + "\""
 		e.StoreEntry(data, time.Time{}, "etag")
-		assert.Equal(t, data, e.LoadEntry().ConfigJson)
-		assert.Equal(t, "etag", e.LoadEntry().CachedETag)
-		assert.Equal(t, etag, e.LoadEntry().GeneratedETag)
-		assert.Equal(t, "-62135596800000\netag\ntest", string(e.ComposeBytes()))
+		assert.Equal(t, data, e.LoadEntry(config.V6).ConfigJson)
+		assert.Equal(t, "etag", e.LoadEntry(config.V6).ETag)
+		assert.Equal(t, "-62135596800000\netag\ntest", string(e.ComposeBytes(config.V6)))
 	})
 }

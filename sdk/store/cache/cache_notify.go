@@ -7,12 +7,13 @@ import (
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/sdk/store"
 	"github.com/configcat/configcat-proxy/status"
-	"github.com/configcat/go-sdk/v8/configcatcache"
+	configcat "github.com/configcat/go-sdk/v9"
+	"github.com/configcat/go-sdk/v9/configcatcache"
 	"time"
 )
 
-type notifyingCacheStorage struct {
-	store.CacheStorage
+type notifyingCacheStore struct {
+	store.CacheEntryStore
 	store.Notifier
 
 	poller    *time.Ticker
@@ -24,16 +25,18 @@ type notifyingCacheStorage struct {
 	cacheKey  string
 }
 
-func NewNotifyingCacheStorage(sdkId string, sdkKey string, cache store.CacheStorage, conf *config.OfflineConfig, reporter status.Reporter, log log.Logger) store.NotifyingStorage {
+var _ store.NotifyingStore = &notifyingCacheStore{}
+
+func NewNotifyingCacheStore(sdkId string, cache store.CacheEntryStore, conf *config.OfflineConfig, reporter status.Reporter, log log.Logger) configcat.ConfigCache {
 	nrLogger := log.WithPrefix("cache-poll")
-	n := &notifyingCacheStorage{
-		CacheStorage: cache,
-		Notifier:     store.NewNotifier(),
-		cacheKey:     configcatcache.ProduceCacheKey(sdkKey),
-		reporter:     reporter,
-		log:          nrLogger,
-		sdkId:        sdkId,
-		poller:       time.NewTicker(time.Duration(conf.CachePollInterval) * time.Second),
+	n := &notifyingCacheStore{
+		CacheEntryStore: cache,
+		Notifier:        store.NewNotifier(),
+		cacheKey:        cache.CacheKey(),
+		reporter:        reporter,
+		log:             nrLogger,
+		sdkId:           sdkId,
+		poller:          time.NewTicker(time.Duration(conf.CachePollInterval) * time.Second),
 	}
 	n.ctx, n.ctxCancel = context.WithCancel(context.Background())
 	n.reload()
@@ -41,7 +44,7 @@ func NewNotifyingCacheStorage(sdkId string, sdkKey string, cache store.CacheStor
 	return n
 }
 
-func (n *notifyingCacheStorage) run() {
+func (n *notifyingCacheStore) run() {
 	for {
 		select {
 		case <-n.poller.C:
@@ -54,8 +57,8 @@ func (n *notifyingCacheStorage) run() {
 	}
 }
 
-func (n *notifyingCacheStorage) reload() bool {
-	data, err := n.CacheStorage.Get(n.ctx, n.cacheKey)
+func (n *notifyingCacheStore) reload() bool {
+	data, err := n.CacheEntryStore.Get(n.ctx, n.cacheKey)
 	if err != nil {
 		n.log.Errorf("failed to read from redis: %s", err)
 		n.reporter.ReportError(n.sdkId, err)
@@ -67,37 +70,38 @@ func (n *notifyingCacheStorage) reload() bool {
 		n.reporter.ReportError(n.sdkId, err)
 		return false
 	}
-	if n.LoadEntry().CachedETag == eTag {
+	if n.LoadEntry(config.V6).ETag == eTag {
 		n.reporter.ReportOk(n.sdkId, "config from cache not modified")
 		return false
 	}
 	n.log.Debugf("new JSON received from redis, reloading")
 
-	var root store.RootNode
+	var root configcat.ConfigJson
 	if err = json.Unmarshal(configJson, &root); err != nil {
 		n.log.Errorf("failed to parse JSON from redis: %s", err)
 		n.reporter.ReportError(n.sdkId, err)
 		return false
 	}
-	root.Fixup()
 	ser, _ := json.Marshal(root) // Re-serialize to enforce the JSON schema
-	n.StoreEntry(ser, fetchTime, eTag)
+	n.CacheEntryStore.StoreEntry(ser, fetchTime, eTag)
 	n.reporter.ReportOk(n.sdkId, "reload from cache succeeded")
 	return true
 }
 
-func (n *notifyingCacheStorage) Get(_ context.Context, _ string) ([]byte, error) {
-	return n.ComposeBytes(), nil
+func (n *notifyingCacheStore) Get(_ context.Context, _ string) ([]byte, error) {
+	return n.CacheEntryStore.ComposeBytes(config.V6), nil
 }
 
-func (n *notifyingCacheStorage) Set(_ context.Context, _ string, _ []byte) error {
+func (n *notifyingCacheStore) Set(_ context.Context, _ string, _ []byte) error {
 	return nil // do nothing
 }
 
-func (n *notifyingCacheStorage) Close() {
+func (n *notifyingCacheStore) Close() {
 	n.Notifier.Close()
 	n.ctxCancel()
 	n.poller.Stop()
-	n.CacheStorage.Close()
+	if closable, ok := n.CacheEntryStore.(store.ClosableStore); ok {
+		closable.Close()
+	}
 	n.log.Reportf("shutdown complete")
 }
