@@ -38,7 +38,7 @@ type fileStore struct {
 
 var _ store.NotifyingStore = &fileStore{}
 
-func NewFileStore(sdkId string, sdkVersion config.SDKVersion, conf *config.LocalConfig, reporter status.Reporter, log log.Logger) configcat.ConfigCache {
+func NewFileStore(sdkId string, conf *config.LocalConfig, reporter status.Reporter, log log.Logger) configcat.ConfigCache {
 	fileLogger := log.WithPrefix("file-store")
 	var watch watcher
 	var err error
@@ -54,7 +54,7 @@ func NewFileStore(sdkId string, sdkVersion config.SDKVersion, conf *config.Local
 		watch = &nullWatcher{modified: make(chan struct{})}
 	}
 	f := &fileStore{
-		EntryStore: store.NewEntryStore(sdkVersion),
+		EntryStore: store.NewEntryStore(),
 		Notifier:   store.NewNotifier(),
 		watcher:    watch,
 		log:        fileLogger,
@@ -107,7 +107,7 @@ func (f *fileStore) reload() bool {
 }
 
 func (f *fileStore) Get(_ context.Context, _ string) ([]byte, error) {
-	return f.ComposeBytes(config.V6), nil
+	return f.ComposeBytes(), nil
 }
 
 func (f *fileStore) Set(_ context.Context, _ string, _ []byte) error {

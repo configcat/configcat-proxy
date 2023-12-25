@@ -2,7 +2,6 @@ package store
 
 import (
 	"context"
-	"github.com/configcat/configcat-proxy/config"
 	configcat "github.com/configcat/go-sdk/v9"
 	"github.com/configcat/go-sdk/v9/configcatcache"
 )
@@ -10,8 +9,6 @@ import (
 type CacheEntryStore interface {
 	EntryStore
 	configcat.ConfigCache
-
-	CacheKey() string
 }
 
 type ClosableStore interface {
@@ -28,12 +25,12 @@ type inMemoryStore struct {
 	EntryStore
 }
 
-func NewInMemoryStorage(version config.SDKVersion) configcat.ConfigCache {
-	return &inMemoryStore{EntryStore: NewEntryStore(version)}
+func NewInMemoryStorage() configcat.ConfigCache {
+	return &inMemoryStore{EntryStore: NewEntryStore()}
 }
 
 func (r *inMemoryStore) Get(_ context.Context, _ string) ([]byte, error) {
-	return r.ComposeBytes(config.V6), nil
+	return r.ComposeBytes(), nil
 }
 
 func (r *inMemoryStore) Set(_ context.Context, _ string, value []byte) error {

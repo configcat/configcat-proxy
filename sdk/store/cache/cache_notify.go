@@ -27,12 +27,12 @@ type notifyingCacheStore struct {
 
 var _ store.NotifyingStore = &notifyingCacheStore{}
 
-func NewNotifyingCacheStore(sdkId string, cache store.CacheEntryStore, conf *config.OfflineConfig, reporter status.Reporter, log log.Logger) configcat.ConfigCache {
+func NewNotifyingCacheStore(sdkId string, cacheKey string, cache store.CacheEntryStore, conf *config.OfflineConfig, reporter status.Reporter, log log.Logger) configcat.ConfigCache {
 	nrLogger := log.WithPrefix("cache-poll")
 	n := &notifyingCacheStore{
 		CacheEntryStore: cache,
 		Notifier:        store.NewNotifier(),
-		cacheKey:        cache.CacheKey(),
+		cacheKey:        cacheKey,
 		reporter:        reporter,
 		log:             nrLogger,
 		sdkId:           sdkId,
@@ -70,7 +70,7 @@ func (n *notifyingCacheStore) reload() bool {
 		n.reporter.ReportError(n.sdkId, err)
 		return false
 	}
-	if n.LoadEntry(config.V6).ETag == eTag {
+	if n.LoadEntry().ETag == eTag {
 		n.reporter.ReportOk(n.sdkId, "config from cache not modified")
 		return false
 	}
@@ -89,7 +89,7 @@ func (n *notifyingCacheStore) reload() bool {
 }
 
 func (n *notifyingCacheStore) Get(_ context.Context, _ string) ([]byte, error) {
-	return n.CacheEntryStore.ComposeBytes(config.V6), nil
+	return n.CacheEntryStore.ComposeBytes(), nil
 }
 
 func (n *notifyingCacheStore) Set(_ context.Context, _ string, _ []byte) error {

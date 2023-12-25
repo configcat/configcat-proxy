@@ -2,12 +2,9 @@ package store
 
 import (
 	"encoding/json"
-	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/internal/utils"
 	configcat "github.com/configcat/go-sdk/v9"
 	"github.com/configcat/go-sdk/v9/configcatcache"
-	"strconv"
-	"strings"
 	"sync/atomic"
 	"time"
 )
@@ -45,8 +42,8 @@ type Preferences struct {
 }
 
 type EntryStore interface {
-	LoadEntry(version config.SDKVersion) *EntryWithEtag
-	ComposeBytes(version config.SDKVersion) []byte
+	LoadEntry() *EntryWithEtag
+	ComposeBytes() []byte
 	StoreEntry(data []byte, fetchTime time.Time, eTag string)
 }
 
@@ -57,54 +54,31 @@ type EntryWithEtag struct {
 }
 
 type entryStore struct {
-	entryV6    atomic.Pointer[EntryWithEtag]
-	entryV5    atomic.Pointer[EntryWithEtag]
-	cacheKeyV6 string
-	cacheKeyV5 string
-	sdkVersion config.SDKVersion
-	modified   chan struct{}
+	entry    atomic.Pointer[EntryWithEtag]
+	modified chan struct{}
 }
 
-func NewEntryStore(version config.SDKVersion) EntryStore {
+func NewEntryStore() EntryStore {
 	e := entryStore{
-		modified:   make(chan struct{}, 1),
-		sdkVersion: version,
+		modified: make(chan struct{}, 1),
 	}
-	configV5 := ConfigJsonV5{}
-	configV6 := configcat.ConfigJson{}
-	initialV5, _ := json.Marshal(configV5)
-	initialV6, _ := json.Marshal(configV6)
-	e.entryV5.Store(entryWithEtag(initialV5, time.Time{}, utils.GenerateEtag(initialV5)))
-	e.entryV6.Store(entryWithEtag(initialV6, time.Time{}, utils.GenerateEtag(initialV6)))
+	config := configcat.ConfigJson{}
+	initial, _ := json.Marshal(config)
+	e.entry.Store(entryWithEtag(initial, time.Time{}, utils.GenerateEtag(initial)))
 	return &e
 }
 
-func (e *entryStore) LoadEntry(version config.SDKVersion) *EntryWithEtag {
-	if version == config.V5 {
-		return e.entryV5.Load()
-	} else {
-		return e.entryV6.Load()
-	}
+func (e *entryStore) LoadEntry() *EntryWithEtag {
+	return e.entry.Load()
 }
 
-func (e *entryStore) ComposeBytes(version config.SDKVersion) []byte {
-	var entry *EntryWithEtag
-	if version == config.V5 {
-		entry = e.entryV5.Load()
-	} else {
-		entry = e.entryV6.Load()
-	}
+func (e *entryStore) ComposeBytes() []byte {
+	entry := e.entry.Load()
 	return configcatcache.CacheSegmentsToBytes(entry.FetchTime, entry.ETag, entry.ConfigJson)
 }
 
 func (e *entryStore) StoreEntry(configJson []byte, fetchTime time.Time, eTag string) {
-	e.entryV6.Store(entryWithEtag(configJson, fetchTime, eTag))
-	if e.sdkVersion == config.V5 {
-		v5, err := buildV5Json(configJson)
-		if err == nil {
-			e.entryV5.Store(entryWithEtag(v5, fetchTime, utils.GenerateEtag(v5)))
-		}
-	}
+	e.entry.Store(entryWithEtag(configJson, fetchTime, eTag))
 }
 
 func entryWithEtag(configJson []byte, fetchTime time.Time, eTag string) *EntryWithEtag {
@@ -112,74 +86,4 @@ func entryWithEtag(configJson []byte, fetchTime time.Time, eTag string) *EntryWi
 		ConfigJson: configJson,
 		ETag:       eTag,
 		FetchTime:  fetchTime}
-}
-
-func buildV5Json(configV6Json []byte) ([]byte, error) {
-	var configV6 configcat.ConfigJson
-	err := json.Unmarshal(configV6Json, &configV6)
-	if err != nil {
-		return nil, err
-	}
-	configV5 := ConfigJsonV5{}
-	if configV6.Preferences != nil {
-		configV5.Preferences = &Preferences{
-			URL:      configV6.Preferences.URL,
-			Redirect: configV6.Preferences.Redirect,
-		}
-	}
-	configV5.Entries = make(map[string]*Setting, len(configV6.Settings))
-	for key, setting := range configV6.Settings {
-		settingV5 := &Setting{
-			Value:       setting.Value.Value,
-			Type:        setting.Type,
-			VariationID: setting.VariationID,
-		}
-		if len(setting.TargetingRules) > 0 {
-			for _, rule := range setting.TargetingRules {
-				ruleV5 := &RolloutRule{
-					Value:       rule.ServedValue.Value.Value,
-					VariationID: rule.ServedValue.VariationID,
-				}
-				if len(rule.Conditions) > 0 {
-					cond := rule.Conditions[0]
-					if cond.UserCondition != nil {
-						ruleV5.Comparator = cond.UserCondition.Comparator
-						ruleV5.ComparisonAttribute = cond.UserCondition.ComparisonAttribute
-						ruleV5.ComparisonValue = getCompValue(cond.UserCondition)
-					}
-					if cond.SegmentCondition != nil {
-						segment := configV6.Segments[cond.SegmentCondition.Index]
-						ruleV5.Comparator = segment.Conditions[0].Comparator
-						ruleV5.ComparisonAttribute = segment.Conditions[0].ComparisonAttribute
-						ruleV5.ComparisonValue = getCompValue(segment.Conditions[0])
-					}
-				}
-				settingV5.RolloutRules = append(settingV5.RolloutRules, ruleV5)
-			}
-		}
-		if len(setting.PercentageOptions) > 0 {
-			for _, option := range setting.PercentageOptions {
-				settingV5.PercentageRules = append(settingV5.PercentageRules, &PercentageRule{
-					Percentage:  option.Percentage,
-					Value:       option.Value.Value,
-					VariationID: option.VariationID,
-				})
-			}
-		}
-		configV5.Entries[key] = settingV5
-	}
-	return json.Marshal(configV5)
-}
-
-func getCompValue(cond *configcat.UserCondition) string {
-	if cond.Comparator.IsList() {
-		return strings.Join(cond.StringArrayValue, ",")
-	}
-	if cond.Comparator.IsNumeric() && cond.DoubleValue != nil {
-		return strconv.FormatFloat(*cond.DoubleValue, 'f', -1, 64)
-	}
-	if cond.StringValue != nil {
-		return *cond.StringValue
-	}
-	return ""
 }

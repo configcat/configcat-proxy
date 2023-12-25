@@ -2,7 +2,6 @@ package cache
 
 import (
 	"context"
-	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/status"
 	"github.com/configcat/go-sdk/v9/configcatcache"
 	"github.com/stretchr/testify/assert"
@@ -11,16 +10,16 @@ import (
 )
 
 func TestCacheStore(t *testing.T) {
-	store := NewCacheStore(&testCache{}, status.NewNullReporter(), "key", config.V6).(*cacheStore)
+	store := NewCacheStore(&testCache{}, status.NewNullReporter()).(*cacheStore)
 
-	err := store.Set(context.Background(), store.v6Key, configcatcache.CacheSegmentsToBytes(time.Now(), "etag", []byte(`test`)))
+	err := store.Set(context.Background(), "key", configcatcache.CacheSegmentsToBytes(time.Now(), "etag", []byte(`test`)))
 	assert.NoError(t, err)
-	res, err := store.Get(context.Background(), store.v6Key)
+	res, err := store.Get(context.Background(), "key")
 	assert.NoError(t, err)
 	_, _, j, err := configcatcache.CacheSegmentsFromBytes(res)
 	assert.NoError(t, err)
 	assert.Equal(t, `test`, string(j))
-	assert.Equal(t, `test`, string(store.LoadEntry(config.V6).ConfigJson))
+	assert.Equal(t, `test`, string(store.LoadEntry().ConfigJson))
 }
 
 type testCache struct {

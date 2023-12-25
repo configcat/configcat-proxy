@@ -28,10 +28,10 @@ type Logger interface {
 
 const (
 	Debug Level = iota
-	Info  Level = iota
-	Warn  Level = iota
-	Error Level = iota
-	None  Level = iota
+	Info
+	Warn
+	Error
+	None
 )
 
 type logger struct {

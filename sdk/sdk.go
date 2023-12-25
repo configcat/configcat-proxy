@@ -12,6 +12,7 @@ import (
 	"github.com/configcat/configcat-proxy/sdk/store/file"
 	"github.com/configcat/configcat-proxy/status"
 	"github.com/configcat/go-sdk/v9"
+	"github.com/configcat/go-sdk/v9/configcatcache"
 	"net/http"
 	"net/url"
 	"sync"
@@ -20,14 +21,14 @@ import (
 )
 
 const (
-	offlineSdkKey = "0000000000000000000000/0000000000000000000000"
+	validEmptySdkKey = "0000000000000000000000/0000000000000000000000"
 )
 
 type Client interface {
 	Eval(key string, user UserAttrs) (EvalData, error)
 	EvalAll(user UserAttrs) map[string]EvalData
 	Keys() []string
-	GetCachedJson(version config.SDKVersion) *store.EntryWithEtag
+	GetCachedJson() *store.EntryWithEtag
 	SubConfigChanged(id string) <-chan struct{}
 	UnsubConfigChanged(id string)
 	Ready() <-chan struct{}
@@ -35,7 +36,6 @@ type Client interface {
 	Close()
 	WebhookSigningKey() string
 	WebhookSignatureValidFor() int
-	Version() config.SDKVersion
 }
 
 type EvalData struct {
@@ -75,15 +75,16 @@ func NewClient(sdkCtx *Context, log log.Logger) Client {
 	key := sdkCtx.SDKConf.Key
 	var storage configcat.ConfigCache
 	if offline && sdkCtx.SDKConf.Offline.Local.FilePath != "" {
-		key = offlineSdkKey
-		storage = file.NewFileStore(sdkCtx.SdkId, sdkCtx.SDKConf.SDKVersion, &sdkCtx.SDKConf.Offline.Local, sdkCtx.StatusReporter, log.WithLevel(sdkCtx.SDKConf.Offline.Log.GetLevel()))
+		key = validEmptySdkKey
+		storage = file.NewFileStore(sdkCtx.SdkId, &sdkCtx.SDKConf.Offline.Local, sdkCtx.StatusReporter, log.WithLevel(sdkCtx.SDKConf.Offline.Log.GetLevel()))
 	} else if offline && sdkCtx.SDKConf.Offline.UseCache && sdkCtx.CacheConf.Redis.Enabled {
-		cacheStore := cache.NewCacheStore(redis.NewRedisStore(&sdkCtx.CacheConf.Redis), sdkCtx.StatusReporter, key, sdkCtx.SDKConf.SDKVersion)
-		storage = cache.NewNotifyingCacheStore(sdkCtx.SdkId, cacheStore, &sdkCtx.SDKConf.Offline, sdkCtx.StatusReporter, log.WithLevel(sdkCtx.SDKConf.Offline.Log.GetLevel()))
+		cacheKey := configcatcache.ProduceCacheKey(key, configcatcache.ConfigJSONName, configcatcache.ConfigJSONCacheVersion)
+		cacheStore := cache.NewCacheStore(redis.NewRedisStore(&sdkCtx.CacheConf.Redis), sdkCtx.StatusReporter)
+		storage = cache.NewNotifyingCacheStore(sdkCtx.SdkId, cacheKey, cacheStore, &sdkCtx.SDKConf.Offline, sdkCtx.StatusReporter, log.WithLevel(sdkCtx.SDKConf.Offline.Log.GetLevel()))
 	} else if !offline && sdkCtx.CacheConf.Redis.Enabled {
-		storage = cache.NewCacheStore(redis.NewRedisStore(&sdkCtx.CacheConf.Redis), sdkCtx.StatusReporter, key, sdkCtx.SDKConf.SDKVersion)
+		storage = cache.NewCacheStore(redis.NewRedisStore(&sdkCtx.CacheConf.Redis), sdkCtx.StatusReporter)
 	} else {
-		storage = store.NewInMemoryStorage(sdkCtx.SDKConf.SDKVersion)
+		storage = store.NewInMemoryStorage()
 	}
 	client := &client{
 		log:           sdkLog,
@@ -207,14 +208,14 @@ func (c *client) Keys() []string {
 	return c.configCatClient.GetAllKeys()
 }
 
-func (c *client) GetCachedJson(version config.SDKVersion) *store.EntryWithEtag {
+func (c *client) GetCachedJson() *store.EntryWithEtag {
 	c.readyOnce.Do(func() {
 		select {
 		case <-c.configCatClient.Ready():
 		case <-c.ctx.Done():
 		}
 	})
-	return c.cache.LoadEntry(version)
+	return c.cache.LoadEntry()
 }
 
 func (c *client) SubConfigChanged(id string) <-chan struct{} {

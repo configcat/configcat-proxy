@@ -2,7 +2,6 @@ package cache
 
 import (
 	"context"
-	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/sdk/store"
 	"github.com/configcat/configcat-proxy/status"
 	configcat "github.com/configcat/go-sdk/v9"
@@ -16,19 +15,13 @@ type cacheStore struct {
 
 	reporter    status.Reporter
 	actualCache configcat.ConfigCache
-	v5Key       string
-	v6Key       string
-	sdkVersion  config.SDKVersion
 }
 
-func NewCacheStore(actualCache configcat.ConfigCache, reporter status.Reporter, sdkKey string, sdkVersion config.SDKVersion) store.CacheEntryStore {
+func NewCacheStore(actualCache configcat.ConfigCache, reporter status.Reporter) store.CacheEntryStore {
 	return &cacheStore{
-		EntryStore:  store.NewEntryStore(sdkVersion),
+		EntryStore:  store.NewEntryStore(),
 		reporter:    reporter,
 		actualCache: actualCache,
-		v5Key:       configcatcache.ProduceCacheKey(sdkKey, configJSONNameV5, configcatcache.ConfigJSONCacheVersion),
-		v6Key:       configcatcache.ProduceCacheKey(sdkKey, configcatcache.ConfigJSONName, configcatcache.ConfigJSONCacheVersion),
-		sdkVersion:  sdkVersion,
 	}
 }
 
@@ -46,26 +39,16 @@ func (c *cacheStore) Set(ctx context.Context, key string, value []byte) error {
 	fetchTime, etag, configJson, err := configcatcache.CacheSegmentsFromBytes(value)
 	if err != nil {
 		c.reporter.ReportError(status.Cache, err)
+		return err
 	}
 	c.StoreEntry(configJson, fetchTime, etag)
 	err = c.actualCache.Set(ctx, key, value)
 	if err != nil {
 		c.reporter.ReportError(status.Cache, err)
+		return err
 	}
-	if c.sdkVersion == config.V5 {
-		err = c.actualCache.Set(ctx, c.v5Key, c.ComposeBytes(config.V5))
-		if err != nil {
-			c.reporter.ReportError(status.Cache, err)
-		}
-	}
-	if err == nil {
-		c.reporter.ReportOk(status.Cache, "cache write succeeded")
-	}
-	return err
-}
-
-func (c *cacheStore) CacheKey() string {
-	return c.v6Key
+	c.reporter.ReportOk(status.Cache, "cache write succeeded")
+	return nil
 }
 
 func (c *cacheStore) Close() {

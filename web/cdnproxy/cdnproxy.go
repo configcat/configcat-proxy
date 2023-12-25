@@ -27,19 +27,14 @@ func NewServer(sdkClients map[string]sdk.Client, config *config.CdnProxyConfig, 
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	sdkClient, requestedVersion, err := s.getSDKClient(r.Context())
+	sdkClient, _, err := s.getSDKClient(r.Context())
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
-	if sdkClient.Version() == config.V6 && requestedVersion == config.V5 {
-		http.Error(w, "only config V6 available", http.StatusNotFound)
-		return
-	}
-
 	w.Header().Set("Cache-Control", "max-age=0, must-revalidate")
 	etag := r.Header.Get("If-None-Match")
-	c := sdkClient.GetCachedJson(requestedVersion)
+	c := sdkClient.GetCachedJson()
 	if etag == "" || c.ETag != etag {
 		w.Header().Set("ETag", c.ETag)
 		w.Header().Set("Content-Type", "application/json")
