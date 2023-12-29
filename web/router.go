@@ -109,7 +109,7 @@ func (s *HttpRouter) setupWebhookRoutes(conf *config.WebhookConfig, sdkClients m
 
 func (s *HttpRouter) setupCDNProxyRoutes(conf *config.CdnProxyConfig, sdkClients map[string]sdk.Client, l log.Logger) {
 	s.cdnProxyServer = cdnproxy.NewServer(sdkClients, conf, l)
-	path := "/configuration-files/*sdkId"
+	path := "/configuration-files/configcat-proxy/:sdkId/config_v6.json"
 	handler := mware.AutoOptions(mware.GZip(s.cdnProxyServer.ServeHTTP))
 	if len(conf.Headers) > 0 {
 		handler = mware.ExtraHeaders(conf.Headers, handler)

@@ -2,7 +2,6 @@ package status
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/stretchr/testify/assert"
 	"io"
@@ -30,8 +29,8 @@ func TestReporter_Online(t *testing.T) {
 	t.Run("degraded after 2 errors, then ok again", func(t *testing.T) {
 		reporter := NewReporter(&config.Config{SDKs: map[string]*config.SDKConfig{"t": {}}})
 		srv := httptest.NewServer(reporter.HttpHandler())
-		reporter.ReportError("t", fmt.Errorf(""))
-		reporter.ReportError("t", fmt.Errorf(""))
+		reporter.ReportError("t", "")
+		reporter.ReportError("t", "")
 		stat := readStatus(srv.URL)
 
 		assert.Equal(t, Degraded, stat.Status)
@@ -120,7 +119,7 @@ func TestReporter_Offline(t *testing.T) {
 
 func TestReporter_StatusCopy(t *testing.T) {
 	reporter := NewReporter(&config.Config{SDKs: map[string]*config.SDKConfig{"t": {}}}).(*reporter)
-	reporter.ReportError("t", fmt.Errorf(""))
+	reporter.ReportError("t", "")
 	stat := reporter.getStatus()
 
 	assert.Equal(t, Healthy, reporter.status.Status)
@@ -130,7 +129,7 @@ func TestReporter_StatusCopy(t *testing.T) {
 func TestReporter_Degraded_Calc(t *testing.T) {
 	t.Run("1 record, 1 error", func(t *testing.T) {
 		reporter := NewReporter(&config.Config{SDKs: map[string]*config.SDKConfig{"t": {}}}).(*reporter)
-		reporter.ReportError("t", fmt.Errorf(""))
+		reporter.ReportError("t", "")
 		stat := reporter.getStatus()
 
 		assert.Equal(t, Degraded, stat.Status)
@@ -138,7 +137,7 @@ func TestReporter_Degraded_Calc(t *testing.T) {
 	})
 	t.Run("2 records, 1 error then 1 ok", func(t *testing.T) {
 		reporter := NewReporter(&config.Config{SDKs: map[string]*config.SDKConfig{"t": {}}}).(*reporter)
-		reporter.ReportError("t", fmt.Errorf(""))
+		reporter.ReportError("t", "")
 		reporter.ReportOk("t", "")
 		stat := reporter.getStatus()
 
@@ -148,7 +147,7 @@ func TestReporter_Degraded_Calc(t *testing.T) {
 	t.Run("2 records, 1 ok then 1 error", func(t *testing.T) {
 		reporter := NewReporter(&config.Config{SDKs: map[string]*config.SDKConfig{"t": {}}}).(*reporter)
 		reporter.ReportOk("t", "")
-		reporter.ReportError("t", fmt.Errorf(""))
+		reporter.ReportError("t", "")
 		stat := reporter.getStatus()
 
 		assert.Equal(t, Healthy, stat.Status)
@@ -157,8 +156,8 @@ func TestReporter_Degraded_Calc(t *testing.T) {
 	t.Run("3 records, 1 ok then 2 errors", func(t *testing.T) {
 		reporter := NewReporter(&config.Config{SDKs: map[string]*config.SDKConfig{"t": {}}}).(*reporter)
 		reporter.ReportOk("t", "")
-		reporter.ReportError("t", fmt.Errorf(""))
-		reporter.ReportError("t", fmt.Errorf(""))
+		reporter.ReportError("t", "")
+		reporter.ReportError("t", "")
 		stat := reporter.getStatus()
 
 		assert.Equal(t, Degraded, stat.Status)
@@ -167,7 +166,7 @@ func TestReporter_Degraded_Calc(t *testing.T) {
 	t.Run("3 records, 1 ok then 1 error then 1 ok", func(t *testing.T) {
 		reporter := NewReporter(&config.Config{SDKs: map[string]*config.SDKConfig{"t": {}}}).(*reporter)
 		reporter.ReportOk("t", "")
-		reporter.ReportError("t", fmt.Errorf(""))
+		reporter.ReportError("t", "")
 		reporter.ReportOk("t", "")
 		stat := reporter.getStatus()
 
@@ -176,9 +175,9 @@ func TestReporter_Degraded_Calc(t *testing.T) {
 	})
 	t.Run("3 records, 1 error then 1 ok then 1 error", func(t *testing.T) {
 		reporter := NewReporter(&config.Config{SDKs: map[string]*config.SDKConfig{"t": {}}}).(*reporter)
-		reporter.ReportError("t", fmt.Errorf(""))
+		reporter.ReportError("t", "")
 		reporter.ReportOk("t", "")
-		reporter.ReportError("t", fmt.Errorf(""))
+		reporter.ReportError("t", "")
 		stat := reporter.getStatus()
 
 		assert.Equal(t, Healthy, stat.Status)
@@ -186,7 +185,7 @@ func TestReporter_Degraded_Calc(t *testing.T) {
 	})
 	t.Run("2 envs 1 degraded", func(t *testing.T) {
 		reporter := NewReporter(&config.Config{SDKs: map[string]*config.SDKConfig{"t1": {}, "t2": {}}}).(*reporter)
-		reporter.ReportError("t1", fmt.Errorf(""))
+		reporter.ReportError("t1", "")
 		reporter.ReportOk("t2", "")
 		stat := reporter.getStatus()
 

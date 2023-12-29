@@ -11,14 +11,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
-	"strings"
-)
-
-type SDKVersion int
-
-const (
-	V5 SDKVersion = iota
-	V6
 )
 
 const defaultConfigName = "options.yml"
@@ -62,8 +54,6 @@ type SDKConfig struct {
 	DefaultAttrs             map[string]string `yaml:"default_user_attributes"`
 	Offline                  OfflineConfig
 	Log                      LogConfig
-
-	SDKVersion SDKVersion `yaml:"-"`
 }
 
 type GrpcConfig struct {
@@ -227,7 +217,6 @@ func LoadConfigFromFileAndEnvironment(filePath string) (Config, error) {
 	config.fixupDefaults()
 	config.fixupTlsMinVersions(1.2)
 	config.fixupOffline()
-	config.setSdkVersion()
 	if err := config.compileOriginRegexes(); err != nil {
 		return Config{}, err
 	}
@@ -305,18 +294,6 @@ func (c *Config) fixupOffline() {
 			sdk.Offline.UseCache = true
 			sdk.Offline.CachePollInterval = c.GlobalOfflineConfig.CachePollInterval
 			sdk.Offline.Log = c.GlobalOfflineConfig.Log
-		}
-	}
-}
-
-func (c *Config) setSdkVersion() {
-	for _, sdk := range c.SDKs {
-		if sdk == nil {
-			continue
-		}
-		sdk.SDKVersion = V5
-		if strings.HasPrefix(sdk.Key, "configcat-sdk-1/") {
-			sdk.SDKVersion = V6
 		}
 	}
 }

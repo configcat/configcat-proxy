@@ -2,7 +2,6 @@ package status
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/internal/utils"
 	"net/http"
@@ -34,7 +33,7 @@ const maxLastErrorsMeaningDegraded = 2
 
 type Reporter interface {
 	ReportOk(component string, message string)
-	ReportError(component string, err error)
+	ReportError(component string, message string)
 
 	HttpHandler() http.HandlerFunc
 }
@@ -113,7 +112,7 @@ func NewReporter(conf *config.Config) Reporter {
 			r.status.Cache.Status = NA
 			if status.Source.Type == CacheSrc {
 				status.Source.Status = Degraded
-				r.ReportError(key, fmt.Errorf("cache offline source enabled without a configured cache"))
+				r.ReportError(key, "cache offline source enabled without a configured cache")
 			}
 		}
 		sdks[key] = status
@@ -126,8 +125,8 @@ func (r *reporter) ReportOk(component string, message string) {
 	r.appendRecord(component, "[ok] "+message, false)
 }
 
-func (r *reporter) ReportError(component string, err error) {
-	r.appendRecord(component, "[error] "+err.Error(), true)
+func (r *reporter) ReportError(component string, message string) {
+	r.appendRecord(component, "[error] "+message, true)
 }
 
 func (r *reporter) HttpHandler() http.HandlerFunc {

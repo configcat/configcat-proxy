@@ -18,7 +18,7 @@ func TestCDNProxy_Options_CORS(t *testing.T) {
 	router := newCDNProxyRouter(t, config.CdnProxyConfig{Enabled: true, CORS: config.CORSConfig{Enabled: true}, Headers: map[string]string{"h1": "v1"}})
 	srv := httptest.NewServer(router.Handler())
 	client := http.Client{}
-	req, _ := http.NewRequest(http.MethodOptions, fmt.Sprintf("%s/configuration-files/configcat-proxy/test/config_v5.json", srv.URL), http.NoBody)
+	req, _ := http.NewRequest(http.MethodOptions, fmt.Sprintf("%s/configuration-files/configcat-proxy/test/config_v6.json", srv.URL), http.NoBody)
 	resp, _ := client.Do(req)
 	assert.Equal(t, http.StatusNoContent, resp.StatusCode)
 
@@ -35,7 +35,7 @@ func TestCDNProxy_Options_NO_CORS(t *testing.T) {
 	router := newCDNProxyRouter(t, config.CdnProxyConfig{Enabled: true, CORS: config.CORSConfig{Enabled: false}})
 	srv := httptest.NewServer(router.Handler())
 	client := http.Client{}
-	req, _ := http.NewRequest(http.MethodOptions, fmt.Sprintf("%s/configuration-files/configcat-proxy/test/config_v5.json", srv.URL), http.NoBody)
+	req, _ := http.NewRequest(http.MethodOptions, fmt.Sprintf("%s/configuration-files/configcat-proxy/test/config_v6.json", srv.URL), http.NoBody)
 	resp, _ := client.Do(req)
 	assert.Equal(t, http.StatusNoContent, resp.StatusCode)
 
@@ -52,7 +52,7 @@ func TestCDNProxy_GET_CORS(t *testing.T) {
 	router := newCDNProxyRouter(t, config.CdnProxyConfig{Enabled: true, CORS: config.CORSConfig{Enabled: true}, Headers: map[string]string{"h1": "v1"}})
 	srv := httptest.NewServer(router.Handler())
 	client := http.Client{}
-	req, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/configuration-files/configcat-proxy/test/config_v5.json", srv.URL), http.NoBody)
+	req, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/configuration-files/configcat-proxy/test/config_v6.json", srv.URL), http.NoBody)
 	resp, _ := client.Do(req)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -69,7 +69,7 @@ func TestCDNProxy_GET_NO_CORS(t *testing.T) {
 	router := newCDNProxyRouter(t, config.CdnProxyConfig{Enabled: true, CORS: config.CORSConfig{Enabled: false}})
 	srv := httptest.NewServer(router.Handler())
 	client := http.Client{}
-	req, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/configuration-files/configcat-proxy/test/config_v5.json", srv.URL), http.NoBody)
+	req, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/configuration-files/configcat-proxy/test/config_v6.json", srv.URL), http.NoBody)
 	resp, _ := client.Do(req)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -88,22 +88,22 @@ func TestCDNProxy_Not_Allowed_Methods(t *testing.T) {
 	client := http.Client{}
 
 	t.Run("put", func(t *testing.T) {
-		req, _ := http.NewRequest(http.MethodPut, fmt.Sprintf("%s/configuration-files/configcat-proxy/test/config_v5.json", srv.URL), http.NoBody)
+		req, _ := http.NewRequest(http.MethodPut, fmt.Sprintf("%s/configuration-files/configcat-proxy/test/config_v6.json", srv.URL), http.NoBody)
 		resp, _ := client.Do(req)
 		assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
 	})
 	t.Run("post", func(t *testing.T) {
-		req, _ := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/configuration-files/configcat-proxy/test/config_v5.json", srv.URL), http.NoBody)
+		req, _ := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/configuration-files/configcat-proxy/test/config_v6.json", srv.URL), http.NoBody)
 		resp, _ := client.Do(req)
 		assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
 	})
 	t.Run("delete", func(t *testing.T) {
-		req, _ := http.NewRequest(http.MethodDelete, fmt.Sprintf("%s/configuration-files/configcat-proxy/test/config_v5.json", srv.URL), http.NoBody)
+		req, _ := http.NewRequest(http.MethodDelete, fmt.Sprintf("%s/configuration-files/configcat-proxy/test/config_v6.json", srv.URL), http.NoBody)
 		resp, _ := client.Do(req)
 		assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
 	})
 	t.Run("patch", func(t *testing.T) {
-		req, _ := http.NewRequest(http.MethodPatch, fmt.Sprintf("%s/configuration-files/configcat-proxy/test/config_v5.json", srv.URL), http.NoBody)
+		req, _ := http.NewRequest(http.MethodPatch, fmt.Sprintf("%s/configuration-files/configcat-proxy/test/config_v6.json", srv.URL), http.NoBody)
 		resp, _ := client.Do(req)
 		assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
 	})
@@ -113,7 +113,7 @@ func TestCDNProxy_Get_Body(t *testing.T) {
 	router := newCDNProxyRouter(t, config.CdnProxyConfig{Enabled: true, CORS: config.CORSConfig{Enabled: true}, Headers: map[string]string{"h1": "v1"}})
 	srv := httptest.NewServer(router.Handler())
 	client := http.Client{}
-	req, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/configuration-files/configcat-proxy/test/config_v5.json", srv.URL), http.NoBody)
+	req, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/configuration-files/configcat-proxy/test/config_v6.json", srv.URL), http.NoBody)
 	resp, _ := client.Do(req)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	body, _ := io.ReadAll(resp.Body)
@@ -125,7 +125,7 @@ func TestCDNProxy_Get_Body(t *testing.T) {
 func TestCDNProxy_Get_Body_GZip(t *testing.T) {
 	router := newCDNProxyRouter(t, config.CdnProxyConfig{Enabled: true, CORS: config.CORSConfig{Enabled: true}, Headers: map[string]string{"h1": "v1"}})
 	srv := httptest.NewServer(router.Handler())
-	req, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/configuration-files/configcat-proxy/test/config_v5.json", srv.URL), http.NoBody)
+	req, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/configuration-files/configcat-proxy/test/config_v6.json", srv.URL), http.NoBody)
 	req.Header.Set("Accept-Encoding", "gzip")
 	resp, _ := http.DefaultClient.Do(req)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)

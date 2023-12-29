@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 )
 
@@ -19,7 +20,7 @@ func TestProxy_Get(t *testing.T) {
 		req := &http.Request{Method: http.MethodGet}
 
 		srv := newServer(t, config.CdnProxyConfig{Enabled: true})
-		utils.AddContextParam(req, "configcat-proxy/test")
+		utils.AddContextParam(req, "test")
 		srv.ServeHTTP(res, req)
 
 		assert.Equal(t, http.StatusOK, res.Code)
@@ -30,7 +31,7 @@ func TestProxy_Get(t *testing.T) {
 		req := &http.Request{Method: http.MethodGet}
 
 		srv := newErrorServer(t, config.CdnProxyConfig{Enabled: true})
-		utils.AddContextParam(req, "configcat-proxy/test")
+		utils.AddContextParam(req, "test")
 		srv.ServeHTTP(res, req)
 
 		assert.Equal(t, http.StatusOK, res.Code)
@@ -42,7 +43,7 @@ func TestProxy_Get(t *testing.T) {
 			req := &http.Request{Method: http.MethodGet}
 
 			srv := newOfflineServer(t, path, config.CdnProxyConfig{Enabled: true})
-			utils.AddContextParam(req, "configcat-proxy/test")
+			utils.AddContextParam(req, "test")
 			srv.ServeHTTP(res, req)
 
 			assert.Equal(t, http.StatusOK, res.Code)
@@ -55,7 +56,7 @@ func TestProxy_Get(t *testing.T) {
 			req := &http.Request{Method: http.MethodGet}
 
 			srv := newOfflineServer(t, path, config.CdnProxyConfig{Enabled: true})
-			utils.AddContextParam(req, "configcat-proxy/test")
+			utils.AddContextParam(req, "test")
 			srv.ServeHTTP(res, req)
 
 			assert.Equal(t, http.StatusOK, res.Code)
@@ -67,7 +68,7 @@ func TestProxy_Get(t *testing.T) {
 		req := &http.Request{Method: http.MethodGet}
 
 		srv := newServer(t, config.CdnProxyConfig{Enabled: true})
-		utils.AddContextParam(req, "configcat-proxy/test")
+		utils.AddContextParam(req, "test")
 		srv.ServeHTTP(res, req)
 
 		assert.Equal(t, http.StatusOK, res.Code)
@@ -78,7 +79,28 @@ func TestProxy_Get(t *testing.T) {
 		res = httptest.NewRecorder()
 		req = &http.Request{Method: http.MethodGet, Header: map[string][]string{}}
 		req.Header.Set("If-None-Match", etag)
-		utils.AddContextParam(req, "configcat-proxy/test")
+		utils.AddContextParam(req, "test")
+		srv.ServeHTTP(res, req)
+
+		assert.Equal(t, http.StatusNotModified, res.Code)
+		assert.Empty(t, res.Body.String())
+	})
+	t.Run("etag query", func(t *testing.T) {
+		res := httptest.NewRecorder()
+		req := &http.Request{Method: http.MethodGet}
+
+		srv := newServer(t, config.CdnProxyConfig{Enabled: true})
+		utils.AddContextParam(req, "test")
+		srv.ServeHTTP(res, req)
+
+		assert.Equal(t, http.StatusOK, res.Code)
+		assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true,"s":null,"i":null,"d":null},"t":0,"r":[],"p":null}},"s":null,"p":null}`, res.Body.String())
+
+		etag := res.Header().Get("ETag")
+
+		res = httptest.NewRecorder()
+		req = &http.Request{Method: http.MethodGet, URL: &url.URL{RawQuery: "ccetag=" + etag}}
+		utils.AddContextParam(req, "test")
 		srv.ServeHTTP(res, req)
 
 		assert.Equal(t, http.StatusNotModified, res.Code)
@@ -89,7 +111,7 @@ func TestProxy_Get(t *testing.T) {
 		req := &http.Request{Method: http.MethodGet}
 
 		srv, h, key := newServerWithHandler(t, config.CdnProxyConfig{Enabled: true})
-		utils.AddContextParam(req, "configcat-proxy/test")
+		utils.AddContextParam(req, "test")
 		srv.ServeHTTP(res, req)
 
 		assert.Equal(t, http.StatusOK, res.Code)
@@ -100,7 +122,7 @@ func TestProxy_Get(t *testing.T) {
 		res = httptest.NewRecorder()
 		req = &http.Request{Method: http.MethodGet, Header: map[string][]string{}}
 		req.Header.Set("If-None-Match", etag)
-		utils.AddContextParam(req, "configcat-proxy/test")
+		utils.AddContextParam(req, "test")
 		srv.ServeHTTP(res, req)
 
 		assert.Equal(t, http.StatusNotModified, res.Code)
@@ -116,7 +138,7 @@ func TestProxy_Get(t *testing.T) {
 		res = httptest.NewRecorder()
 		req = &http.Request{Method: http.MethodGet, Header: map[string][]string{}}
 		req.Header.Set("If-None-Match", etag)
-		utils.AddContextParam(req, "configcat-proxy/test")
+		utils.AddContextParam(req, "test")
 		srv.ServeHTTP(res, req)
 
 		assert.Equal(t, http.StatusOK, res.Code)
@@ -127,7 +149,7 @@ func TestProxy_Get(t *testing.T) {
 		res = httptest.NewRecorder()
 		req = &http.Request{Method: http.MethodGet, Header: map[string][]string{}}
 		req.Header.Set("If-None-Match", etag)
-		utils.AddContextParam(req, "configcat-proxy/test")
+		utils.AddContextParam(req, "test")
 		srv.ServeHTTP(res, req)
 
 		assert.Equal(t, http.StatusNotModified, res.Code)

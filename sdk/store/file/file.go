@@ -85,7 +85,7 @@ func (f *fileStore) reload() bool {
 	data, err := os.ReadFile(f.conf.FilePath)
 	if err != nil {
 		f.log.Errorf("failed to read file %s: %s", f.conf.FilePath, err)
-		f.reporter.ReportError(f.sdkId, err)
+		f.reporter.ReportError(f.sdkId, "failed to read file")
 		return false
 	}
 	if bytes.Equal(f.stored, data) {
@@ -96,7 +96,7 @@ func (f *fileStore) reload() bool {
 	var root configcat.ConfigJson
 	if err = json.Unmarshal(data, &root); err != nil {
 		f.log.Errorf("failed to parse JSON from file %s: %s", f.conf.FilePath, err)
-		f.reporter.ReportError(f.sdkId, err)
+		f.reporter.ReportError(f.sdkId, "failed to parse JSON from file")
 		return false
 	}
 	f.stored = data

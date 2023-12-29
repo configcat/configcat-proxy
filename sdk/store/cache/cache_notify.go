@@ -61,13 +61,13 @@ func (n *notifyingCacheStore) reload() bool {
 	data, err := n.CacheEntryStore.Get(n.ctx, n.cacheKey)
 	if err != nil {
 		n.log.Errorf("failed to read from redis: %s", err)
-		n.reporter.ReportError(n.sdkId, err)
+		n.reporter.ReportError(n.sdkId, "failed to read from redis")
 		return false
 	}
 	fetchTime, eTag, configJson, err := configcatcache.CacheSegmentsFromBytes(data)
 	if err != nil {
 		n.log.Errorf("failed to recognise the cache format: %s", err)
-		n.reporter.ReportError(n.sdkId, err)
+		n.reporter.ReportError(n.sdkId, "failed to recognise the cache format")
 		return false
 	}
 	if n.LoadEntry().ETag == eTag {
@@ -79,7 +79,7 @@ func (n *notifyingCacheStore) reload() bool {
 	var root configcat.ConfigJson
 	if err = json.Unmarshal(configJson, &root); err != nil {
 		n.log.Errorf("failed to parse JSON from redis: %s", err)
-		n.reporter.ReportError(n.sdkId, err)
+		n.reporter.ReportError(n.sdkId, "failed to parse JSON from redis")
 		return false
 	}
 	ser, _ := json.Marshal(root) // Re-serialize to enforce the JSON schema

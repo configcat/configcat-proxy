@@ -253,10 +253,6 @@ func (c *client) WebhookSignatureValidFor() int {
 	return c.sdkCtx.SDKConf.WebhookSignatureValidFor
 }
 
-func (c *client) Version() config.SDKVersion {
-	return c.sdkCtx.SDKConf.SDKVersion
-}
-
 func (c *client) Close() {
 	c.ctxCancel()
 	if closable, ok := c.cache.(store.ClosableStore); ok {

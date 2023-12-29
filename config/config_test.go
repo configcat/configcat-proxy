@@ -189,26 +189,11 @@ sdks:
 		assert.True(t, conf.SDKs["test_sdk"].Offline.UseCache)
 		assert.Equal(t, 200, conf.SDKs["test_sdk"].Offline.CachePollInterval)
 		assert.Equal(t, 200, conf.SDKs["test_sdk"].Offline.CachePollInterval)
-		assert.Equal(t, V5, conf.SDKs["test_sdk"].SDKVersion)
 
 		assert.Equal(t, "attr_value1", conf.SDKs["test_sdk"].DefaultAttrs["attr_1"])
 		assert.Equal(t, "attr_value2", conf.SDKs["test_sdk"].DefaultAttrs["attr2"])
 		assert.Equal(t, "", conf.SDKs["test_sdk"].DefaultAttrs["attr3"])
 		assert.Equal(t, "attr value4", conf.SDKs["test_sdk"].DefaultAttrs["attr 4"])
-	})
-}
-
-func TestSDKConfigV6_YAML(t *testing.T) {
-	utils.UseTempFile(`
-sdks:
-  test_sdk:
-    key: "configcat-sdk-1/sdkKey"
-`, func(file string) {
-		conf, err := LoadConfigFromFileAndEnvironment(file)
-		require.NoError(t, err)
-
-		assert.Equal(t, "configcat-sdk-1/sdkKey", conf.SDKs["test_sdk"].Key)
-		assert.Equal(t, V6, conf.SDKs["test_sdk"].SDKVersion)
 	})
 }
 

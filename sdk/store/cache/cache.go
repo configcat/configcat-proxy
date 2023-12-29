@@ -8,8 +8,6 @@ import (
 	"github.com/configcat/go-sdk/v9/configcatcache"
 )
 
-const configJSONNameV5 = "config_v5.json"
-
 type cacheStore struct {
 	store.EntryStore
 
@@ -28,7 +26,7 @@ func NewCacheStore(actualCache configcat.ConfigCache, reporter status.Reporter) 
 func (c *cacheStore) Get(ctx context.Context, key string) ([]byte, error) {
 	b, err := c.actualCache.Get(ctx, key)
 	if err != nil {
-		c.reporter.ReportError(status.Cache, err)
+		c.reporter.ReportError(status.Cache, "cache read failed")
 	} else {
 		c.reporter.ReportOk(status.Cache, "cache read succeeded")
 	}
@@ -38,13 +36,13 @@ func (c *cacheStore) Get(ctx context.Context, key string) ([]byte, error) {
 func (c *cacheStore) Set(ctx context.Context, key string, value []byte) error {
 	fetchTime, etag, configJson, err := configcatcache.CacheSegmentsFromBytes(value)
 	if err != nil {
-		c.reporter.ReportError(status.Cache, err)
+		c.reporter.ReportError(status.Cache, "cache write failed")
 		return err
 	}
 	c.StoreEntry(configJson, fetchTime, etag)
 	err = c.actualCache.Set(ctx, key, value)
 	if err != nil {
-		c.reporter.ReportError(status.Cache, err)
+		c.reporter.ReportError(status.Cache, "cache write failed")
 		return err
 	}
 	c.reporter.ReportOk(status.Cache, "cache write succeeded")
