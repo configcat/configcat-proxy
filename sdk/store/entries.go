@@ -9,38 +9,6 @@ import (
 	"time"
 )
 
-type ConfigJsonV5 struct {
-	Entries     map[string]*Setting `json:"f"`
-	Preferences *Preferences        `json:"p,omitempty"`
-}
-
-type Setting struct {
-	VariationID     string                `json:"i"`
-	Value           interface{}           `json:"v"`
-	Type            configcat.SettingType `json:"t"`
-	RolloutRules    []*RolloutRule        `json:"r"`
-	PercentageRules []*PercentageRule     `json:"p"`
-}
-
-type RolloutRule struct {
-	VariationID         string               `json:"i"`
-	Value               interface{}          `json:"v"`
-	ComparisonAttribute string               `json:"a"`
-	ComparisonValue     string               `json:"c"`
-	Comparator          configcat.Comparator `json:"t"`
-}
-
-type PercentageRule struct {
-	VariationID string      `json:"i"`
-	Value       interface{} `json:"v"`
-	Percentage  int64       `json:"p"`
-}
-
-type Preferences struct {
-	URL      string                     `json:"u"`
-	Redirect *configcat.RedirectionKind `json:"r"`
-}
-
 type EntryStore interface {
 	LoadEntry() *EntryWithEtag
 	ComposeBytes() []byte
