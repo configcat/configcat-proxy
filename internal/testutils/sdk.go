@@ -5,6 +5,7 @@ import (
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/sdk"
 	"github.com/configcat/configcat-proxy/status"
+	configcat "github.com/configcat/go-sdk/v9"
 	"github.com/configcat/go-sdk/v9/configcattest"
 	"net/http/httptest"
 	"testing"
@@ -16,6 +17,14 @@ func NewTestSdkClient(t *testing.T) (map[string]sdk.Client, *configcattest.Handl
 	_ = h.SetFlags(key, map[string]*configcattest.Flag{
 		"flag": {
 			Default: true,
+			Rules: []configcattest.Rule{
+				{
+					Comparator:          configcat.OpEq,
+					Value:               false,
+					ComparisonValue:     "test",
+					ComparisonAttribute: "Identifier",
+				},
+			},
 		},
 	})
 	srv := httptest.NewServer(&h)

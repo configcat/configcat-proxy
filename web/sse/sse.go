@@ -122,29 +122,33 @@ func prepareResponse(w http.ResponseWriter, r *http.Request, dataMustSet bool) (
 	w.Header().Add("X-Accel-Buffering", "no")
 
 	vars := httprouter.ParamsFromContext(r.Context())
-	streamData := vars.ByName("data")
-	if streamData == "" && dataMustSet {
-		http.Error(w, "'"+streamDataName+"' path parameter must be set", http.StatusBadRequest)
-		return nil, ""
-	}
 	sdkId := vars.ByName("sdkId")
 	if sdkId == "" {
 		http.Error(w, "'sdkId' path parameter must be set", http.StatusBadRequest)
 		return nil, ""
 	}
-	streamContext, err := utils.Base64URLDecode(streamData)
-	if err != nil && dataMustSet {
-		http.Error(w, "Failed to decode incoming '"+streamDataName+"'", http.StatusBadRequest)
-		return nil, ""
+	streamData := vars.ByName("data")
+	if streamData == "" {
+		if dataMustSet {
+			http.Error(w, "'"+streamDataName+"' path parameter must be set", http.StatusBadRequest)
+			return nil, ""
+		} else {
+			return &model.EvalRequest{}, sdkId
+		}
+	} else {
+		streamContext, err := utils.Base64URLDecode(streamData)
+		if err != nil {
+			http.Error(w, "Failed to decode incoming '"+streamDataName+"'", http.StatusBadRequest)
+			return nil, ""
+		}
+		var evalReq model.EvalRequest
+		err = json.Unmarshal(streamContext, &evalReq)
+		if err != nil {
+			http.Error(w, "Failed to deserialize incoming '"+streamDataName+"': "+err.Error(), http.StatusBadRequest)
+			return nil, ""
+		}
+		return &evalReq, sdkId
 	}
-	var evalReq model.EvalRequest
-	err = json.Unmarshal(streamContext, &evalReq)
-	if err != nil && dataMustSet {
-		http.Error(w, "Failed to deserialize incoming '"+streamDataName+"': "+err.Error(), http.StatusBadRequest)
-		return nil, ""
-	}
-
-	return &evalReq, sdkId
 }
 
 func formatSseMsg(b []byte) []byte {

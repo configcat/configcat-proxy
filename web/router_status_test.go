@@ -21,18 +21,16 @@ import (
 func TestStatus_Options(t *testing.T) {
 	router := newStatusRouter(t)
 	srv := httptest.NewServer(router.Handler())
-	client := http.Client{}
 	req, _ := http.NewRequest(http.MethodOptions, fmt.Sprintf("%s/status", srv.URL), http.NoBody)
-	resp, _ := client.Do(req)
+	resp, _ := http.DefaultClient.Do(req)
 	assert.Equal(t, http.StatusNoContent, resp.StatusCode)
 }
 
 func TestStatus_Get_Body(t *testing.T) {
 	router := newStatusRouter(t)
 	srv := httptest.NewServer(router.Handler())
-	client := http.Client{}
 	req, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/status", srv.URL), http.NoBody)
-	resp, _ := client.Do(req)
+	resp, _ := http.DefaultClient.Do(req)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	body, _ := io.ReadAll(resp.Body)
 	_ = resp.Body.Close()
@@ -52,26 +50,25 @@ func TestStatus_Get_Body(t *testing.T) {
 func TestStatus_Not_Allowed_Methods(t *testing.T) {
 	router := newStatusRouter(t)
 	srv := httptest.NewServer(router.Handler())
-	client := http.Client{}
 
 	t.Run("put", func(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPut, fmt.Sprintf("%s/status", srv.URL), http.NoBody)
-		resp, _ := client.Do(req)
+		resp, _ := http.DefaultClient.Do(req)
 		assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
 	})
 	t.Run("post", func(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/status", srv.URL), http.NoBody)
-		resp, _ := client.Do(req)
+		resp, _ := http.DefaultClient.Do(req)
 		assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
 	})
 	t.Run("delete", func(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodDelete, fmt.Sprintf("%s/status", srv.URL), http.NoBody)
-		resp, _ := client.Do(req)
+		resp, _ := http.DefaultClient.Do(req)
 		assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
 	})
 	t.Run("patch", func(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPatch, fmt.Sprintf("%s/status", srv.URL), http.NoBody)
-		resp, _ := client.Do(req)
+		resp, _ := http.DefaultClient.Do(req)
 		assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
 	})
 }

@@ -24,7 +24,7 @@ func TestProxy_Get(t *testing.T) {
 		srv.ServeHTTP(res, req)
 
 		assert.Equal(t, http.StatusOK, res.Code)
-		assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true,"s":null,"i":null,"d":null},"t":0,"r":[],"p":null}},"s":null,"p":null}`, res.Body.String())
+		assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true,"s":null,"i":null,"d":null},"t":0,"r":[{"s":{"v":{"b":false,"s":null,"i":null,"d":null},"i":"v0_flag"},"c":[{"u":{"a":"Identifier","s":"test","d":null,"l":null,"c":28},"s":null,"p":null}],"p":null}],"p":null}},"s":null,"p":null}`, res.Body.String())
 	})
 	t.Run("online error", func(t *testing.T) {
 		res := httptest.NewRecorder()
@@ -72,7 +72,7 @@ func TestProxy_Get(t *testing.T) {
 		srv.ServeHTTP(res, req)
 
 		assert.Equal(t, http.StatusOK, res.Code)
-		assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true,"s":null,"i":null,"d":null},"t":0,"r":[],"p":null}},"s":null,"p":null}`, res.Body.String())
+		assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true,"s":null,"i":null,"d":null},"t":0,"r":[{"s":{"v":{"b":false,"s":null,"i":null,"d":null},"i":"v0_flag"},"c":[{"u":{"a":"Identifier","s":"test","d":null,"l":null,"c":28},"s":null,"p":null}],"p":null}],"p":null}},"s":null,"p":null}`, res.Body.String())
 
 		etag := res.Header().Get("ETag")
 
@@ -94,7 +94,7 @@ func TestProxy_Get(t *testing.T) {
 		srv.ServeHTTP(res, req)
 
 		assert.Equal(t, http.StatusOK, res.Code)
-		assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true,"s":null,"i":null,"d":null},"t":0,"r":[],"p":null}},"s":null,"p":null}`, res.Body.String())
+		assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true,"s":null,"i":null,"d":null},"t":0,"r":[{"s":{"v":{"b":false,"s":null,"i":null,"d":null},"i":"v0_flag"},"c":[{"u":{"a":"Identifier","s":"test","d":null,"l":null,"c":28},"s":null,"p":null}],"p":null}],"p":null}},"s":null,"p":null}`, res.Body.String())
 
 		etag := res.Header().Get("ETag")
 
@@ -115,7 +115,7 @@ func TestProxy_Get(t *testing.T) {
 		srv.ServeHTTP(res, req)
 
 		assert.Equal(t, http.StatusOK, res.Code)
-		assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true,"s":null,"i":null,"d":null},"t":0,"r":[],"p":null}},"s":null,"p":null}`, res.Body.String())
+		assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true,"s":null,"i":null,"d":null},"t":0,"r":[{"s":{"v":{"b":false,"s":null,"i":null,"d":null},"i":"v0_flag"},"c":[{"u":{"a":"Identifier","s":"test","d":null,"l":null,"c":28},"s":null,"p":null}],"p":null}],"p":null}},"s":null,"p":null}`, res.Body.String())
 
 		etag := res.Header().Get("ETag")
 

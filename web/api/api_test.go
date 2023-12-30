@@ -37,6 +37,28 @@ func TestAPI_Eval(t *testing.T) {
 
 		assert.Equal(t, http.StatusInternalServerError, res.Code)
 	})
+	t.Run("online user", func(t *testing.T) {
+		res := httptest.NewRecorder()
+		req, _ := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"key":"flag","user":{"Identifier":"test"}}`))
+
+		srv := newServer(t, config.ApiConfig{Enabled: true})
+		utils.AddSdkIdContextParam(req)
+		srv.Eval(res, req)
+
+		assert.Equal(t, 200, res.Code)
+		assert.Equal(t, `{"value":false,"variationId":"v0_flag"}`, res.Body.String())
+	})
+	t.Run("online user invalid", func(t *testing.T) {
+		res := httptest.NewRecorder()
+		req, _ := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"key":"flag","user":{"Identifier":false}}`))
+
+		srv := newServer(t, config.ApiConfig{Enabled: true})
+		utils.AddSdkIdContextParam(req)
+		srv.Eval(res, req)
+
+		assert.Equal(t, 400, res.Code)
+		assert.Contains(t, res.Body.String(), `Failed to parse JSON body: 'Identifier' has an invalid type, only 'string', 'number', and 'string[]' types are allowed`)
+	})
 	t.Run("offline", func(t *testing.T) {
 		utils.UseTempFile(`{"f":{"flag":{"i":"","v":{"b":true},"t":0}}}`, func(path string) {
 			res := httptest.NewRecorder()
@@ -86,6 +108,28 @@ func TestAPI_EvalAll(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, res.Code)
 		assert.Equal(t, "{}", res.Body.String())
+	})
+	t.Run("online user", func(t *testing.T) {
+		res := httptest.NewRecorder()
+		req, _ := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"key":"flag","user":{"Identifier":"test"}}`))
+
+		srv := newServer(t, config.ApiConfig{Enabled: true})
+		utils.AddSdkIdContextParam(req)
+		srv.EvalAll(res, req)
+
+		assert.Equal(t, 200, res.Code)
+		assert.Equal(t, `{"flag":{"value":false,"variationId":"v0_flag"}}`, res.Body.String())
+	})
+	t.Run("online user invalid", func(t *testing.T) {
+		res := httptest.NewRecorder()
+		req, _ := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"key":"flag","user":{"Identifier":false}}`))
+
+		srv := newServer(t, config.ApiConfig{Enabled: true})
+		utils.AddSdkIdContextParam(req)
+		srv.EvalAll(res, req)
+
+		assert.Equal(t, 400, res.Code)
+		assert.Contains(t, res.Body.String(), `Failed to parse JSON body: 'Identifier' has an invalid type, only 'string', 'number', and 'string[]' types are allowed`)
 	})
 	t.Run("offline", func(t *testing.T) {
 		utils.UseTempFile(`{"f":{"flag":{"i":"","v":{"b":true},"t":0}}}`, func(path string) {
