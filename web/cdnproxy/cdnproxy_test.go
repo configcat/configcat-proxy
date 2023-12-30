@@ -20,7 +20,7 @@ func TestProxy_Get(t *testing.T) {
 		req := &http.Request{Method: http.MethodGet}
 
 		srv := newServer(t, config.CdnProxyConfig{Enabled: true})
-		utils.AddContextParam(req, "test")
+		utils.AddSdkIdContextParam(req)
 		srv.ServeHTTP(res, req)
 
 		assert.Equal(t, http.StatusOK, res.Code)
@@ -31,7 +31,7 @@ func TestProxy_Get(t *testing.T) {
 		req := &http.Request{Method: http.MethodGet}
 
 		srv := newErrorServer(t, config.CdnProxyConfig{Enabled: true})
-		utils.AddContextParam(req, "test")
+		utils.AddSdkIdContextParam(req)
 		srv.ServeHTTP(res, req)
 
 		assert.Equal(t, http.StatusOK, res.Code)
@@ -43,7 +43,7 @@ func TestProxy_Get(t *testing.T) {
 			req := &http.Request{Method: http.MethodGet}
 
 			srv := newOfflineServer(t, path, config.CdnProxyConfig{Enabled: true})
-			utils.AddContextParam(req, "test")
+			utils.AddSdkIdContextParam(req)
 			srv.ServeHTTP(res, req)
 
 			assert.Equal(t, http.StatusOK, res.Code)
@@ -56,7 +56,7 @@ func TestProxy_Get(t *testing.T) {
 			req := &http.Request{Method: http.MethodGet}
 
 			srv := newOfflineServer(t, path, config.CdnProxyConfig{Enabled: true})
-			utils.AddContextParam(req, "test")
+			utils.AddSdkIdContextParam(req)
 			srv.ServeHTTP(res, req)
 
 			assert.Equal(t, http.StatusOK, res.Code)
@@ -68,7 +68,7 @@ func TestProxy_Get(t *testing.T) {
 		req := &http.Request{Method: http.MethodGet}
 
 		srv := newServer(t, config.CdnProxyConfig{Enabled: true})
-		utils.AddContextParam(req, "test")
+		utils.AddSdkIdContextParam(req)
 		srv.ServeHTTP(res, req)
 
 		assert.Equal(t, http.StatusOK, res.Code)
@@ -79,7 +79,7 @@ func TestProxy_Get(t *testing.T) {
 		res = httptest.NewRecorder()
 		req = &http.Request{Method: http.MethodGet, Header: map[string][]string{}}
 		req.Header.Set("If-None-Match", etag)
-		utils.AddContextParam(req, "test")
+		utils.AddSdkIdContextParam(req)
 		srv.ServeHTTP(res, req)
 
 		assert.Equal(t, http.StatusNotModified, res.Code)
@@ -90,7 +90,7 @@ func TestProxy_Get(t *testing.T) {
 		req := &http.Request{Method: http.MethodGet}
 
 		srv := newServer(t, config.CdnProxyConfig{Enabled: true})
-		utils.AddContextParam(req, "test")
+		utils.AddSdkIdContextParam(req)
 		srv.ServeHTTP(res, req)
 
 		assert.Equal(t, http.StatusOK, res.Code)
@@ -100,7 +100,7 @@ func TestProxy_Get(t *testing.T) {
 
 		res = httptest.NewRecorder()
 		req = &http.Request{Method: http.MethodGet, URL: &url.URL{RawQuery: "ccetag=" + etag}}
-		utils.AddContextParam(req, "test")
+		utils.AddSdkIdContextParam(req)
 		srv.ServeHTTP(res, req)
 
 		assert.Equal(t, http.StatusNotModified, res.Code)
@@ -111,7 +111,7 @@ func TestProxy_Get(t *testing.T) {
 		req := &http.Request{Method: http.MethodGet}
 
 		srv, h, key := newServerWithHandler(t, config.CdnProxyConfig{Enabled: true})
-		utils.AddContextParam(req, "test")
+		utils.AddSdkIdContextParam(req)
 		srv.ServeHTTP(res, req)
 
 		assert.Equal(t, http.StatusOK, res.Code)
@@ -122,7 +122,7 @@ func TestProxy_Get(t *testing.T) {
 		res = httptest.NewRecorder()
 		req = &http.Request{Method: http.MethodGet, Header: map[string][]string{}}
 		req.Header.Set("If-None-Match", etag)
-		utils.AddContextParam(req, "test")
+		utils.AddSdkIdContextParam(req)
 		srv.ServeHTTP(res, req)
 
 		assert.Equal(t, http.StatusNotModified, res.Code)
@@ -138,7 +138,7 @@ func TestProxy_Get(t *testing.T) {
 		res = httptest.NewRecorder()
 		req = &http.Request{Method: http.MethodGet, Header: map[string][]string{}}
 		req.Header.Set("If-None-Match", etag)
-		utils.AddContextParam(req, "test")
+		utils.AddSdkIdContextParam(req)
 		srv.ServeHTTP(res, req)
 
 		assert.Equal(t, http.StatusOK, res.Code)
@@ -149,7 +149,7 @@ func TestProxy_Get(t *testing.T) {
 		res = httptest.NewRecorder()
 		req = &http.Request{Method: http.MethodGet, Header: map[string][]string{}}
 		req.Header.Set("If-None-Match", etag)
-		utils.AddContextParam(req, "test")
+		utils.AddSdkIdContextParam(req)
 		srv.ServeHTTP(res, req)
 
 		assert.Equal(t, http.StatusNotModified, res.Code)

@@ -47,12 +47,6 @@ func Min(args ...int) int {
 	return min
 }
 
-func FastHash(b []byte) uint64 {
-	h := xxhash.New()
-	_, _ = h.Write(b)
-	return h.Sum64()
-}
-
 func FastHashHex(b []byte) string {
 	h := xxhash.New()
 	_, _ = h.Write(b)
@@ -74,12 +68,6 @@ func Obfuscate(str string, clearLen int) string {
 
 func AddSdkIdContextParam(r *http.Request) {
 	params := httprouter.Params{httprouter.Param{Key: "sdkId", Value: "test"}}
-	ctx := context.WithValue(context.Background(), httprouter.ParamsKey, params)
-	*r = *r.WithContext(ctx)
-}
-
-func AddContextParam(r *http.Request, param string) {
-	params := httprouter.Params{httprouter.Param{Key: "sdkId", Value: param}}
 	ctx := context.WithValue(context.Background(), httprouter.ParamsKey, params)
 	*r = *r.WithContext(ctx)
 }
