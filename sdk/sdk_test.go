@@ -346,7 +346,7 @@ func TestSdk_EvalStatsReporter(t *testing.T) {
 	utils.WithTimeout(2*time.Second, func() {
 		event = <-reporter.Latest()
 	})
-	assert.Equal(t, map[string]string{"e": "h"}, event.UserAttrs)
+	assert.Equal(t, map[string]interface{}{"e": "h"}, event.UserAttrs)
 }
 
 func TestSdk_DefaultAttrs(t *testing.T) {
@@ -360,8 +360,8 @@ func TestSdk_DefaultAttrs(t *testing.T) {
 	srv := httptest.NewServer(&h)
 	defer srv.Close()
 
-	ctx := newTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key, DefaultAttrs: map[string]string{"a": "g"}}, nil)
-	ctx.GlobalDefaultAttrs = map[string]string{"a": "b", "c": "d", "e": "f"}
+	ctx := newTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key, DefaultAttrs: map[string]interface{}{"a": "g"}}, nil)
+	ctx.GlobalDefaultAttrs = map[string]interface{}{"a": "b", "c": "d", "e": "f"}
 	client := NewClient(ctx, log.NewNullLogger())
 	defer client.Close()
 

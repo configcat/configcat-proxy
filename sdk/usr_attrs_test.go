@@ -1,14 +1,15 @@
 package sdk
 
 import (
+	"encoding/json"
 	"github.com/stretchr/testify/assert"
 	"hash/maphash"
 	"testing"
 )
 
 func TestUserAttributes_Identical(t *testing.T) {
-	user1 := UserAttrs{"email": "user1@test.com", "id": "user1"}
-	user2 := UserAttrs{"id": "user1", "email": "user1@test.com"}
+	user1 := UserAttrs{"email": "user1@test.com", "id": "user1", "custom1": 42}
+	user2 := UserAttrs{"id": "user1", "custom1": 42, "email": "user1@test.com"}
 	s := maphash.MakeSeed()
 	assert.Equal(t, user1.Discriminator(s), user2.Discriminator(s))
 }
@@ -24,4 +25,25 @@ func TestUserAttributes_Merge(t *testing.T) {
 	assert.Equal(t, a, MergeUserAttrs(a, nil))
 	assert.Equal(t, a, MergeUserAttrs(nil, a))
 	assert.Nil(t, MergeUserAttrs(nil, nil))
+}
+
+type testStruct struct {
+	U UserAttrs `json:"user"`
+}
+
+func TestUserAttributes_Unmarshal(t *testing.T) {
+	j := `{"user":{"a":1,"b":["x","z"],"c":"test"}}`
+	var test testStruct
+	err := json.Unmarshal([]byte(j), &test)
+	assert.NoError(t, err)
+	assert.Equal(t, float64(1), test.U["a"])
+	assert.Equal(t, []string{"x", "z"}, test.U["b"])
+	assert.Equal(t, "test", test.U["c"])
+}
+
+func TestUserAttributes_Unmarshal_Invalid(t *testing.T) {
+	j := `{"user":{"a":true}}`
+	var test testStruct
+	err := json.Unmarshal([]byte(j), &test)
+	assert.ErrorContains(t, err, "'a' has an invalid type, only 'string', 'number', and 'string[]' types are allowed")
 }

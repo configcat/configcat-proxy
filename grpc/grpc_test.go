@@ -58,7 +58,7 @@ func TestGrpc_EvalFlagStream(t *testing.T) {
 	}()
 
 	client := proto.NewFlagServiceClient(conn)
-	cl, err := client.EvalFlagStream(context.Background(), &proto.EvalRequest{Key: "flag", SdkId: "test", User: map[string]string{"id": "u1"}})
+	cl, err := client.EvalFlagStream(context.Background(), &proto.EvalRequest{Key: "flag", SdkId: "test", User: map[string]*proto.UserValue{"id": {Value: &proto.UserValue_StringValue{StringValue: "u1"}}}})
 	assert.NoError(t, err)
 
 	var payload *proto.EvalResponse
@@ -126,7 +126,7 @@ func TestGrpc_EvalAllFlagsStream(t *testing.T) {
 	}()
 
 	client := proto.NewFlagServiceClient(conn)
-	cl, err := client.EvalAllFlagsStream(context.Background(), &proto.EvalRequest{Key: "flag", SdkId: "test", User: map[string]string{"id": "u1"}})
+	cl, err := client.EvalAllFlagsStream(context.Background(), &proto.EvalRequest{Key: "flag", SdkId: "test", User: map[string]*proto.UserValue{"id": {Value: &proto.UserValue_StringValue{StringValue: "u1"}}}})
 	assert.NoError(t, err)
 
 	var payload *proto.EvalAllResponse
@@ -201,7 +201,7 @@ func TestGrpc_EvalFlag(t *testing.T) {
 	}()
 
 	client := proto.NewFlagServiceClient(conn)
-	resp, err := client.EvalFlag(context.Background(), &proto.EvalRequest{Key: "flag", SdkId: "test", User: map[string]string{"id": "u1"}})
+	resp, err := client.EvalFlag(context.Background(), &proto.EvalRequest{Key: "flag", SdkId: "test", User: map[string]*proto.UserValue{"id": {Value: &proto.UserValue_StringValue{StringValue: "u1"}}}})
 	assert.NoError(t, err)
 
 	assert.Equal(t, "test1", resp.GetStringValue())
@@ -215,7 +215,7 @@ func TestGrpc_EvalFlag(t *testing.T) {
 	_, err = client.Refresh(context.Background(), &proto.RefreshRequest{SdkId: "test"})
 	assert.NoError(t, err)
 
-	resp, err = client.EvalFlag(context.Background(), &proto.EvalRequest{Key: "flag", SdkId: "test", User: map[string]string{"id": "u1"}})
+	resp, err = client.EvalFlag(context.Background(), &proto.EvalRequest{Key: "flag", SdkId: "test", User: map[string]*proto.UserValue{"id": {Value: &proto.UserValue_StringValue{StringValue: "u1"}}}})
 	assert.NoError(t, err)
 
 	assert.Equal(t, "test2", resp.GetStringValue())
@@ -263,7 +263,7 @@ func TestGrpc_EvalAllFlags(t *testing.T) {
 	}()
 
 	client := proto.NewFlagServiceClient(conn)
-	resp, err := client.EvalAllFlags(context.Background(), &proto.EvalRequest{Key: "flag", SdkId: "test", User: map[string]string{"id": "u1"}})
+	resp, err := client.EvalAllFlags(context.Background(), &proto.EvalRequest{Key: "flag", SdkId: "test", User: map[string]*proto.UserValue{"id": {Value: &proto.UserValue_StringValue{StringValue: "u1"}}}})
 	assert.NoError(t, err)
 
 	assert.Equal(t, 2, len(resp.GetValues()))
@@ -285,7 +285,7 @@ func TestGrpc_EvalAllFlags(t *testing.T) {
 	_, err = client.Refresh(context.Background(), &proto.RefreshRequest{SdkId: "test"})
 	assert.NoError(t, err)
 
-	resp, err = client.EvalAllFlags(context.Background(), &proto.EvalRequest{Key: "flag", SdkId: "test", User: map[string]string{"id": "u1"}})
+	resp, err = client.EvalAllFlags(context.Background(), &proto.EvalRequest{Key: "flag", SdkId: "test", User: map[string]*proto.UserValue{"id": {Value: &proto.UserValue_StringValue{StringValue: "u1"}}}})
 	assert.NoError(t, err)
 
 	assert.Equal(t, 3, len(resp.GetValues()))

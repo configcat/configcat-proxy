@@ -140,7 +140,7 @@ func prepareResponse(w http.ResponseWriter, r *http.Request, dataMustSet bool) (
 	var evalReq model.EvalRequest
 	err = json.Unmarshal(streamContext, &evalReq)
 	if err != nil && dataMustSet {
-		http.Error(w, "Failed to deserialize incoming '"+streamDataName+"'", http.StatusBadRequest)
+		http.Error(w, "Failed to deserialize incoming '"+streamDataName+"': "+err.Error(), http.StatusBadRequest)
 		return nil, ""
 	}
 

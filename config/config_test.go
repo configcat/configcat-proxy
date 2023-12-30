@@ -192,7 +192,7 @@ sdks:
 
 		assert.Equal(t, "attr_value1", conf.SDKs["test_sdk"].DefaultAttrs["attr_1"])
 		assert.Equal(t, "attr_value2", conf.SDKs["test_sdk"].DefaultAttrs["attr2"])
-		assert.Equal(t, "", conf.SDKs["test_sdk"].DefaultAttrs["attr3"])
+		assert.Equal(t, nil, conf.SDKs["test_sdk"].DefaultAttrs["attr3"])
 		assert.Equal(t, "attr value4", conf.SDKs["test_sdk"].DefaultAttrs["attr 4"])
 	})
 }
@@ -567,7 +567,7 @@ default_user_attributes:
 
 		assert.Equal(t, "attr_value1", conf.DefaultAttrs["attr_1"])
 		assert.Equal(t, "attr_value2", conf.DefaultAttrs["attr2"])
-		assert.Equal(t, "", conf.DefaultAttrs["attr3"])
+		assert.Equal(t, nil, conf.DefaultAttrs["attr3"])
 		assert.Equal(t, "attr value4", conf.DefaultAttrs["attr 4"])
 	})
 }

@@ -34,6 +34,14 @@ var toStringMap = func(s string) (map[string]string, error) {
 	return r, nil
 }
 
+var toInterfaceMap = func(s string) (map[string]interface{}, error) {
+	var r map[string]interface{}
+	if err := json.Unmarshal([]byte(s), &r); err != nil {
+		return nil, err
+	}
+	return r, nil
+}
+
 func (c *Config) loadEnv() {
 	var sdks map[string]string
 	readEnv(envPrefix, "SDKS", &sdks, toStringMap)
@@ -55,7 +63,7 @@ func (c *Config) loadEnv() {
 	c.Cache.loadEnv(envPrefix)
 	c.GlobalOfflineConfig.loadEnv(envPrefix)
 
-	readEnv(envPrefix, "DEFAULT_USER_ATTRIBUTES", &c.DefaultAttrs, toStringMap)
+	readEnv(envPrefix, "DEFAULT_USER_ATTRIBUTES", &c.DefaultAttrs, toInterfaceMap)
 }
 
 func (s *SDKConfig) loadEnv(prefix string) {
@@ -64,7 +72,7 @@ func (s *SDKConfig) loadEnv(prefix string) {
 	readEnvString(prefix, "WEBHOOK_SIGNING_KEY", &s.WebhookSigningKey)
 	readEnv(prefix, "WEBHOOK_SIGNATURE_VALID_FOR", &s.WebhookSignatureValidFor, toInt)
 	readEnv(prefix, "POLL_INTERVAL", &s.PollInterval, toInt)
-	readEnv(prefix, "DEFAULT_USER_ATTRIBUTES", &s.DefaultAttrs, toStringMap)
+	readEnv(prefix, "DEFAULT_USER_ATTRIBUTES", &s.DefaultAttrs, toInterfaceMap)
 	s.Offline.loadEnv(prefix)
 	s.Log.loadEnv(prefix)
 }

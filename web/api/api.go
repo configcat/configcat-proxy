@@ -41,7 +41,7 @@ func (s *Server) Eval(w http.ResponseWriter, r *http.Request) {
 	var evalReq model.EvalRequest
 	err = json.Unmarshal(reqBody, &evalReq)
 	if err != nil {
-		http.Error(w, "Failed to parse JSON body", http.StatusBadRequest)
+		http.Error(w, "Failed to parse JSON body: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 	sdkClient, err := s.getSDKClient(r.Context())
@@ -73,7 +73,7 @@ func (s *Server) EvalAll(w http.ResponseWriter, r *http.Request) {
 	var evalReq model.EvalRequest
 	err = json.Unmarshal(reqBody, &evalReq)
 	if err != nil {
-		http.Error(w, "Failed to parse JSON body", http.StatusBadRequest)
+		http.Error(w, "Failed to parse JSON body: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 	sdkClient, err := s.getSDKClient(r.Context())

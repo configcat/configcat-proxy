@@ -130,7 +130,7 @@ func NewClient(sdkCtx *Context, log log.Logger) Client {
 	}
 	if sdkCtx.EvalReporter != nil {
 		clientConfig.Hooks.OnFlagEvaluated = func(details *configcat.EvaluationDetails) {
-			var user map[string]string
+			var user map[string]interface{}
 			if details.Data.User != nil {
 				if userAttrs, ok := details.Data.User.(UserAttrs); ok && userAttrs != nil {
 					user = userAttrs

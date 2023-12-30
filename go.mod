@@ -5,7 +5,7 @@ go 1.21
 require (
 	github.com/alicebob/miniredis/v2 v2.31.0
 	github.com/cespare/xxhash/v2 v2.2.0
-	github.com/configcat/go-sdk/v9 v9.0.1
+	github.com/configcat/go-sdk/v9 v9.0.3
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/prometheus/client_golang v1.18.0
