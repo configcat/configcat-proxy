@@ -38,7 +38,7 @@ func (s *flagService) EvalFlagStream(req *proto.EvalRequest, stream proto.FlagSe
 		return status.Error(codes.InvalidArgument, "key request parameter missing")
 	}
 
-	var user sdk.UserAttrs
+	var user model.UserAttrs
 	if req.GetUser() != nil {
 		user = getUserAttrs(req.GetUser())
 	}
@@ -76,7 +76,7 @@ func (s *flagService) EvalAllFlagsStream(req *proto.EvalRequest, evalStream prot
 		return status.Error(codes.InvalidArgument, "sdk id parameter missing")
 	}
 
-	var user sdk.UserAttrs
+	var user model.UserAttrs
 	if req.GetUser() != nil {
 		user = getUserAttrs(req.GetUser())
 	}
@@ -119,7 +119,7 @@ func (s *flagService) EvalFlag(_ context.Context, req *proto.EvalRequest) (*prot
 		return nil, status.Error(codes.InvalidArgument, "key request parameter missing")
 	}
 
-	var user sdk.UserAttrs
+	var user model.UserAttrs
 	if req.GetUser() != nil {
 		user = getUserAttrs(req.GetUser())
 	}
@@ -142,7 +142,7 @@ func (s *flagService) EvalAllFlags(_ context.Context, req *proto.EvalRequest) (*
 		return nil, status.Error(codes.InvalidArgument, "sdk id parameter missing")
 	}
 
-	var user sdk.UserAttrs
+	var user model.UserAttrs
 	if req.GetUser() != nil {
 		user = getUserAttrs(req.GetUser())
 	}
@@ -213,7 +213,7 @@ func (s *flagService) Close() {
 	s.streamServer.Close()
 }
 
-func getUserAttrs(attrs map[string]*proto.UserValue) sdk.UserAttrs {
+func getUserAttrs(attrs map[string]*proto.UserValue) model.UserAttrs {
 	res := make(map[string]interface{}, len(attrs))
 	for k, v := range attrs {
 		if num, ok := v.GetValue().(*proto.UserValue_NumberValue); ok {

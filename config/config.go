@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/configcat/configcat-proxy/log"
+	"github.com/configcat/configcat-proxy/model"
 	"gopkg.in/yaml.v3"
 	"os"
 	"path"
@@ -39,19 +40,19 @@ type Config struct {
 	Metrics             MetricsConfig
 	Http                HttpConfig
 	Cache               CacheConfig
-	HttpProxy           HttpProxyConfig        `yaml:"http_proxy"`
-	GlobalOfflineConfig GlobalOfflineConfig    `yaml:"offline"`
-	DefaultAttrs        map[string]interface{} `yaml:"default_user_attributes"`
+	HttpProxy           HttpProxyConfig     `yaml:"http_proxy"`
+	GlobalOfflineConfig GlobalOfflineConfig `yaml:"offline"`
+	DefaultAttrs        model.UserAttrs     `yaml:"default_user_attributes"`
 }
 
 type SDKConfig struct {
-	Key                      string                 `yaml:"key"`
-	BaseUrl                  string                 `yaml:"base_url"`
-	PollInterval             int                    `yaml:"poll_interval"`
-	DataGovernance           string                 `yaml:"data_governance"`
-	WebhookSignatureValidFor int                    `yaml:"webhook_signature_valid_for"`
-	WebhookSigningKey        string                 `yaml:"webhook_signing_key"`
-	DefaultAttrs             map[string]interface{} `yaml:"default_user_attributes"`
+	Key                      string          `yaml:"key"`
+	BaseUrl                  string          `yaml:"base_url"`
+	PollInterval             int             `yaml:"poll_interval"`
+	DataGovernance           string          `yaml:"data_governance"`
+	WebhookSignatureValidFor int             `yaml:"webhook_signature_valid_for"`
+	WebhookSigningKey        string          `yaml:"webhook_signing_key"`
+	DefaultAttrs             model.UserAttrs `yaml:"default_user_attributes"`
 	Offline                  OfflineConfig
 	Log                      LogConfig
 }
@@ -209,7 +210,9 @@ func LoadConfigFromFileAndEnvironment(filePath string) (Config, error) {
 		}
 	}
 
-	config.loadEnv()
+	if err := config.loadEnv(); err != nil {
+		return Config{}, err
+	}
 	if config.Log.GetLevel() == log.None {
 		config.Log.Level = "warn"
 	}

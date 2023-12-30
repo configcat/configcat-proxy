@@ -17,7 +17,7 @@ type channel interface {
 
 type connectionHolder struct {
 	connections []*Connection
-	user        sdk.UserAttrs
+	user        model.UserAttrs
 }
 
 type singleFlagChannel struct {

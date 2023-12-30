@@ -7,6 +7,7 @@ import (
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/internal/utils"
 	"github.com/configcat/configcat-proxy/log"
+	"github.com/configcat/configcat-proxy/model"
 	"github.com/configcat/configcat-proxy/sdk/statistics"
 	"github.com/configcat/configcat-proxy/status"
 	"github.com/configcat/go-sdk/v9/configcatcache"
@@ -340,7 +341,7 @@ func TestSdk_EvalStatsReporter(t *testing.T) {
 	client := NewClient(ctx, log.NewNullLogger())
 	defer client.Close()
 
-	_, _ = client.Eval("flag1", UserAttrs{"e": "h"})
+	_, _ = client.Eval("flag1", model.UserAttrs{"e": "h"})
 
 	var event *statistics.EvalEvent
 	utils.WithTimeout(2*time.Second, func() {
@@ -365,8 +366,8 @@ func TestSdk_DefaultAttrs(t *testing.T) {
 	client := NewClient(ctx, log.NewNullLogger())
 	defer client.Close()
 
-	evalData, _ := client.Eval("flag1", UserAttrs{"e": "h"})
-	assert.Equal(t, UserAttrs{"a": "g", "c": "d", "e": "h"}, evalData.User.(UserAttrs))
+	evalData, _ := client.Eval("flag1", model.UserAttrs{"e": "h"})
+	assert.Equal(t, model.UserAttrs{"a": "g", "c": "d", "e": "h"}, evalData.User.(model.UserAttrs))
 }
 
 func newTestSdkContext(conf *config.SDKConfig, cacheConf *config.CacheConfig) *Context {

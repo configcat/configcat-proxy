@@ -1,4 +1,4 @@
-package sdk
+package model
 
 import (
 	"encoding/json"
@@ -16,23 +16,16 @@ func (attrs *UserAttrs) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	*attrs = make(map[string]interface{}, len(res))
-	for k, v := range res {
-		switch val := v.(type) {
-		case []interface{}:
-			strArr := make([]string, 0, len(val))
-			for _, strVal := range val {
-				if str, ok := strVal.(string); ok {
-					strArr = append(strArr, str)
-				}
-			}
-			(*attrs)[k] = strArr
-		case string, float64, int:
-			(*attrs)[k] = v
-		default:
-			return fmt.Errorf("'%s' has an invalid type, only 'string', 'number', and 'string[]' types are allowed", k)
-		}
+	return attrs.unmarshalFrom(res)
+}
+
+func (attrs *UserAttrs) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var res map[string]interface{}
+	if err := unmarshal(&res); err != nil {
+		return err
 	}
-	return nil
+	*attrs = make(map[string]interface{}, len(res))
+	return attrs.unmarshalFrom(res)
 }
 
 func (attrs UserAttrs) Discriminator(s maphash.Seed) uint64 {
@@ -81,4 +74,24 @@ func MergeUserAttrs(first UserAttrs, second UserAttrs) UserAttrs {
 	maps.Copy(final, first)
 	maps.Copy(final, second)
 	return final
+}
+
+func (attrs *UserAttrs) unmarshalFrom(data map[string]interface{}) error {
+	for k, v := range data {
+		switch val := v.(type) {
+		case []interface{}:
+			strArr := make([]string, 0, len(val))
+			for _, strVal := range val {
+				if str, ok := strVal.(string); ok {
+					strArr = append(strArr, str)
+				}
+			}
+			(*attrs)[k] = strArr
+		case string, float64, int:
+			(*attrs)[k] = v
+		default:
+			return fmt.Errorf("'%s' has an invalid type, only 'string', 'number', and 'string[]' types are allowed", k)
+		}
+	}
+	return nil
 }

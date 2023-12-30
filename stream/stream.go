@@ -3,19 +3,20 @@ package stream
 import (
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/metrics"
+	"github.com/configcat/configcat-proxy/model"
 	"github.com/configcat/configcat-proxy/sdk"
 	"hash/maphash"
 )
 
 type Stream interface {
-	CreateConnection(key string, user sdk.UserAttrs) *Connection
+	CreateConnection(key string, user model.UserAttrs) *Connection
 	CloseConnection(conn *Connection, key string)
 	Close()
 }
 
 type connEstablished struct {
 	conn *Connection
-	user sdk.UserAttrs
+	user model.UserAttrs
 	key  string
 }
 
@@ -85,7 +86,7 @@ func (s *stream) run() {
 	}
 }
 
-func (s *stream) CreateConnection(key string, user sdk.UserAttrs) *Connection {
+func (s *stream) CreateConnection(key string, user model.UserAttrs) *Connection {
 	var discriminator uint64
 	if user != nil {
 		discriminator = user.Discriminator(s.seed)

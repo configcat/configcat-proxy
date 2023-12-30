@@ -5,6 +5,7 @@ import (
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/metrics"
+	"github.com/configcat/configcat-proxy/model"
 	"github.com/configcat/configcat-proxy/sdk/statistics"
 	"github.com/configcat/configcat-proxy/sdk/store"
 	"github.com/configcat/configcat-proxy/sdk/store/cache"
@@ -25,8 +26,8 @@ const (
 )
 
 type Client interface {
-	Eval(key string, user UserAttrs) (EvalData, error)
-	EvalAll(user UserAttrs) map[string]EvalData
+	Eval(key string, user model.UserAttrs) (model.EvalData, error)
+	EvalAll(user model.UserAttrs) map[string]model.EvalData
 	Keys() []string
 	GetCachedJson() *store.EntryWithEtag
 	SubConfigChanged(id string) <-chan struct{}
@@ -38,18 +39,12 @@ type Client interface {
 	WebhookSignatureValidFor() int
 }
 
-type EvalData struct {
-	Value       interface{}
-	VariationId string
-	User        configcat.User
-}
-
 type Context struct {
 	SdkId              string
 	SDKConf            *config.SDKConfig
 	ProxyConf          *config.HttpProxyConfig
 	CacheConf          *config.CacheConfig
-	GlobalDefaultAttrs UserAttrs
+	GlobalDefaultAttrs model.UserAttrs
 	MetricsHandler     metrics.Handler
 	StatusReporter     status.Reporter
 	EvalReporter       statistics.Reporter
@@ -57,7 +52,7 @@ type Context struct {
 
 type client struct {
 	configCatClient *configcat.Client
-	defaultAttrs    UserAttrs
+	defaultAttrs    model.UserAttrs
 	subscriptions   map[string]chan struct{}
 	readyOnce       sync.Once
 	log             log.Logger
@@ -91,7 +86,7 @@ func NewClient(sdkCtx *Context, log log.Logger) Client {
 		subscriptions: make(map[string]chan struct{}),
 		cache:         storage.(store.EntryStore),
 		sdkCtx:        sdkCtx,
-		defaultAttrs:  MergeUserAttrs(sdkCtx.GlobalDefaultAttrs, sdkCtx.SDKConf.DefaultAttrs),
+		defaultAttrs:  model.MergeUserAttrs(sdkCtx.GlobalDefaultAttrs, sdkCtx.SDKConf.DefaultAttrs),
 	}
 	client.ctx, client.ctxCancel = context.WithCancel(context.Background())
 	var transport = http.DefaultTransport.(*http.Transport)
@@ -132,7 +127,7 @@ func NewClient(sdkCtx *Context, log log.Logger) Client {
 		clientConfig.Hooks.OnFlagEvaluated = func(details *configcat.EvaluationDetails) {
 			var user map[string]interface{}
 			if details.Data.User != nil {
-				if userAttrs, ok := details.Data.User.(UserAttrs); ok && userAttrs != nil {
+				if userAttrs, ok := details.Data.User.(model.UserAttrs); ok && userAttrs != nil {
 					user = userAttrs
 				}
 			}
@@ -188,18 +183,18 @@ func (c *client) signal() {
 	}
 }
 
-func (c *client) Eval(key string, user UserAttrs) (EvalData, error) {
-	mergedUser := MergeUserAttrs(c.defaultAttrs, user)
+func (c *client) Eval(key string, user model.UserAttrs) (model.EvalData, error) {
+	mergedUser := model.MergeUserAttrs(c.defaultAttrs, user)
 	details := c.configCatClient.Snapshot(mergedUser).GetValueDetails(key)
-	return EvalData{Value: details.Value, VariationId: details.Data.VariationID, User: details.Data.User}, details.Data.Error
+	return model.EvalData{Value: details.Value, VariationId: details.Data.VariationID, User: details.Data.User}, details.Data.Error
 }
 
-func (c *client) EvalAll(user UserAttrs) map[string]EvalData {
-	mergedUser := MergeUserAttrs(c.defaultAttrs, user)
+func (c *client) EvalAll(user model.UserAttrs) map[string]model.EvalData {
+	mergedUser := model.MergeUserAttrs(c.defaultAttrs, user)
 	allDetails := c.configCatClient.Snapshot(mergedUser).GetAllValueDetails()
-	result := make(map[string]EvalData, len(allDetails))
+	result := make(map[string]model.EvalData, len(allDetails))
 	for _, details := range allDetails {
-		result[details.Data.Key] = EvalData{Value: details.Value, VariationId: details.Data.VariationID, User: details.Data.User}
+		result[details.Data.Key] = model.EvalData{Value: details.Value, VariationId: details.Data.VariationID, User: details.Data.User}
 	}
 	return result
 }

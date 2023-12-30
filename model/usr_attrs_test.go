@@ -1,8 +1,9 @@
-package sdk
+package model
 
 import (
 	"encoding/json"
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
 	"hash/maphash"
 	"testing"
 )
@@ -28,10 +29,10 @@ func TestUserAttributes_Merge(t *testing.T) {
 }
 
 type testStruct struct {
-	U UserAttrs `json:"user"`
+	U UserAttrs `json:"user" yaml:"user"`
 }
 
-func TestUserAttributes_Unmarshal(t *testing.T) {
+func TestUserAttributes_UnmarshalJSON(t *testing.T) {
 	j := `{"user":{"a":1,"b":["x","z"],"c":"test"}}`
 	var test testStruct
 	err := json.Unmarshal([]byte(j), &test)
@@ -41,9 +42,34 @@ func TestUserAttributes_Unmarshal(t *testing.T) {
 	assert.Equal(t, "test", test.U["c"])
 }
 
-func TestUserAttributes_Unmarshal_Invalid(t *testing.T) {
+func TestUserAttributes_UnmarshalJSON_Invalid(t *testing.T) {
 	j := `{"user":{"a":true}}`
 	var test testStruct
 	err := json.Unmarshal([]byte(j), &test)
+	assert.ErrorContains(t, err, "'a' has an invalid type, only 'string', 'number', and 'string[]' types are allowed")
+}
+
+func TestUserAttributes_UnmarshalYAML(t *testing.T) {
+	j := `
+user:
+  a: 1
+  b: ["x","z"]
+  c: "test"
+`
+	var test testStruct
+	err := yaml.Unmarshal([]byte(j), &test)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, test.U["a"])
+	assert.Equal(t, []string{"x", "z"}, test.U["b"])
+	assert.Equal(t, "test", test.U["c"])
+}
+
+func TestUserAttributes_UnmarshalYAML_Invalid(t *testing.T) {
+	j := `
+user:
+  a: true
+`
+	var test testStruct
+	err := yaml.Unmarshal([]byte(j), &test)
 	assert.ErrorContains(t, err, "'a' has an invalid type, only 'string', 'number', and 'string[]' types are allowed")
 }

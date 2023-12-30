@@ -5,7 +5,7 @@ package stream
 import (
 	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/log"
-	"github.com/configcat/configcat-proxy/sdk"
+	"github.com/configcat/configcat-proxy/model"
 	"github.com/stretchr/testify/assert"
 	"strconv"
 	"sync"
@@ -19,8 +19,8 @@ func TestStream_Connections(t *testing.T) {
 	str := NewStream("test", clients["test"], nil, log.NewNullLogger(), "test").(*stream)
 	defer str.Close()
 
-	user1 := sdk.UserAttrs{"id": "u1"}
-	user2 := sdk.UserAttrs{"id": "u2"}
+	user1 := model.UserAttrs{"id": "u1"}
+	user2 := model.UserAttrs{"id": "u2"}
 
 	user1Discriminator := user1.Discriminator(str.seed)
 	user2Discriminator := user2.Discriminator(str.seed)
@@ -71,8 +71,8 @@ func TestStream_Close(t *testing.T) {
 
 	str := NewStream("test", clients["test"], nil, log.NewNullLogger(), "test").(*stream)
 
-	user1 := sdk.UserAttrs{"id": "u1"}
-	user2 := sdk.UserAttrs{"id": "u2"}
+	user1 := model.UserAttrs{"id": "u1"}
+	user2 := model.UserAttrs{"id": "u2"}
 
 	user1Discriminator := user1.Discriminator(str.seed)
 	user2Discriminator := user2.Discriminator(str.seed)
@@ -102,7 +102,7 @@ func TestStream_Collision(t *testing.T) {
 	for i := 0; i < iter; i++ {
 		go func(it int) {
 			is := strconv.Itoa(it)
-			user := sdk.UserAttrs{"id": "u" + is}
+			user := model.UserAttrs{"id": "u" + is}
 			_ = str.CreateConnection("test", user)
 			wg.Done()
 		}(i)
@@ -110,7 +110,7 @@ func TestStream_Collision(t *testing.T) {
 	for i := iter; i < iter+iter; i++ {
 		go func(it int) {
 			is := strconv.Itoa(it)
-			user := sdk.UserAttrs{"id": "u" + is}
+			user := model.UserAttrs{"id": "u" + is}
 			_ = str.CreateConnection(AllFlagsDiscriminator, user)
 			wg.Done()
 		}(i)
