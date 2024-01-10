@@ -155,8 +155,9 @@ sdks:
     default_user_attributes:
       attr_1: "attr_value1"
       attr2: "attr_value2"
-      attr3: 
       attr 4: "attr value4"
+      attr5: 5
+      attr6: ["a", "b"]
     log:
       level: "error"
     offline:
@@ -192,8 +193,9 @@ sdks:
 
 		assert.Equal(t, "attr_value1", conf.SDKs["test_sdk"].DefaultAttrs["attr_1"])
 		assert.Equal(t, "attr_value2", conf.SDKs["test_sdk"].DefaultAttrs["attr2"])
-		assert.Equal(t, "", conf.SDKs["test_sdk"].DefaultAttrs["attr3"])
 		assert.Equal(t, "attr value4", conf.SDKs["test_sdk"].DefaultAttrs["attr 4"])
+		assert.Equal(t, 5, conf.SDKs["test_sdk"].DefaultAttrs["attr5"])
+		assert.Equal(t, []string{"a", "b"}, conf.SDKs["test_sdk"].DefaultAttrs["attr6"])
 	})
 }
 
@@ -559,15 +561,19 @@ func TestDefaultAttributesConfig_YAML(t *testing.T) {
 default_user_attributes:
   attr_1: "attr_value1"
   attr2: "attr_value2"
-  attr3:
   attr 4: "attr value4"
+  attr5: 5
+  attr6: 
+    - a
+    - b
 `, func(file string) {
 		conf, err := LoadConfigFromFileAndEnvironment(file)
 		require.NoError(t, err)
 
 		assert.Equal(t, "attr_value1", conf.DefaultAttrs["attr_1"])
 		assert.Equal(t, "attr_value2", conf.DefaultAttrs["attr2"])
-		assert.Equal(t, "", conf.DefaultAttrs["attr3"])
 		assert.Equal(t, "attr value4", conf.DefaultAttrs["attr 4"])
+		assert.Equal(t, 5, conf.DefaultAttrs["attr5"])
+		assert.Equal(t, []string{"a", "b"}, conf.DefaultAttrs["attr6"])
 	})
 }

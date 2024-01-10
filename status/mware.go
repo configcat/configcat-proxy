@@ -19,14 +19,14 @@ func InterceptSdk(sdkId string, reporter Reporter, transport http.RoundTripper) 
 func (i *clientInterceptor) RoundTrip(r *http.Request) (*http.Response, error) {
 	resp, err := i.RoundTripper.RoundTrip(r)
 	if err != nil {
-		i.reporter.ReportError(i.sdkId, err)
+		i.reporter.ReportError(i.sdkId, "config fetch failed")
 	} else {
 		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 			i.reporter.ReportOk(i.sdkId, "config fetched")
 		} else if resp.StatusCode == http.StatusNotModified {
 			i.reporter.ReportOk(i.sdkId, "config not modified")
 		} else {
-			i.reporter.ReportError(i.sdkId, fmt.Errorf("unexpected response received: %s", resp.Status))
+			i.reporter.ReportError(i.sdkId, fmt.Sprintf("unexpected response received: %s", resp.Status))
 		}
 	}
 	return resp, err

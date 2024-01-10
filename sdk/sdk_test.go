@@ -1,15 +1,17 @@
 package sdk
 
 import (
+	"crypto/sha1"
 	"fmt"
 	"github.com/alicebob/miniredis/v2"
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/internal/utils"
 	"github.com/configcat/configcat-proxy/log"
+	"github.com/configcat/configcat-proxy/model"
 	"github.com/configcat/configcat-proxy/sdk/statistics"
 	"github.com/configcat/configcat-proxy/status"
-	"github.com/configcat/go-sdk/v8/configcatcache"
-	"github.com/configcat/go-sdk/v8/configcattest"
+	"github.com/configcat/go-sdk/v9/configcatcache"
+	"github.com/configcat/go-sdk/v9/configcattest"
 	"github.com/stretchr/testify/assert"
 	"net/http/httptest"
 	"testing"
@@ -35,8 +37,8 @@ func TestSdk_Signal(t *testing.T) {
 	j := client.GetCachedJson()
 	assert.NoError(t, err)
 	assert.True(t, data.Value.(bool))
-	assert.Equal(t, `{"f":{"flag":{"i":"v_flag","v":true,"t":0,"r":[],"p":null}},"p":null}`, string(j.ConfigJson))
-	assert.Equal(t, fmt.Sprintf("W/\"%x\"", utils.FastHash(j.ConfigJson)), j.GeneratedETag)
+	assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true,"s":null,"i":null,"d":null},"t":0,"r":[],"p":null}},"s":null,"p":null}`, string(j.ConfigJson))
+	assert.Equal(t, fmt.Sprintf("%x", sha1.Sum(j.ConfigJson)), j.ETag)
 
 	_ = h.SetFlags(key, map[string]*configcattest.Flag{
 		"flag": {
@@ -50,8 +52,8 @@ func TestSdk_Signal(t *testing.T) {
 	j = client.GetCachedJson()
 	assert.NoError(t, err)
 	assert.False(t, data.Value.(bool))
-	assert.Equal(t, `{"f":{"flag":{"i":"v_flag","v":false,"t":0,"r":[],"p":null}},"p":null}`, string(j.ConfigJson))
-	assert.Equal(t, fmt.Sprintf("W/\"%x\"", utils.FastHash(j.ConfigJson)), j.GeneratedETag)
+	assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":false,"s":null,"i":null,"d":null},"t":0,"r":[],"p":null}},"s":null,"p":null}`, string(j.ConfigJson))
+	assert.Equal(t, fmt.Sprintf("%x", sha1.Sum(j.ConfigJson)), j.ETag)
 }
 
 func TestSdk_Ready_Online(t *testing.T) {
@@ -72,12 +74,12 @@ func TestSdk_Ready_Online(t *testing.T) {
 		<-client.Ready()
 	})
 	j := client.GetCachedJson()
-	assert.Equal(t, `{"f":{"flag":{"i":"v_flag","v":true,"t":0,"r":[],"p":null}},"p":null}`, string(j.ConfigJson))
-	assert.Equal(t, fmt.Sprintf("W/\"%x\"", utils.FastHash(j.ConfigJson)), j.GeneratedETag)
+	assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true,"s":null,"i":null,"d":null},"t":0,"r":[],"p":null}},"s":null,"p":null}`, string(j.ConfigJson))
+	assert.Equal(t, fmt.Sprintf("%x", sha1.Sum(j.ConfigJson)), j.ETag)
 }
 
 func TestSdk_Ready_Offline(t *testing.T) {
-	utils.UseTempFile(`{"f":{"flag":{"i":"","v":true,"t":0,"r":[],"p":[]}}}`, func(path string) {
+	utils.UseTempFile(`{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true},"t":0}}}`, func(path string) {
 		ctx := newTestSdkContext(&config.SDKConfig{Key: "key", Offline: config.OfflineConfig{Enabled: true, Local: config.LocalConfig{FilePath: path}}}, nil)
 		client := NewClient(ctx, log.NewNullLogger())
 		defer client.Close()
@@ -85,8 +87,8 @@ func TestSdk_Ready_Offline(t *testing.T) {
 			<-client.Ready()
 		})
 		j := client.GetCachedJson()
-		assert.Equal(t, `{"f":{"flag":{"i":"","v":true,"t":0,"r":[],"p":[]}}}`, string(j.ConfigJson))
-		assert.Equal(t, fmt.Sprintf("W/\"%x\"", utils.FastHash(j.ConfigJson)), j.GeneratedETag)
+		assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true,"s":null,"i":null,"d":null},"t":0,"r":null,"p":null}},"s":null,"p":null}`, string(j.ConfigJson))
+		assert.Equal(t, utils.GenerateEtag(j.ConfigJson), j.ETag)
 	})
 }
 
@@ -109,8 +111,8 @@ func TestSdk_Signal_Refresh(t *testing.T) {
 	j := client.GetCachedJson()
 	assert.NoError(t, err)
 	assert.True(t, data.Value.(bool))
-	assert.Equal(t, `{"f":{"flag":{"i":"v_flag","v":true,"t":0,"r":[],"p":null}},"p":null}`, string(j.ConfigJson))
-	assert.Equal(t, fmt.Sprintf("W/\"%x\"", utils.FastHash(j.ConfigJson)), j.GeneratedETag)
+	assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true,"s":null,"i":null,"d":null},"t":0,"r":[],"p":null}},"s":null,"p":null}`, string(j.ConfigJson))
+	assert.Equal(t, fmt.Sprintf("%x", sha1.Sum(j.ConfigJson)), j.ETag)
 
 	_ = h.SetFlags(key, map[string]*configcattest.Flag{
 		"flag": {
@@ -125,8 +127,8 @@ func TestSdk_Signal_Refresh(t *testing.T) {
 	j = client.GetCachedJson()
 	assert.NoError(t, err)
 	assert.False(t, data.Value.(bool))
-	assert.Equal(t, `{"f":{"flag":{"i":"v_flag","v":false,"t":0,"r":[],"p":null}},"p":null}`, string(j.ConfigJson))
-	assert.Equal(t, fmt.Sprintf("W/\"%x\"", utils.FastHash(j.ConfigJson)), j.GeneratedETag)
+	assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":false,"s":null,"i":null,"d":null},"t":0,"r":[],"p":null}},"s":null,"p":null}`, string(j.ConfigJson))
+	assert.Equal(t, fmt.Sprintf("%x", sha1.Sum(j.ConfigJson)), j.ETag)
 }
 
 func TestSdk_BadConfig(t *testing.T) {
@@ -142,8 +144,8 @@ func TestSdk_BadConfig(t *testing.T) {
 	j := client.GetCachedJson()
 	assert.Error(t, err)
 	assert.Nil(t, data.Value)
-	assert.Equal(t, `{"f":{}}`, string(j.ConfigJson))
-	assert.Equal(t, fmt.Sprintf("W/\"%x\"", utils.FastHash(j.ConfigJson)), j.GeneratedETag)
+	assert.Equal(t, `{"f":null,"s":null,"p":null}`, string(j.ConfigJson))
+	assert.Equal(t, utils.GenerateEtag(j.ConfigJson), j.ETag)
 }
 
 func TestSdk_BadConfig_WithCache(t *testing.T) {
@@ -153,8 +155,8 @@ func TestSdk_BadConfig_WithCache(t *testing.T) {
 	defer srv.Close()
 
 	s := miniredis.RunT(t)
-	cacheKey := configcatcache.ProduceCacheKey(key)
-	cacheEntry := configcatcache.CacheSegmentsToBytes(time.Now(), "etag", []byte(`{"f":{"flag":{"i":"","v":true,"t":0,"r":[],"p":[]}}}`))
+	cacheKey := configcatcache.ProduceCacheKey(key, configcatcache.ConfigJSONName, configcatcache.ConfigJSONCacheVersion)
+	cacheEntry := configcatcache.CacheSegmentsToBytes(time.Now(), "etag", []byte(`{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true},"t":0}}}`))
 	err := s.Set(cacheKey, string(cacheEntry))
 
 	ctx := newTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key, Log: config.LogConfig{Level: "debug"}}, &config.CacheConfig{Redis: config.RedisConfig{Enabled: true, Addresses: []string{s.Addr()}}})
@@ -164,12 +166,12 @@ func TestSdk_BadConfig_WithCache(t *testing.T) {
 	j := client.GetCachedJson()
 	assert.NoError(t, err)
 	assert.True(t, data.Value.(bool))
-	assert.Equal(t, `{"f":{"flag":{"i":"","v":true,"t":0,"r":[],"p":[]}}}`, string(j.ConfigJson))
-	assert.Equal(t, fmt.Sprintf("W/\"%x\"", utils.FastHash(j.ConfigJson)), j.GeneratedETag)
+	assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true},"t":0}}}`, string(j.ConfigJson))
+	assert.Equal(t, "etag", j.ETag)
 }
 
 func TestSdk_Signal_Offline_File_Watch(t *testing.T) {
-	utils.UseTempFile(`{"f":{"flag":{"i":"","v":true,"t":0,"r":[],"p":[]}}}`, func(path string) {
+	utils.UseTempFile(`{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true},"t":0}}}`, func(path string) {
 		ctx := newTestSdkContext(&config.SDKConfig{Key: "key", Offline: config.OfflineConfig{Enabled: true, Local: config.LocalConfig{FilePath: path}}}, nil)
 		client := NewClient(ctx, log.NewNullLogger())
 		defer client.Close()
@@ -178,10 +180,10 @@ func TestSdk_Signal_Offline_File_Watch(t *testing.T) {
 		j := client.GetCachedJson()
 		assert.NoError(t, err)
 		assert.True(t, data.Value.(bool))
-		assert.Equal(t, `{"f":{"flag":{"i":"","v":true,"t":0,"r":[],"p":[]}}}`, string(j.ConfigJson))
-		assert.Equal(t, fmt.Sprintf("W/\"%x\"", utils.FastHash(j.ConfigJson)), j.GeneratedETag)
+		assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true,"s":null,"i":null,"d":null},"t":0,"r":null,"p":null}},"s":null,"p":null}`, string(j.ConfigJson))
+		assert.Equal(t, fmt.Sprintf("W/\"%s\"", utils.FastHashHex(j.ConfigJson)), j.ETag)
 
-		utils.WriteIntoFile(path, `{"f":{"flag":{"i":"","v":false,"t":0,"r":[],"p":[]}}}`)
+		utils.WriteIntoFile(path, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":false},"t":0}}}`)
 		utils.WithTimeout(2*time.Second, func() {
 			<-sub
 		})
@@ -189,13 +191,13 @@ func TestSdk_Signal_Offline_File_Watch(t *testing.T) {
 		j = client.GetCachedJson()
 		assert.NoError(t, err)
 		assert.False(t, data.Value.(bool))
-		assert.Equal(t, `{"f":{"flag":{"i":"","v":false,"t":0,"r":[],"p":[]}}}`, string(j.ConfigJson))
-		assert.Equal(t, fmt.Sprintf("W/\"%x\"", utils.FastHash(j.ConfigJson)), j.GeneratedETag)
+		assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":false,"s":null,"i":null,"d":null},"t":0,"r":null,"p":null}},"s":null,"p":null}`, string(j.ConfigJson))
+		assert.Equal(t, utils.GenerateEtag(j.ConfigJson), j.ETag)
 	})
 }
 
 func TestSdk_Signal_Offline_Poll_Watch(t *testing.T) {
-	utils.UseTempFile(`{"f":{"flag":{"i":"","v":true,"t":0,"r":[],"p":[]}}}`, func(path string) {
+	utils.UseTempFile(`{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true},"t":0}}}`, func(path string) {
 		ctx := newTestSdkContext(&config.SDKConfig{Key: "key", Offline: config.OfflineConfig{Enabled: true, Local: config.LocalConfig{FilePath: path, Polling: true, PollInterval: 1}}}, nil)
 		client := NewClient(ctx, log.NewNullLogger())
 		defer client.Close()
@@ -204,10 +206,10 @@ func TestSdk_Signal_Offline_Poll_Watch(t *testing.T) {
 		j := client.GetCachedJson()
 		assert.NoError(t, err)
 		assert.True(t, data.Value.(bool))
-		assert.Equal(t, `{"f":{"flag":{"i":"","v":true,"t":0,"r":[],"p":[]}}}`, string(j.ConfigJson))
-		assert.Equal(t, fmt.Sprintf("W/\"%x\"", utils.FastHash(j.ConfigJson)), j.GeneratedETag)
+		assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true,"s":null,"i":null,"d":null},"t":0,"r":null,"p":null}},"s":null,"p":null}`, string(j.ConfigJson))
+		assert.Equal(t, fmt.Sprintf("W/\"%s\"", utils.FastHashHex(j.ConfigJson)), j.ETag)
 
-		utils.WriteIntoFile(path, `{"f":{"flag":{"i":"","v":false,"t":0,"r":[],"p":[]}}}`)
+		utils.WriteIntoFile(path, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":false},"t":0}}}`)
 		utils.WithTimeout(2*time.Second, func() {
 			<-sub
 		})
@@ -215,16 +217,16 @@ func TestSdk_Signal_Offline_Poll_Watch(t *testing.T) {
 		j = client.GetCachedJson()
 		assert.NoError(t, err)
 		assert.False(t, data.Value.(bool))
-		assert.Equal(t, `{"f":{"flag":{"i":"","v":false,"t":0,"r":[],"p":[]}}}`, string(j.ConfigJson))
-		assert.Equal(t, fmt.Sprintf("W/\"%x\"", utils.FastHash(j.ConfigJson)), j.GeneratedETag)
+		assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":false,"s":null,"i":null,"d":null},"t":0,"r":null,"p":null}},"s":null,"p":null}`, string(j.ConfigJson))
+		assert.Equal(t, utils.GenerateEtag(j.ConfigJson), j.ETag)
 	})
 }
 
 func TestSdk_Signal_Offline_Redis_Watch(t *testing.T) {
-	sdkKey := "key"
+	sdkKey := configcattest.RandomSDKKey()
 	s := miniredis.RunT(t)
-	cacheKey := configcatcache.ProduceCacheKey(sdkKey)
-	cacheEntry := configcatcache.CacheSegmentsToBytes(time.Now(), "etag", []byte(`{"f":{"flag":{"i":"","v":true,"t":0,"r":[],"p":[]}}}`))
+	cacheKey := configcatcache.ProduceCacheKey(sdkKey, configcatcache.ConfigJSONName, configcatcache.ConfigJSONCacheVersion)
+	cacheEntry := configcatcache.CacheSegmentsToBytes(time.Now(), "etag", []byte(`{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true},"t":0}}}`))
 	_ = s.Set(cacheKey, string(cacheEntry))
 
 	ctx := newTestSdkContext(&config.SDKConfig{
@@ -238,10 +240,10 @@ func TestSdk_Signal_Offline_Redis_Watch(t *testing.T) {
 	j := client.GetCachedJson()
 	assert.NoError(t, err)
 	assert.True(t, data.Value.(bool))
-	assert.Equal(t, `{"f":{"flag":{"i":"","v":true,"t":0,"r":[],"p":[]}}}`, string(j.ConfigJson))
-	assert.Equal(t, fmt.Sprintf("W/\"%x\"", utils.FastHash(j.ConfigJson)), j.GeneratedETag)
+	assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true,"s":null,"i":null,"d":null},"t":0,"r":null,"p":null}},"s":null,"p":null}`, string(j.ConfigJson))
+	assert.Equal(t, "etag", j.ETag)
 
-	cacheEntry = configcatcache.CacheSegmentsToBytes(time.Now(), "etag2", []byte(`{"f":{"flag":{"i":"","v":false,"t":0,"r":[],"p":[]}}}`))
+	cacheEntry = configcatcache.CacheSegmentsToBytes(time.Now(), "etag2", []byte(`{"f":{"flag":{"a":"","i":"v_flag","v":{"b":false},"t":0}}}`))
 	_ = s.Set(cacheKey, string(cacheEntry))
 	utils.WithTimeout(2*time.Second, func() {
 		<-sub
@@ -250,8 +252,8 @@ func TestSdk_Signal_Offline_Redis_Watch(t *testing.T) {
 	j = client.GetCachedJson()
 	assert.NoError(t, err)
 	assert.False(t, data.Value.(bool))
-	assert.Equal(t, `{"f":{"flag":{"i":"","v":false,"t":0,"r":[],"p":[]}}}`, string(j.ConfigJson))
-	assert.Equal(t, fmt.Sprintf("W/\"%x\"", utils.FastHash(j.ConfigJson)), j.GeneratedETag)
+	assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":false,"s":null,"i":null,"d":null},"t":0,"r":null,"p":null}},"s":null,"p":null}`, string(j.ConfigJson))
+	assert.Equal(t, "etag2", j.ETag)
 }
 
 func TestSdk_Sub_Unsub(t *testing.T) {
@@ -339,13 +341,13 @@ func TestSdk_EvalStatsReporter(t *testing.T) {
 	client := NewClient(ctx, log.NewNullLogger())
 	defer client.Close()
 
-	_, _ = client.Eval("flag1", UserAttrs{"e": "h"})
+	_, _ = client.Eval("flag1", model.UserAttrs{"e": "h"})
 
 	var event *statistics.EvalEvent
 	utils.WithTimeout(2*time.Second, func() {
 		event = <-reporter.Latest()
 	})
-	assert.Equal(t, map[string]string{"e": "h"}, event.UserAttrs)
+	assert.Equal(t, map[string]interface{}{"e": "h"}, event.UserAttrs)
 }
 
 func TestSdk_DefaultAttrs(t *testing.T) {
@@ -359,13 +361,13 @@ func TestSdk_DefaultAttrs(t *testing.T) {
 	srv := httptest.NewServer(&h)
 	defer srv.Close()
 
-	ctx := newTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key, DefaultAttrs: map[string]string{"a": "g"}}, nil)
-	ctx.GlobalDefaultAttrs = map[string]string{"a": "b", "c": "d", "e": "f"}
+	ctx := newTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key, DefaultAttrs: map[string]interface{}{"a": "g"}}, nil)
+	ctx.GlobalDefaultAttrs = map[string]interface{}{"a": "b", "c": "d", "e": "f"}
 	client := NewClient(ctx, log.NewNullLogger())
 	defer client.Close()
 
-	evalData, _ := client.Eval("flag1", UserAttrs{"e": "h"})
-	assert.Equal(t, UserAttrs{"a": "g", "c": "d", "e": "h"}, evalData.User.(UserAttrs))
+	evalData, _ := client.Eval("flag1", model.UserAttrs{"e": "h"})
+	assert.Equal(t, model.UserAttrs{"a": "g", "c": "d", "e": "h"}, evalData.User.(model.UserAttrs))
 }
 
 func newTestSdkContext(conf *config.SDKConfig, cacheConf *config.CacheConfig) *Context {

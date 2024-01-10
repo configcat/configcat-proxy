@@ -9,23 +9,22 @@
 
     <script type="text/javascript">
         // Setting log level to Info to show detailed feature flag evaluation
-        var logger = configcat.createConsoleLogger(configcat.LogLevel.Info);
+        const logger = configcat.createConsoleLogger(configcat.LogLevel.Info);
 
-        var userObject = {
+        const userObject = {
             identifier: "09c63c8ad682",
         };
 
-        var configCatClient = configcat.getClient('sdk1', configcat.PollingMode.AutoPoll, {
+        const configCatClient = configcat.getClient('configcat-proxy/sdk1', configcat.PollingMode.AutoPoll, {
             baseUrl: "https://localhost:8050",
-            pollIntervalSeconds: 2,
+            pollIntervalSeconds: 10,
             logger: logger,
-            configChanged: function () {
-                configCatClient.getValue("awesomeFeature", false, function (value) {
-                        console.log("awesomeFeature: " + value);
-                    },
-                    userObject
-                );
-            }
+            setupHooks: (hooks) =>
+                hooks.on('configChanged', () => {
+                    configCatClient.getValueAsync("awesomeFeature", false, userObject).then((value) => {
+                            console.log("awesomeFeature: " + value);
+                        });
+                }),
         });
     </script>
 </head>

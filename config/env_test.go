@@ -24,7 +24,7 @@ func TestSDKConfig_ENV(t *testing.T) {
 	t.Setenv("CONFIGCAT_SDK1_OFFLINE_CACHE_POLL_INTERVAL", "200")
 	t.Setenv("CONFIGCAT_SDK1_WEBHOOK_SIGNING_KEY", "key")
 	t.Setenv("CONFIGCAT_SDK1_WEBHOOK_SIGNATURE_VALID_FOR", "600")
-	t.Setenv("CONFIGCAT_SDK1_DEFAULT_USER_ATTRIBUTES", `{"attr_1": "attr_value1", "attr2": "attr_value2"}`)
+	t.Setenv("CONFIGCAT_SDK1_DEFAULT_USER_ATTRIBUTES", `{"attr1": "attr_value1", "attr2": "attr_value2", "attr3": 5, "attr4":["a","b"]}`)
 
 	conf, err := LoadConfigFromFileAndEnvironment("")
 	require.NoError(t, err)
@@ -44,8 +44,40 @@ func TestSDKConfig_ENV(t *testing.T) {
 	assert.Equal(t, 200, conf.SDKs["sdk1"].Offline.CachePollInterval)
 	assert.Equal(t, "key", conf.SDKs["sdk1"].WebhookSigningKey)
 	assert.Equal(t, 600, conf.SDKs["sdk1"].WebhookSignatureValidFor)
-	assert.Equal(t, "attr_value1", conf.SDKs["sdk1"].DefaultAttrs["attr_1"])
+	assert.Equal(t, "attr_value1", conf.SDKs["sdk1"].DefaultAttrs["attr1"])
 	assert.Equal(t, "attr_value2", conf.SDKs["sdk1"].DefaultAttrs["attr2"])
+	assert.Equal(t, float64(5), conf.SDKs["sdk1"].DefaultAttrs["attr3"])
+	assert.Equal(t, []string{"a", "b"}, conf.SDKs["sdk1"].DefaultAttrs["attr4"])
+}
+
+func TestSDKConfig_ENV_Invalid(t *testing.T) {
+	t.Run("sdk id", func(t *testing.T) {
+		t.Setenv("CONFIGCAT_SDKS", `{"sdk1"}`)
+
+		_, err := LoadConfigFromFileAndEnvironment("")
+		require.ErrorContains(t, err, "failed to read environment variable 'CONFIGCAT_SDKS': invalid character '}' after object key")
+	})
+	t.Run("poll interval", func(t *testing.T) {
+		t.Setenv("CONFIGCAT_SDKS", `{"sdk1": "sdkKey"}`)
+		t.Setenv("CONFIGCAT_SDK1_POLL_INTERVAL", "a")
+
+		_, err := LoadConfigFromFileAndEnvironment("")
+		require.ErrorContains(t, err, `failed to read environment variable 'CONFIGCAT_SDK1_POLL_INTERVAL': strconv.Atoi: parsing "a": invalid syntax`)
+	})
+	t.Run("offline", func(t *testing.T) {
+		t.Setenv("CONFIGCAT_SDKS", `{"sdk1": "sdkKey"}`)
+		t.Setenv("CONFIGCAT_SDK1_OFFLINE_ENABLED", "b")
+
+		_, err := LoadConfigFromFileAndEnvironment("")
+		require.ErrorContains(t, err, `failed to read environment variable 'CONFIGCAT_SDK1_OFFLINE_ENABLED': strconv.ParseBool: parsing "b": invalid syntax`)
+	})
+	t.Run("user attrs", func(t *testing.T) {
+		t.Setenv("CONFIGCAT_SDKS", `{"sdk1": "sdkKey"}`)
+		t.Setenv("CONFIGCAT_SDK1_DEFAULT_USER_ATTRIBUTES", `{"attr1": true}`)
+
+		_, err := LoadConfigFromFileAndEnvironment("")
+		require.ErrorContains(t, err, `failed to read environment variable 'CONFIGCAT_SDK1_DEFAULT_USER_ATTRIBUTES': 'attr1' has an invalid type, only 'string', 'number', and 'string[]' types are allowed`)
+	})
 }
 
 func TestCacheConfig_ENV(t *testing.T) {

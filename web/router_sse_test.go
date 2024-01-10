@@ -16,10 +16,9 @@ import (
 func TestSSE_EvalFlag_Options_CORS(t *testing.T) {
 	router := newSSERouter(t, config.SseConfig{Enabled: true, CORS: config.CORSConfig{Enabled: true}, Headers: map[string]string{"h1": "v1"}})
 	srv := httptest.NewServer(router.Handler())
-	client := http.Client{}
 	data := base64.URLEncoding.EncodeToString([]byte(`{"key":"flag"}`))
 	req, _ := http.NewRequest(http.MethodOptions, fmt.Sprintf("%s/sse/test/eval/%s", srv.URL, data), http.NoBody)
-	resp, _ := client.Do(req)
+	resp, _ := http.DefaultClient.Do(req)
 	assert.Equal(t, http.StatusNoContent, resp.StatusCode)
 
 	assert.Equal(t, "GET,OPTIONS", resp.Header.Get("Access-Control-Allow-Methods"))
@@ -34,10 +33,9 @@ func TestSSE_EvalFlag_Options_CORS(t *testing.T) {
 func TestSSE_EvalFlag_GET_CORS(t *testing.T) {
 	router := newSSERouter(t, config.SseConfig{Enabled: true, CORS: config.CORSConfig{Enabled: true}, Headers: map[string]string{"h1": "v1"}})
 	srv := httptest.NewServer(router.Handler())
-	client := http.Client{}
 	data := base64.URLEncoding.EncodeToString([]byte(`{"key":"flag"}`))
 	req, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/sse/test/eval/%s", srv.URL, data), http.NoBody)
-	resp, _ := client.Do(req)
+	resp, _ := http.DefaultClient.Do(req)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	assert.Equal(t, "text/event-stream", resp.Header.Get("Content-Type"))
@@ -51,27 +49,26 @@ func TestSSE_EvalFlag_GET_CORS(t *testing.T) {
 func TestSSE_EvalFlag_Not_Allowed_Methods(t *testing.T) {
 	router := newSSERouter(t, config.SseConfig{Enabled: true, CORS: config.CORSConfig{Enabled: true}})
 	srv := httptest.NewServer(router.Handler())
-	client := http.Client{}
 	data := base64.URLEncoding.EncodeToString([]byte(`{"key":"flag"}`))
 
 	t.Run("put", func(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPut, fmt.Sprintf("%s/sse/test/eval/%s", srv.URL, data), http.NoBody)
-		resp, _ := client.Do(req)
+		resp, _ := http.DefaultClient.Do(req)
 		assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
 	})
 	t.Run("post", func(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/sse/test/eval/%s", srv.URL, data), http.NoBody)
-		resp, _ := client.Do(req)
+		resp, _ := http.DefaultClient.Do(req)
 		assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
 	})
 	t.Run("delete", func(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodDelete, fmt.Sprintf("%s/sse/test/eval/%s", srv.URL, data), http.NoBody)
-		resp, _ := client.Do(req)
+		resp, _ := http.DefaultClient.Do(req)
 		assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
 	})
 	t.Run("patch", func(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPatch, fmt.Sprintf("%s/sse/test/eval/%s", srv.URL, data), http.NoBody)
-		resp, _ := client.Do(req)
+		resp, _ := http.DefaultClient.Do(req)
 		assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
 	})
 }
@@ -79,9 +76,8 @@ func TestSSE_EvalFlag_Not_Allowed_Methods(t *testing.T) {
 func TestSSE_EvalAllFlags_Options_CORS(t *testing.T) {
 	router := newSSERouter(t, config.SseConfig{Enabled: true, CORS: config.CORSConfig{Enabled: true}, Headers: map[string]string{"h1": "v1"}})
 	srv := httptest.NewServer(router.Handler())
-	client := http.Client{}
 	req, _ := http.NewRequest(http.MethodOptions, fmt.Sprintf("%s/sse/test/eval-all", srv.URL), http.NoBody)
-	resp, _ := client.Do(req)
+	resp, _ := http.DefaultClient.Do(req)
 	assert.Equal(t, http.StatusNoContent, resp.StatusCode)
 
 	assert.Equal(t, "GET,OPTIONS", resp.Header.Get("Access-Control-Allow-Methods"))
@@ -94,7 +90,7 @@ func TestSSE_EvalAllFlags_Options_CORS(t *testing.T) {
 
 	data := base64.URLEncoding.EncodeToString([]byte(`{"user":"{}"}`))
 	req, _ = http.NewRequest(http.MethodOptions, fmt.Sprintf("%s/sse/test/eval-all/%s", srv.URL, data), http.NoBody)
-	resp, _ = client.Do(req)
+	resp, _ = http.DefaultClient.Do(req)
 	assert.Equal(t, http.StatusNoContent, resp.StatusCode)
 
 	assert.Equal(t, "GET,OPTIONS", resp.Header.Get("Access-Control-Allow-Methods"))
@@ -109,9 +105,8 @@ func TestSSE_EvalAllFlags_Options_CORS(t *testing.T) {
 func TestSSE_EvalAllFlags_GET_CORS(t *testing.T) {
 	router := newSSERouter(t, config.SseConfig{Enabled: true, CORS: config.CORSConfig{Enabled: true}, Headers: map[string]string{"h1": "v1"}})
 	srv := httptest.NewServer(router.Handler())
-	client := http.Client{}
 	req, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/sse/test/eval-all", srv.URL), http.NoBody)
-	resp, _ := client.Do(req)
+	resp, _ := http.DefaultClient.Do(req)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	assert.Equal(t, "text/event-stream", resp.Header.Get("Content-Type"))
@@ -121,9 +116,9 @@ func TestSSE_EvalAllFlags_GET_CORS(t *testing.T) {
 	assert.Equal(t, "Content-Length,ETag,Date,Content-Encoding,h1", resp.Header.Get("Access-Control-Expose-Headers"))
 	assert.Equal(t, "v1", resp.Header.Get("h1"))
 
-	data := base64.URLEncoding.EncodeToString([]byte(`{"user":"{}"}`))
+	data := base64.URLEncoding.EncodeToString([]byte(`{"user":{}}`))
 	req, _ = http.NewRequest(http.MethodGet, fmt.Sprintf("%s/sse/test/eval-all/%s", srv.URL, data), http.NoBody)
-	resp, _ = client.Do(req)
+	resp, _ = http.DefaultClient.Do(req)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	assert.Equal(t, "text/event-stream", resp.Header.Get("Content-Type"))
@@ -137,48 +132,47 @@ func TestSSE_EvalAllFlags_GET_CORS(t *testing.T) {
 func TestSSE_EvalAllFlags_Not_Allowed_Methods(t *testing.T) {
 	router := newSSERouter(t, config.SseConfig{Enabled: true, CORS: config.CORSConfig{Enabled: true}})
 	srv := httptest.NewServer(router.Handler())
-	client := http.Client{}
 	data := base64.URLEncoding.EncodeToString([]byte(`{"key":"flag"}`))
 
 	t.Run("put", func(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPut, fmt.Sprintf("%s/sse/test/eval/%s", srv.URL, data), http.NoBody)
-		resp, _ := client.Do(req)
+		resp, _ := http.DefaultClient.Do(req)
 		assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
 	})
 	t.Run("post", func(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/sse/test/eval/%s", srv.URL, data), http.NoBody)
-		resp, _ := client.Do(req)
+		resp, _ := http.DefaultClient.Do(req)
 		assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
 	})
 	t.Run("delete", func(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodDelete, fmt.Sprintf("%s/sse/test/eval/%s", srv.URL, data), http.NoBody)
-		resp, _ := client.Do(req)
+		resp, _ := http.DefaultClient.Do(req)
 		assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
 	})
 	t.Run("patch", func(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPatch, fmt.Sprintf("%s/sse/test/eval/%s", srv.URL, data), http.NoBody)
-		resp, _ := client.Do(req)
+		resp, _ := http.DefaultClient.Do(req)
 		assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
 	})
 
 	t.Run("put-all", func(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPut, fmt.Sprintf("%s/sse/test/eval-all/%s", srv.URL, data), http.NoBody)
-		resp, _ := client.Do(req)
+		resp, _ := http.DefaultClient.Do(req)
 		assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
 	})
 	t.Run("post-all", func(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/sse/test/eval-all/%s", srv.URL, data), http.NoBody)
-		resp, _ := client.Do(req)
+		resp, _ := http.DefaultClient.Do(req)
 		assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
 	})
 	t.Run("delete-all", func(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodDelete, fmt.Sprintf("%s/sse/test/eval-all/%s", srv.URL, data), http.NoBody)
-		resp, _ := client.Do(req)
+		resp, _ := http.DefaultClient.Do(req)
 		assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
 	})
 	t.Run("patch-all", func(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPatch, fmt.Sprintf("%s/sse/test/eval-all/%s", srv.URL, data), http.NoBody)
-		resp, _ := client.Do(req)
+		resp, _ := http.DefaultClient.Do(req)
 		assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
 	})
 }

@@ -5,8 +5,9 @@ import (
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/log"
+	"github.com/configcat/configcat-proxy/model"
 	"github.com/configcat/configcat-proxy/sdk"
-	"github.com/configcat/go-sdk/v8/configcattest"
+	"github.com/configcat/go-sdk/v9/configcattest"
 	"net/http/httptest"
 	"strconv"
 	"testing"
@@ -34,7 +35,7 @@ func BenchmarkStream(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		sKey := "flag" + strconv.Itoa(i)
 		for j := 0; j < 100; j++ {
-			user := sdk.UserAttrs{"id": "user" + strconv.Itoa(j)}
+			user := model.UserAttrs{"id": "user" + strconv.Itoa(j)}
 			str := strServer.GetStreamOrNil("test")
 			conn := str.CreateConnection(sKey, user)
 			<-conn.Receive()

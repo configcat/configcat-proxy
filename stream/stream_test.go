@@ -7,7 +7,7 @@ import (
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/model"
 	"github.com/configcat/configcat-proxy/sdk"
-	"github.com/configcat/go-sdk/v8/configcattest"
+	"github.com/configcat/go-sdk/v9/configcattest"
 	"github.com/stretchr/testify/assert"
 	"runtime"
 	"testing"
@@ -47,7 +47,7 @@ func TestStream_Receive(t *testing.T) {
 }
 
 func TestStream_Offline_Receive(t *testing.T) {
-	utils.UseTempFile(`{"f":{"flag":{"i":"","v":true,"t":0,"r":[],"p":[]}}}`, func(path string) {
+	utils.UseTempFile(`{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true},"t":0}}}`, func(path string) {
 		ctx := testutils.NewTestSdkContext(&config.SDKConfig{Key: "key", Offline: config.OfflineConfig{Enabled: true, Local: config.LocalConfig{FilePath: path}}}, nil)
 		client := sdk.NewClient(ctx, log.NewNullLogger())
 		defer client.Close()
@@ -65,7 +65,7 @@ func TestStream_Offline_Receive(t *testing.T) {
 			pyl := <-aConn.Receive()
 			assert.True(t, pyl.(map[string]*model.ResponsePayload)["flag"].Value.(bool))
 		})
-		utils.WriteIntoFile(path, `{"f":{"flag":{"i":"","v":false,"t":0,"r":[],"p":[]}}}`)
+		utils.WriteIntoFile(path, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":false},"t":0}}}`)
 		utils.WithTimeout(2*time.Second, func() {
 			pyl := <-sConn.Receive()
 			assert.False(t, pyl.(*model.ResponsePayload).Value.(bool))
@@ -108,9 +108,9 @@ func TestStream_Goroutines(t *testing.T) {
 	count := runtime.NumGoroutine()
 
 	conn1 := str.CreateConnection("flag", nil)
-	conn2 := str.CreateConnection("flag", sdk.UserAttrs{"id": "1"})
-	conn3 := str.CreateConnection("flag", sdk.UserAttrs{"id": "1"})
-	conn4 := str.CreateConnection("flag", sdk.UserAttrs{"id": "2"})
+	conn2 := str.CreateConnection("flag", model.UserAttrs{"id": "1"})
+	conn3 := str.CreateConnection("flag", model.UserAttrs{"id": "1"})
+	conn4 := str.CreateConnection("flag", model.UserAttrs{"id": "2"})
 	conn5 := str.CreateConnection("flag", nil)
 	conn6 := str.CreateConnection("flag", nil)
 	conn7 := str.CreateConnection(AllFlagsDiscriminator, nil)

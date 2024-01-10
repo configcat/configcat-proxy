@@ -4,7 +4,7 @@ type EvalEvent struct {
 	SdkId     string
 	FlagKey   string
 	Value     interface{}
-	UserAttrs map[string]string
+	UserAttrs map[string]interface{}
 }
 
 type Reporter interface {

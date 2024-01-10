@@ -38,9 +38,9 @@ func (s *flagService) EvalFlagStream(req *proto.EvalRequest, stream proto.FlagSe
 		return status.Error(codes.InvalidArgument, "key request parameter missing")
 	}
 
-	var user sdk.UserAttrs
+	var user model.UserAttrs
 	if req.GetUser() != nil {
-		user = req.GetUser()
+		user = getUserAttrs(req.GetUser())
 	}
 
 	str := s.streamServer.GetStreamOrNil(req.GetSdkId())
@@ -76,9 +76,9 @@ func (s *flagService) EvalAllFlagsStream(req *proto.EvalRequest, evalStream prot
 		return status.Error(codes.InvalidArgument, "sdk id parameter missing")
 	}
 
-	var user sdk.UserAttrs
+	var user model.UserAttrs
 	if req.GetUser() != nil {
-		user = req.GetUser()
+		user = getUserAttrs(req.GetUser())
 	}
 
 	str := s.streamServer.GetStreamOrNil(req.GetSdkId())
@@ -119,9 +119,9 @@ func (s *flagService) EvalFlag(_ context.Context, req *proto.EvalRequest) (*prot
 		return nil, status.Error(codes.InvalidArgument, "key request parameter missing")
 	}
 
-	var user sdk.UserAttrs
+	var user model.UserAttrs
 	if req.GetUser() != nil {
-		user = req.GetUser()
+		user = getUserAttrs(req.GetUser())
 	}
 
 	sdkClient, ok := s.sdkClients[req.GetSdkId()]
@@ -142,9 +142,9 @@ func (s *flagService) EvalAllFlags(_ context.Context, req *proto.EvalRequest) (*
 		return nil, status.Error(codes.InvalidArgument, "sdk id parameter missing")
 	}
 
-	var user sdk.UserAttrs
+	var user model.UserAttrs
 	if req.GetUser() != nil {
-		user = req.GetUser()
+		user = getUserAttrs(req.GetUser())
 	}
 
 	sdkClient, ok := s.sdkClients[req.GetSdkId()]
@@ -211,4 +211,27 @@ func (s *flagService) toPayload(resp *model.ResponsePayload) *proto.EvalResponse
 func (s *flagService) Close() {
 	close(s.closed)
 	s.streamServer.Close()
+}
+
+func getUserAttrs(attrs map[string]*proto.UserValue) model.UserAttrs {
+	res := make(map[string]interface{}, len(attrs))
+	for k, v := range attrs {
+		if num, ok := v.GetValue().(*proto.UserValue_NumberValue); ok {
+			res[k] = num.NumberValue
+			continue
+		}
+		if str, ok := v.GetValue().(*proto.UserValue_StringValue); ok {
+			res[k] = str.StringValue
+			continue
+		}
+		if t, ok := v.GetValue().(*proto.UserValue_TimeValue); ok {
+			res[k] = t.TimeValue.AsTime()
+			continue
+		}
+		if arr, ok := v.GetValue().(*proto.UserValue_StringListValue); ok {
+			res[k] = arr.StringListValue.GetValues()
+			continue
+		}
+	}
+	return res
 }

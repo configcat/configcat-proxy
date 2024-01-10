@@ -4,20 +4,15 @@ import (
 	"context"
 	"crypto/tls"
 	"github.com/configcat/configcat-proxy/config"
-	"github.com/configcat/configcat-proxy/sdk/store"
-	"github.com/configcat/configcat-proxy/status"
-	"github.com/configcat/go-sdk/v8/configcatcache"
+	configcat "github.com/configcat/go-sdk/v9"
 	"github.com/redis/go-redis/v9"
 )
 
-type redisStorage struct {
-	store.EntryStore
-
-	redisDb  redis.UniversalClient
-	reporter status.Reporter
+type redisStore struct {
+	redisDb redis.UniversalClient
 }
 
-func NewRedisStorage(conf *config.RedisConfig, reporter status.Reporter) store.CacheStorage {
+func NewRedisStore(conf *config.RedisConfig) configcat.ConfigCache {
 	opts := &redis.UniversalOptions{
 		Addrs:    conf.Addresses,
 		Password: conf.Password,
@@ -38,38 +33,19 @@ func NewRedisStorage(conf *config.RedisConfig, reporter status.Reporter) store.C
 		}
 		opts.TLSConfig = t
 	}
-	return &redisStorage{
-		redisDb:    redis.NewUniversalClient(opts),
-		EntryStore: store.NewEntryStore(),
-		reporter:   reporter,
+	return &redisStore{
+		redisDb: redis.NewUniversalClient(opts),
 	}
 }
 
-func (r *redisStorage) Get(ctx context.Context, key string) ([]byte, error) {
-	b, err := r.redisDb.Get(ctx, key).Bytes()
-	if err != nil {
-		r.reporter.ReportError(status.Cache, err)
-	} else {
-		r.reporter.ReportOk(status.Cache, "cache read succeeded")
-	}
-	return b, err
+func (r *redisStore) Get(ctx context.Context, key string) ([]byte, error) {
+	return r.redisDb.Get(ctx, key).Bytes()
 }
 
-func (r *redisStorage) Set(ctx context.Context, key string, value []byte) error {
-	fetchTime, etag, configJson, err := configcatcache.CacheSegmentsFromBytes(value)
-	if err != nil {
-		r.reporter.ReportError(status.Cache, err)
-	}
-	r.StoreEntry(configJson, fetchTime, etag)
-	err = r.redisDb.Set(ctx, key, value, 0).Err()
-	if err != nil {
-		r.reporter.ReportError(status.Cache, err)
-	} else {
-		r.reporter.ReportOk(status.Cache, "cache write succeeded")
-	}
-	return err
+func (r *redisStore) Set(ctx context.Context, key string, value []byte) error {
+	return r.redisDb.Set(ctx, key, value, 0).Err()
 }
 
-func (r *redisStorage) Close() {
+func (r *redisStore) Close() {
 	_ = r.redisDb.Close()
 }

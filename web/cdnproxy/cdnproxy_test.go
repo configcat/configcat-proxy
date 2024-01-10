@@ -6,10 +6,11 @@ import (
 	"github.com/configcat/configcat-proxy/internal/utils"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/sdk"
-	"github.com/configcat/go-sdk/v8/configcattest"
+	"github.com/configcat/go-sdk/v9/configcattest"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 )
 
@@ -23,7 +24,7 @@ func TestProxy_Get(t *testing.T) {
 		srv.ServeHTTP(res, req)
 
 		assert.Equal(t, http.StatusOK, res.Code)
-		assert.Equal(t, `{"f":{"flag":{"i":"v_flag","v":true,"t":0,"r":[],"p":null}},"p":null}`, res.Body.String())
+		assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true,"s":null,"i":null,"d":null},"t":0,"r":[{"s":{"v":{"b":false,"s":null,"i":null,"d":null},"i":"v0_flag"},"c":[{"u":{"a":"Identifier","s":"test","d":null,"l":null,"c":28},"s":null,"p":null}],"p":null}],"p":null}},"s":null,"p":null}`, res.Body.String())
 	})
 	t.Run("online error", func(t *testing.T) {
 		res := httptest.NewRecorder()
@@ -34,10 +35,10 @@ func TestProxy_Get(t *testing.T) {
 		srv.ServeHTTP(res, req)
 
 		assert.Equal(t, http.StatusOK, res.Code)
-		assert.Equal(t, `{"f":{}}`, res.Body.String())
+		assert.Equal(t, `{"f":null,"s":null,"p":null}`, res.Body.String())
 	})
 	t.Run("offline", func(t *testing.T) {
-		utils.UseTempFile(`{"f":{"flag":{"i":"","v":true,"t":0,"r":[],"p":[]}}}`, func(path string) {
+		utils.UseTempFile(`{"f":{"flag":{"i":"","v":{"b":true},"t":0}}}`, func(path string) {
 			res := httptest.NewRecorder()
 			req := &http.Request{Method: http.MethodGet}
 
@@ -46,7 +47,7 @@ func TestProxy_Get(t *testing.T) {
 			srv.ServeHTTP(res, req)
 
 			assert.Equal(t, http.StatusOK, res.Code)
-			assert.Equal(t, `{"f":{"flag":{"i":"","v":true,"t":0,"r":[],"p":[]}}}`, res.Body.String())
+			assert.Equal(t, `{"f":{"flag":{"a":"","i":"","v":{"b":true,"s":null,"i":null,"d":null},"t":0,"r":null,"p":null}},"s":null,"p":null}`, res.Body.String())
 		})
 	})
 	t.Run("offline error", func(t *testing.T) {
@@ -59,7 +60,7 @@ func TestProxy_Get(t *testing.T) {
 			srv.ServeHTTP(res, req)
 
 			assert.Equal(t, http.StatusOK, res.Code)
-			assert.Equal(t, `{"f":{}}`, res.Body.String())
+			assert.Equal(t, `{"f":null,"s":null,"p":null}`, res.Body.String())
 		})
 	})
 	t.Run("etag", func(t *testing.T) {
@@ -71,13 +72,34 @@ func TestProxy_Get(t *testing.T) {
 		srv.ServeHTTP(res, req)
 
 		assert.Equal(t, http.StatusOK, res.Code)
-		assert.Equal(t, `{"f":{"flag":{"i":"v_flag","v":true,"t":0,"r":[],"p":null}},"p":null}`, res.Body.String())
+		assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true,"s":null,"i":null,"d":null},"t":0,"r":[{"s":{"v":{"b":false,"s":null,"i":null,"d":null},"i":"v0_flag"},"c":[{"u":{"a":"Identifier","s":"test","d":null,"l":null,"c":28},"s":null,"p":null}],"p":null}],"p":null}},"s":null,"p":null}`, res.Body.String())
 
 		etag := res.Header().Get("ETag")
 
 		res = httptest.NewRecorder()
 		req = &http.Request{Method: http.MethodGet, Header: map[string][]string{}}
 		req.Header.Set("If-None-Match", etag)
+		utils.AddSdkIdContextParam(req)
+		srv.ServeHTTP(res, req)
+
+		assert.Equal(t, http.StatusNotModified, res.Code)
+		assert.Empty(t, res.Body.String())
+	})
+	t.Run("etag query", func(t *testing.T) {
+		res := httptest.NewRecorder()
+		req := &http.Request{Method: http.MethodGet}
+
+		srv := newServer(t, config.CdnProxyConfig{Enabled: true})
+		utils.AddSdkIdContextParam(req)
+		srv.ServeHTTP(res, req)
+
+		assert.Equal(t, http.StatusOK, res.Code)
+		assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true,"s":null,"i":null,"d":null},"t":0,"r":[{"s":{"v":{"b":false,"s":null,"i":null,"d":null},"i":"v0_flag"},"c":[{"u":{"a":"Identifier","s":"test","d":null,"l":null,"c":28},"s":null,"p":null}],"p":null}],"p":null}},"s":null,"p":null}`, res.Body.String())
+
+		etag := res.Header().Get("ETag")
+
+		res = httptest.NewRecorder()
+		req = &http.Request{Method: http.MethodGet, URL: &url.URL{RawQuery: "ccetag=" + etag}}
 		utils.AddSdkIdContextParam(req)
 		srv.ServeHTTP(res, req)
 
@@ -93,7 +115,7 @@ func TestProxy_Get(t *testing.T) {
 		srv.ServeHTTP(res, req)
 
 		assert.Equal(t, http.StatusOK, res.Code)
-		assert.Equal(t, `{"f":{"flag":{"i":"v_flag","v":true,"t":0,"r":[],"p":null}},"p":null}`, res.Body.String())
+		assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true,"s":null,"i":null,"d":null},"t":0,"r":[{"s":{"v":{"b":false,"s":null,"i":null,"d":null},"i":"v0_flag"},"c":[{"u":{"a":"Identifier","s":"test","d":null,"l":null,"c":28},"s":null,"p":null}],"p":null}],"p":null}},"s":null,"p":null}`, res.Body.String())
 
 		etag := res.Header().Get("ETag")
 
@@ -120,7 +142,7 @@ func TestProxy_Get(t *testing.T) {
 		srv.ServeHTTP(res, req)
 
 		assert.Equal(t, http.StatusOK, res.Code)
-		assert.Equal(t, `{"f":{"flag":{"i":"v_flag","v":false,"t":0,"r":[],"p":null}},"p":null}`, res.Body.String())
+		assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":false,"s":null,"i":null,"d":null},"t":0,"r":[],"p":null}},"s":null,"p":null}`, res.Body.String())
 
 		etag = res.Header().Get("ETag")
 

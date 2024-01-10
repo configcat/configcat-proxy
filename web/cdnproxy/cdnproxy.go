@@ -33,13 +33,17 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Cache-Control", "max-age=0, must-revalidate")
 	etag := r.Header.Get("If-None-Match")
+	if etag == "" && r.URL != nil {
+		query := r.URL.Query()
+		etag = query.Get("ccetag")
+	}
 	c := sdkClient.GetCachedJson()
-	if etag == "" || c.GeneratedETag != etag {
-		w.Header().Set("ETag", c.GeneratedETag)
+	if etag == "" || c.ETag != etag {
+		w.Header().Set("ETag", c.ETag)
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write(c.ConfigJson)
 	} else {
-		w.Header().Set("ETag", c.GeneratedETag)
+		w.Header().Set("ETag", c.ETag)
 		w.WriteHeader(http.StatusNotModified)
 	}
 }
@@ -47,9 +51,6 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (s *Server) getSDKClient(ctx context.Context) (sdk.Client, error) {
 	vars := httprouter.ParamsFromContext(ctx)
 	sdkId := vars.ByName("sdkId")
-	if sdkId == "" {
-		return nil, fmt.Errorf("'sdkId' path parameter must be set")
-	}
 	sdkClient, ok := s.sdkClients[sdkId]
 	if !ok {
 		return nil, fmt.Errorf("invalid SDK identifier: '%s'", sdkId)

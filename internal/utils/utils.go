@@ -47,12 +47,6 @@ func Min(args ...int) int {
 	return min
 }
 
-func FastHash(b []byte) uint64 {
-	h := xxhash.New()
-	_, _ = h.Write(b)
-	return h.Sum64()
-}
-
 func FastHashHex(b []byte) string {
 	h := xxhash.New()
 	_, _ = h.Write(b)

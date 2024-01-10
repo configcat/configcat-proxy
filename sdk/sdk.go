@@ -5,13 +5,15 @@ import (
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/metrics"
+	"github.com/configcat/configcat-proxy/model"
 	"github.com/configcat/configcat-proxy/sdk/statistics"
 	"github.com/configcat/configcat-proxy/sdk/store"
 	"github.com/configcat/configcat-proxy/sdk/store/cache"
 	"github.com/configcat/configcat-proxy/sdk/store/cache/redis"
 	"github.com/configcat/configcat-proxy/sdk/store/file"
 	"github.com/configcat/configcat-proxy/status"
-	"github.com/configcat/go-sdk/v8"
+	"github.com/configcat/go-sdk/v9"
+	"github.com/configcat/go-sdk/v9/configcatcache"
 	"net/http"
 	"net/url"
 	"sync"
@@ -19,9 +21,13 @@ import (
 	"time"
 )
 
+const (
+	validEmptySdkKey = "0000000000000000000000/0000000000000000000000"
+)
+
 type Client interface {
-	Eval(key string, user UserAttrs) (EvalData, error)
-	EvalAll(user UserAttrs) map[string]EvalData
+	Eval(key string, user model.UserAttrs) (model.EvalData, error)
+	EvalAll(user model.UserAttrs) map[string]model.EvalData
 	Keys() []string
 	GetCachedJson() *store.EntryWithEtag
 	SubConfigChanged(id string) <-chan struct{}
@@ -33,18 +39,12 @@ type Client interface {
 	WebhookSignatureValidFor() int
 }
 
-type EvalData struct {
-	Value       interface{}
-	VariationId string
-	User        configcat.User
-}
-
 type Context struct {
 	SdkId              string
 	SDKConf            *config.SDKConfig
 	ProxyConf          *config.HttpProxyConfig
 	CacheConf          *config.CacheConfig
-	GlobalDefaultAttrs UserAttrs
+	GlobalDefaultAttrs model.UserAttrs
 	MetricsHandler     metrics.Handler
 	StatusReporter     status.Reporter
 	EvalReporter       statistics.Reporter
@@ -52,11 +52,11 @@ type Context struct {
 
 type client struct {
 	configCatClient *configcat.Client
-	defaultAttrs    UserAttrs
+	defaultAttrs    model.UserAttrs
 	subscriptions   map[string]chan struct{}
 	readyOnce       sync.Once
 	log             log.Logger
-	cache           store.CacheStorage
+	cache           store.EntryStore
 	sdkCtx          *Context
 	mu              sync.RWMutex
 	initialized     atomic.Bool
@@ -66,24 +66,27 @@ type client struct {
 
 func NewClient(sdkCtx *Context, log log.Logger) Client {
 	sdkLog := log.WithLevel(sdkCtx.SDKConf.Log.GetLevel()).WithPrefix("sdk-" + sdkCtx.SdkId)
-	var offline = sdkCtx.SDKConf.Offline.Enabled
-	var storage store.CacheStorage
+	offline := sdkCtx.SDKConf.Offline.Enabled
+	key := sdkCtx.SDKConf.Key
+	var storage configcat.ConfigCache
 	if offline && sdkCtx.SDKConf.Offline.Local.FilePath != "" {
-		storage = file.NewFileStorage(sdkCtx.SdkId, &sdkCtx.SDKConf.Offline.Local, sdkCtx.StatusReporter, log.WithLevel(sdkCtx.SDKConf.Offline.Log.GetLevel()))
+		key = validEmptySdkKey
+		storage = file.NewFileStore(sdkCtx.SdkId, &sdkCtx.SDKConf.Offline.Local, sdkCtx.StatusReporter, log.WithLevel(sdkCtx.SDKConf.Offline.Log.GetLevel()))
 	} else if offline && sdkCtx.SDKConf.Offline.UseCache && sdkCtx.CacheConf.Redis.Enabled {
-		redisStore := redis.NewRedisStorage(&sdkCtx.CacheConf.Redis, sdkCtx.StatusReporter)
-		storage = cache.NewNotifyingCacheStorage(sdkCtx.SdkId, sdkCtx.SDKConf.Key, redisStore, &sdkCtx.SDKConf.Offline, sdkCtx.StatusReporter, log.WithLevel(sdkCtx.SDKConf.Offline.Log.GetLevel()))
+		cacheKey := configcatcache.ProduceCacheKey(key, configcatcache.ConfigJSONName, configcatcache.ConfigJSONCacheVersion)
+		cacheStore := cache.NewCacheStore(redis.NewRedisStore(&sdkCtx.CacheConf.Redis), sdkCtx.StatusReporter)
+		storage = cache.NewNotifyingCacheStore(sdkCtx.SdkId, cacheKey, cacheStore, &sdkCtx.SDKConf.Offline, sdkCtx.StatusReporter, log.WithLevel(sdkCtx.SDKConf.Offline.Log.GetLevel()))
 	} else if !offline && sdkCtx.CacheConf.Redis.Enabled {
-		storage = redis.NewRedisStorage(&sdkCtx.CacheConf.Redis, sdkCtx.StatusReporter)
+		storage = cache.NewCacheStore(redis.NewRedisStore(&sdkCtx.CacheConf.Redis), sdkCtx.StatusReporter)
 	} else {
 		storage = store.NewInMemoryStorage()
 	}
 	client := &client{
 		log:           sdkLog,
 		subscriptions: make(map[string]chan struct{}),
-		cache:         storage,
+		cache:         storage.(store.EntryStore),
 		sdkCtx:        sdkCtx,
-		defaultAttrs:  MergeUserAttrs(sdkCtx.GlobalDefaultAttrs, sdkCtx.SDKConf.DefaultAttrs),
+		defaultAttrs:  model.MergeUserAttrs(sdkCtx.GlobalDefaultAttrs, sdkCtx.SDKConf.DefaultAttrs),
 	}
 	client.ctx, client.ctxCancel = context.WithCancel(context.Background())
 	var transport = http.DefaultTransport.(*http.Transport)
@@ -102,9 +105,10 @@ func NewClient(sdkCtx *Context, log log.Logger) Client {
 		Offline:        offline,
 		BaseURL:        sdkCtx.SDKConf.BaseUrl,
 		Cache:          storage,
-		SDKKey:         sdkCtx.SDKConf.Key,
+		SDKKey:         key,
 		DataGovernance: configcat.Global,
 		Logger:         sdkLog,
+		LogLevel:       sdkLog.GetLevel(),
 		Transport:      OverrideUserAgent(transport),
 		Hooks:          &configcat.Hooks{},
 	}
@@ -121,9 +125,9 @@ func NewClient(sdkCtx *Context, log log.Logger) Client {
 	}
 	if sdkCtx.EvalReporter != nil {
 		clientConfig.Hooks.OnFlagEvaluated = func(details *configcat.EvaluationDetails) {
-			var user map[string]string
+			var user map[string]interface{}
 			if details.Data.User != nil {
-				if userAttrs, ok := details.Data.User.(UserAttrs); ok && userAttrs != nil {
+				if userAttrs, ok := details.Data.User.(model.UserAttrs); ok && userAttrs != nil {
 					user = userAttrs
 				}
 			}
@@ -144,13 +148,13 @@ func NewClient(sdkCtx *Context, log log.Logger) Client {
 		_ = client.Refresh()
 	}
 
-	if notifier, ok := storage.(store.NotifyingStorage); ok {
+	if notifier, ok := storage.(store.NotifyingStore); ok {
 		go client.listen(notifier)
 	}
 	return client
 }
 
-func (c *client) listen(notifier store.NotifyingStorage) {
+func (c *client) listen(notifier store.NotifyingStore) {
 	for {
 		select {
 		case <-notifier.Modified():
@@ -179,18 +183,18 @@ func (c *client) signal() {
 	}
 }
 
-func (c *client) Eval(key string, user UserAttrs) (EvalData, error) {
-	mergedUser := MergeUserAttrs(c.defaultAttrs, user)
+func (c *client) Eval(key string, user model.UserAttrs) (model.EvalData, error) {
+	mergedUser := model.MergeUserAttrs(c.defaultAttrs, user)
 	details := c.configCatClient.Snapshot(mergedUser).GetValueDetails(key)
-	return EvalData{Value: details.Value, VariationId: details.Data.VariationID, User: details.Data.User}, details.Data.Error
+	return model.EvalData{Value: details.Value, VariationId: details.Data.VariationID, User: details.Data.User}, details.Data.Error
 }
 
-func (c *client) EvalAll(user UserAttrs) map[string]EvalData {
-	mergedUser := MergeUserAttrs(c.defaultAttrs, user)
+func (c *client) EvalAll(user model.UserAttrs) map[string]model.EvalData {
+	mergedUser := model.MergeUserAttrs(c.defaultAttrs, user)
 	allDetails := c.configCatClient.Snapshot(mergedUser).GetAllValueDetails()
-	result := make(map[string]EvalData, len(allDetails))
+	result := make(map[string]model.EvalData, len(allDetails))
 	for _, details := range allDetails {
-		result[details.Data.Key] = EvalData{Value: details.Value, VariationId: details.Data.VariationID, User: details.Data.User}
+		result[details.Data.Key] = model.EvalData{Value: details.Value, VariationId: details.Data.VariationID, User: details.Data.User}
 	}
 	return result
 }
@@ -246,7 +250,9 @@ func (c *client) WebhookSignatureValidFor() int {
 
 func (c *client) Close() {
 	c.ctxCancel()
-	c.cache.Close()
+	if closable, ok := c.cache.(store.ClosableStore); ok {
+		closable.Close()
+	}
 	c.configCatClient.Close()
 	c.log.Reportf("shutdown complete")
 }

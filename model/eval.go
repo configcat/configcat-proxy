@@ -1,6 +1,14 @@
 package model
 
-import "github.com/configcat/configcat-proxy/sdk"
+import (
+	configcat "github.com/configcat/go-sdk/v9"
+)
+
+type EvalData struct {
+	Value       interface{}
+	VariationId string
+	User        configcat.User
+}
 
 type ResponsePayload struct {
 	Value       interface{} `json:"value"`
@@ -8,10 +16,10 @@ type ResponsePayload struct {
 }
 
 type EvalRequest struct {
-	Key  string        `json:"key"`
-	User sdk.UserAttrs `json:"user"`
+	Key  string    `json:"key"`
+	User UserAttrs `json:"user"`
 }
 
-func PayloadFromEvalData(evalData *sdk.EvalData) ResponsePayload {
+func PayloadFromEvalData(evalData *EvalData) ResponsePayload {
 	return ResponsePayload{Value: evalData.Value, VariationId: evalData.VariationId}
 }

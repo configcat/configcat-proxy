@@ -1,7 +1,7 @@
 package log
 
 import (
-	"github.com/configcat/go-sdk/v8"
+	"github.com/configcat/go-sdk/v9"
 	"io"
 	"log"
 	"os"
@@ -28,10 +28,10 @@ type Logger interface {
 
 const (
 	Debug Level = iota
-	Info  Level = iota
-	Warn  Level = iota
-	Error Level = iota
-	None  Level = iota
+	Info
+	Warn
+	Error
+	None
 )
 
 type logger struct {
@@ -158,6 +158,8 @@ func (level Level) prefix() string {
 		return "[warning]"
 	case Error:
 		return "[error]"
+	case None:
+		return ""
 	}
 	return "-"
 }

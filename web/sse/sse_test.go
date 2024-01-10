@@ -6,8 +6,6 @@ import (
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/log"
-	"github.com/configcat/configcat-proxy/sdk"
-	"github.com/configcat/go-sdk/v8/configcattest"
 	"github.com/julienschmidt/httprouter"
 	"github.com/stretchr/testify/assert"
 	"net/http"
@@ -17,13 +15,11 @@ import (
 )
 
 func TestSSE_Get(t *testing.T) {
-	key := configcattest.RandomSDKKey()
-	var h = &configcattest.Handler{}
-	_ = h.SetFlags(key, map[string]*configcattest.Flag{"flag": {Default: true}})
-	client := newClient(t, h, key)
-	srv := NewServer(map[string]sdk.Client{"test": client}, nil, &config.SseConfig{Enabled: true}, log.NewNullLogger())
 	res := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	srv := newServer(t, &config.SseConfig{Enabled: true})
+
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 	data := base64.URLEncoding.EncodeToString([]byte(`{"key":"flag"}`))
@@ -43,13 +39,11 @@ func TestSSE_Get(t *testing.T) {
 }
 
 func TestSSE_Get_All(t *testing.T) {
-	key := configcattest.RandomSDKKey()
-	var h = &configcattest.Handler{}
-	_ = h.SetFlags(key, map[string]*configcattest.Flag{"flag": {Default: true}})
-	client := newClient(t, h, key)
-	srv := NewServer(map[string]sdk.Client{"test": client}, nil, &config.SseConfig{Enabled: true}, log.NewNullLogger())
 	res := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	srv := newServer(t, &config.SseConfig{Enabled: true})
+
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 	data := base64.URLEncoding.EncodeToString([]byte(`{"key":"flag"}`))
@@ -69,20 +63,11 @@ func TestSSE_Get_All(t *testing.T) {
 }
 
 func TestSSE_Get_User(t *testing.T) {
-	key := configcattest.RandomSDKKey()
-	var h = &configcattest.Handler{}
-	_ = h.SetFlags(key, map[string]*configcattest.Flag{
-		"flag": {
-			Default: true,
-			Rules: []configcattest.Rule{
-				{Value: false, Comparator: configcattest.OpContains, ComparisonValue: "test", ComparisonAttribute: "Identifier"},
-			},
-		},
-	})
-	client := newClient(t, h, key)
-	srv := NewServer(map[string]sdk.Client{"test": client}, nil, &config.SseConfig{Enabled: true}, log.NewNullLogger())
 	res := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	srv := newServer(t, &config.SseConfig{Enabled: true})
+
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 	data := base64.URLEncoding.EncodeToString([]byte(`{"key":"flag","user":{"Identifier":"test"}}`))
@@ -101,21 +86,30 @@ func TestSSE_Get_User(t *testing.T) {
 	assert.Equal(t, "keep-alive", res.Header().Get("Connection"))
 }
 
-func TestSSE_Get_All_User(t *testing.T) {
-	key := configcattest.RandomSDKKey()
-	var h = &configcattest.Handler{}
-	_ = h.SetFlags(key, map[string]*configcattest.Flag{
-		"flag": {
-			Default: true,
-			Rules: []configcattest.Rule{
-				{Value: false, Comparator: configcattest.OpContains, ComparisonValue: "test", ComparisonAttribute: "Identifier"},
-			},
-		},
-	})
-	client := newClient(t, h, key)
-	srv := NewServer(map[string]sdk.Client{"test": client}, nil, &config.SseConfig{Enabled: true}, log.NewNullLogger())
+func TestSSE_Get_User_Invalid(t *testing.T) {
 	res := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	srv := newServer(t, &config.SseConfig{Enabled: true})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+	data := base64.URLEncoding.EncodeToString([]byte(`{"key":"flag","user":{"Identifier":false}}`))
+	params := httprouter.Params{httprouter.Param{Key: streamDataName, Value: data}, httprouter.Param{Key: "sdkId", Value: "test"}}
+	ctx = context.WithValue(ctx, httprouter.ParamsKey, params)
+	req = req.WithContext(ctx)
+	srv.SingleFlag(res, req)
+
+	assert.Equal(t, http.StatusBadRequest, res.Code)
+	assert.Contains(t, res.Body.String(), "Failed to deserialize incoming 'data': 'Identifier' has an invalid type, only 'string', 'number', and 'string[]' types are allowed")
+}
+
+func TestSSE_Get_All_User(t *testing.T) {
+	res := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	srv := newServer(t, &config.SseConfig{Enabled: true})
+
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 	data := base64.URLEncoding.EncodeToString([]byte(`{"key":"flag","user":{"Identifier":"test"}}`))
@@ -134,13 +128,25 @@ func TestSSE_Get_All_User(t *testing.T) {
 	assert.Equal(t, "keep-alive", res.Header().Get("Connection"))
 }
 
-func newClient(t *testing.T, h *configcattest.Handler, key string) sdk.Client {
-	srv := httptest.NewServer(h)
-	ctx := testutils.NewTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key}, nil)
-	client := sdk.NewClient(ctx, log.NewNullLogger())
-	t.Cleanup(func() {
-		srv.Close()
-		client.Close()
-	})
-	return client
+func TestSSE_Get_All_User_Invalid(t *testing.T) {
+	res := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	srv := newServer(t, &config.SseConfig{Enabled: true})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+	data := base64.URLEncoding.EncodeToString([]byte(`{"key":"flag","user":{"Identifier":false}}`))
+	params := httprouter.Params{httprouter.Param{Key: streamDataName, Value: data}, httprouter.Param{Key: "sdkId", Value: "test"}}
+	ctx = context.WithValue(ctx, httprouter.ParamsKey, params)
+	req = req.WithContext(ctx)
+	srv.AllFlags(res, req)
+
+	assert.Equal(t, http.StatusBadRequest, res.Code)
+	assert.Contains(t, res.Body.String(), "Failed to deserialize incoming 'data': 'Identifier' has an invalid type, only 'string', 'number', and 'string[]' types are allowed")
+}
+
+func newServer(t *testing.T, conf *config.SseConfig) *Server {
+	client, _, _ := testutils.NewTestSdkClient(t)
+	return NewServer(client, nil, conf, log.NewNullLogger())
 }
