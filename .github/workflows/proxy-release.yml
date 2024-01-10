@@ -28,7 +28,7 @@ jobs:
     - name: Test with race
       run: go test -race ./...
 
-  release-docker:
+  release-docker-version-tag:
     runs-on: ubuntu-latest
     needs: [ test ]
 
@@ -50,8 +50,31 @@ jobs:
           context: .
           push: true
           tags: |
-              configcat/proxy:latest
               configcat/proxy:${{ env.VERSION }}
+
+  release-docker-latest-tag:
+    runs-on: ubuntu-latest
+    needs: [ test ]
+    if: endsWith(github.event.base_ref, 'main') == true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get version from tag
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            configcat/proxy:latest
 
   release-goreleaser:
     runs-on: ubuntu-latest
