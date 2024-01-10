@@ -2,9 +2,9 @@ name: Proxy CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ configv5 ]
   pull_request:
-    branches: [ main ]
+    branches: [ configv5 ]
     types: [opened, synchronize, reopened]
     
   workflow_dispatch:
@@ -16,7 +16,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Setup Go
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v5
       with:
         go-version: stable
           
@@ -38,7 +38,7 @@ jobs:
           fetch-depth: 0
 
       - name: Setup Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version: stable
 
