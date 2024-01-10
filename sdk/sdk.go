@@ -108,7 +108,7 @@ func NewClient(sdkCtx *Context, log log.Logger) Client {
 		SDKKey:         key,
 		DataGovernance: configcat.Global,
 		Logger:         sdkLog,
-		LogLevel:       sdkLog.GetLevel(),
+		LogLevel:       sdkLog.GetConfigCatLevel(),
 		Transport:      OverrideUserAgent(transport),
 		Hooks:          &configcat.Hooks{},
 	}

@@ -10,7 +10,7 @@ import (
 type Level int
 
 type Logger interface {
-	GetLevel() configcat.LogLevel // for the SDK
+	GetConfigCatLevel() configcat.LogLevel // for the SDK
 
 	Level() Level
 
@@ -82,7 +82,7 @@ func (l *logger) WithPrefix(prefix string) Logger {
 	}
 }
 
-func (l *logger) GetLevel() configcat.LogLevel {
+func (l *logger) GetConfigCatLevel() configcat.LogLevel {
 	switch l.level {
 	case Debug:
 		return configcat.LogLevelDebug
@@ -92,6 +92,8 @@ func (l *logger) GetLevel() configcat.LogLevel {
 		return configcat.LogLevelWarn
 	case Error:
 		return configcat.LogLevelError
+	case None:
+		return configcat.LogLevelNone
 	default:
 		return configcat.LogLevelWarn
 	}

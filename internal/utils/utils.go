@@ -80,9 +80,9 @@ func Keys[M ~map[K]V, K comparable, V any](m M) []K {
 	return r
 }
 
-func DedupStringSlice[T string](strings []T) []T {
-	keys := make(map[T]bool)
-	var list []T
+func DedupStringSlice(strings []string) []string {
+	keys := make(map[string]bool)
+	var list []string
 	for _, item := range strings {
 		if _, value := keys[item]; !value {
 			keys[item] = true
