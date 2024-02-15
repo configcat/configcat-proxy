@@ -3,15 +3,15 @@ module github.com/configcat/configcat-proxy
 go 1.21
 
 require (
-	github.com/alicebob/miniredis/v2 v2.31.0
+	github.com/alicebob/miniredis/v2 v2.31.1
 	github.com/cespare/xxhash/v2 v2.2.0
 	github.com/configcat/go-sdk/v9 v9.0.3
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/prometheus/client_golang v1.18.0
-	github.com/redis/go-redis/v9 v9.3.1
+	github.com/redis/go-redis/v9 v9.4.0
 	github.com/stretchr/testify v1.8.4
-	google.golang.org/grpc v1.60.1
+	google.golang.org/grpc v1.61.1
 	google.golang.org/protobuf v1.32.0
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -29,8 +29,8 @@ require (
 	github.com/prometheus/common v0.45.0 // indirect
 	github.com/prometheus/procfs v0.12.0 // indirect
 	github.com/yuin/gopher-lua v1.1.0 // indirect
-	golang.org/x/net v0.17.0 // indirect
+	golang.org/x/net v0.18.0 // indirect
 	golang.org/x/sys v0.15.0 // indirect
-	golang.org/x/text v0.13.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20231002182017-d307bd883b97 // indirect
+	golang.org/x/text v0.14.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20231106174013-bbf56f31fb17 // indirect
 )
