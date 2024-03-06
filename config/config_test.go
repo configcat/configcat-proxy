@@ -34,7 +34,7 @@ func TestConfig_Defaults(t *testing.T) {
 
 	assert.True(t, conf.Http.Webhook.Enabled)
 
-	assert.True(t, conf.Http.Status.Enabled)
+	assert.False(t, conf.Http.Status.Enabled)
 
 	assert.False(t, conf.GlobalOfflineConfig.Enabled)
 	assert.Equal(t, 5, conf.GlobalOfflineConfig.CachePollInterval)
@@ -440,7 +440,7 @@ http:
       CUSTOM-HEADER1: "sse-val1"
       CUSTOM-HEADER2: "sse-val2"
   status:
-    enabled: false
+    enabled: true
 `, func(file string) {
 		conf, err := LoadConfigFromFileAndEnvironment(file)
 		require.NoError(t, err)
@@ -476,7 +476,7 @@ http:
 		assert.Equal(t, "api-auth1", conf.Http.Api.AuthHeaders["X-API-KEY1"])
 		assert.Equal(t, "api-auth2", conf.Http.Api.AuthHeaders["X-API-KEY2"])
 
-		assert.False(t, conf.Http.Status.Enabled)
+		assert.True(t, conf.Http.Status.Enabled)
 	})
 }
 

@@ -270,7 +270,7 @@ func (c *Config) setDefaults() {
 
 	c.Http.Webhook.Enabled = true
 
-	c.Http.Status.Enabled = true
+	c.Http.Status.Enabled = false
 
 	c.Cache.Redis.DB = 0
 	c.Cache.Redis.Addresses = []string{"localhost:6379"}
