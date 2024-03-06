@@ -36,7 +36,7 @@ There are three ways how the Proxy is informed about the availability of new fea
 
 These are the ports used by the Proxy by default:
 - **8050**: for standard HTTP communication. ([API](https://configcat.com/docs/advanced/proxy/endpoints#api), [CDN proxy](https://configcat.com/docs/advanced/proxy/endpoints#cdn-proxy), [Webhook](https://configcat.com/docs/advanced/proxy/endpoints#webhook), [SSE](https://configcat.com/docs/advanced/proxy/endpoints#sse))
-- **8051**: for providing diagnostics data ([status](https://configcat.com/docs/advanced/proxy/monitoring#status), [prometheus metrics](https://configcat.com/docs/advanced/proxy/monitoring#prometheus-metrics).
+- **8051**: for providing diagnostic data ([status](https://configcat.com/docs/advanced/proxy/monitoring#status), [prometheus metrics](https://configcat.com/docs/advanced/proxy/monitoring#prometheus-metrics).
 - **50051**: for [gRPC](https://configcat.com/docs/advanced/proxy/grpc) communication.
 
 ## Installation
