@@ -35,8 +35,8 @@ There are three ways how the Proxy is informed about the availability of new fea
 - **Cache polling / file watching**: In [offline mode](https://configcat.com/docs/advanced/proxy/proxy-overview#offline-mode), the Proxy can regularly poll a cache or watch a file for new *config JSON* versions.
 
 These are the ports used by the Proxy by default:
-- **8050**: for standard HTTP communication. ([API](https://configcat.com/docs/advanced/proxy/endpoints#api), [CDN proxy](https://configcat.com/docs/advanced/proxy/endpoints#cdn-proxy), [Webhook](https://configcat.com/docs/advanced/proxy/endpoints#webhook), [SSE](https://configcat.com/docs/advanced/proxy/endpoints#sse), [Status](https://configcat.com/docs/advanced/proxy/monitoring#status))
-- **8051**: for providing [prometheus metrics](https://configcat.com/docs/advanced/proxy/monitoring#prometheus-metrics).
+- **8050**: for standard HTTP communication. ([API](https://configcat.com/docs/advanced/proxy/endpoints#api), [CDN proxy](https://configcat.com/docs/advanced/proxy/endpoints#cdn-proxy), [Webhook](https://configcat.com/docs/advanced/proxy/endpoints#webhook), [SSE](https://configcat.com/docs/advanced/proxy/endpoints#sse))
+- **8051**: for providing diagnostics data ([status](https://configcat.com/docs/advanced/proxy/monitoring#status), [prometheus metrics](https://configcat.com/docs/advanced/proxy/monitoring#prometheus-metrics).
 - **50051**: for [gRPC](https://configcat.com/docs/advanced/proxy/grpc) communication.
 
 ## Installation
@@ -83,7 +83,7 @@ Using with `docker-compose`:
 You can download the executables directly from <a target="_blank" href="https://github.com/configcat/configcat-proxy/releases">GitHub Releases</a> for your desired platform.
 
 ## Health Check
-After installation, you can check the [status endpoint](https://configcat.com/docs/advanced/proxy/monitoring#status) of the Proxy to ensure it's working correctly: `http(s)://localhost:8050/status`
+After installation, you can check the [status endpoint](https://configcat.com/docs/advanced/proxy/monitoring#status) of the Proxy to ensure it's working correctly: `http://localhost:8051/status`
 
 ## Need help?
 https://configcat.com/support
