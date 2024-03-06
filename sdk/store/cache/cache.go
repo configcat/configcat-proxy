@@ -2,8 +2,8 @@ package cache
 
 import (
 	"context"
+	"github.com/configcat/configcat-proxy/diag/status"
 	"github.com/configcat/configcat-proxy/sdk/store"
-	"github.com/configcat/configcat-proxy/status"
 	configcat "github.com/configcat/go-sdk/v9"
 	"github.com/configcat/go-sdk/v9/configcatcache"
 )

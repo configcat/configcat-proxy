@@ -35,7 +35,7 @@ func TestAPI_Eval(t *testing.T) {
 		utils.AddSdkIdContextParam(req)
 		srv.Eval(res, req)
 
-		assert.Equal(t, http.StatusInternalServerError, res.Code)
+		assert.Equal(t, http.StatusBadRequest, res.Code)
 	})
 	t.Run("online user", func(t *testing.T) {
 		res := httptest.NewRecorder()
@@ -81,7 +81,7 @@ func TestAPI_Eval(t *testing.T) {
 			utils.AddSdkIdContextParam(req)
 			srv.Eval(res, req)
 
-			assert.Equal(t, http.StatusInternalServerError, res.Code)
+			assert.Equal(t, http.StatusBadRequest, res.Code)
 		})
 	})
 }

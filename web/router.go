@@ -2,11 +2,11 @@ package web
 
 import (
 	"github.com/configcat/configcat-proxy/config"
+	"github.com/configcat/configcat-proxy/diag/metrics"
+	"github.com/configcat/configcat-proxy/diag/status"
 	"github.com/configcat/configcat-proxy/internal/utils"
 	"github.com/configcat/configcat-proxy/log"
-	"github.com/configcat/configcat-proxy/metrics"
 	"github.com/configcat/configcat-proxy/sdk"
-	"github.com/configcat/configcat-proxy/status"
 	"github.com/configcat/configcat-proxy/web/api"
 	"github.com/configcat/configcat-proxy/web/cdnproxy"
 	"github.com/configcat/configcat-proxy/web/mware"
@@ -22,10 +22,10 @@ type HttpRouter struct {
 	webhookServer  *webhook.Server
 	cdnProxyServer *cdnproxy.Server
 	apiServer      *api.Server
-	metrics        metrics.Handler
+	metrics        metrics.Reporter
 }
 
-func NewRouter(sdkClients map[string]sdk.Client, metrics metrics.Handler, reporter status.Reporter, conf *config.HttpConfig, log log.Logger) *HttpRouter {
+func NewRouter(sdkClients map[string]sdk.Client, metrics metrics.Reporter, reporter status.Reporter, conf *config.HttpConfig, log log.Logger) *HttpRouter {
 	httpLog := log.WithLevel(conf.Log.GetLevel()).WithPrefix("http")
 
 	r := &HttpRouter{
@@ -48,7 +48,9 @@ func NewRouter(sdkClients map[string]sdk.Client, metrics metrics.Handler, report
 	if conf.Api.Enabled {
 		r.setupAPIRoutes(&conf.Api, sdkClients, httpLog)
 	}
-	r.setupStatusRoutes(reporter)
+	if conf.Status.Enabled {
+		r.setupStatusRoutes(reporter, httpLog)
+	}
 	return r
 }
 
@@ -128,7 +130,7 @@ func (s *HttpRouter) setupCDNProxyRoutes(conf *config.CdnProxyConfig, sdkClients
 	l.Reportf("CDN proxy enabled, accepting requests on paths: %s", path)
 }
 
-func (s *HttpRouter) setupStatusRoutes(reporter status.Reporter) {
+func (s *HttpRouter) setupStatusRoutes(reporter status.Reporter, l log.Logger) {
 	path := "/status"
 	handler := mware.AutoOptions(mware.GZip(reporter.HttpHandler()))
 	if s.metrics != nil {
@@ -136,6 +138,7 @@ func (s *HttpRouter) setupStatusRoutes(reporter status.Reporter) {
 	}
 	s.router.HandlerFunc(http.MethodGet, path, handler)
 	s.router.HandlerFunc(http.MethodOptions, path, handler)
+	l.Reportf("status enabled, accepting requests on path: %s", path)
 }
 
 type endpoint struct {

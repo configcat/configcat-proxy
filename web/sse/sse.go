@@ -3,9 +3,9 @@ package sse
 import (
 	"encoding/json"
 	"github.com/configcat/configcat-proxy/config"
+	"github.com/configcat/configcat-proxy/diag/metrics"
 	"github.com/configcat/configcat-proxy/internal/utils"
 	"github.com/configcat/configcat-proxy/log"
-	"github.com/configcat/configcat-proxy/metrics"
 	"github.com/configcat/configcat-proxy/model"
 	"github.com/configcat/configcat-proxy/sdk"
 	"github.com/configcat/configcat-proxy/stream"
@@ -22,7 +22,7 @@ type Server struct {
 	stop         chan struct{}
 }
 
-func NewServer(sdkClients map[string]sdk.Client, metrics metrics.Handler, conf *config.SseConfig, logger log.Logger) *Server {
+func NewServer(sdkClients map[string]sdk.Client, metrics metrics.Reporter, conf *config.SseConfig, logger log.Logger) *Server {
 	sseLog := logger.WithLevel(conf.Log.GetLevel()).WithPrefix("sse")
 	return &Server{
 		streamServer: stream.NewServer(sdkClients, metrics, sseLog, "sse"),

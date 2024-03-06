@@ -7,7 +7,7 @@ import (
 )
 
 func TestConnection(t *testing.T) {
-	handler := NewHandler().(*handler)
+	handler := NewReporter().(*reporter)
 
 	handler.IncrementConnection("test", "t1", "n1")
 	handler.IncrementConnection("test", "t1", "n1")

@@ -18,8 +18,10 @@ func TestConfig_Defaults(t *testing.T) {
 	assert.Equal(t, 50051, conf.Grpc.Port)
 	assert.True(t, conf.Grpc.Enabled)
 
-	assert.Equal(t, 8051, conf.Metrics.Port)
-	assert.True(t, conf.Metrics.Enabled)
+	assert.Equal(t, 8051, conf.Diag.Port)
+	assert.True(t, conf.Diag.Enabled)
+	assert.True(t, conf.Diag.Status.Enabled)
+	assert.True(t, conf.Diag.Metrics.Enabled)
 
 	assert.True(t, conf.Http.Sse.Enabled)
 	assert.True(t, conf.Http.Sse.CORS.Enabled)
@@ -31,6 +33,8 @@ func TestConfig_Defaults(t *testing.T) {
 	assert.True(t, conf.Http.Api.CORS.Enabled)
 
 	assert.True(t, conf.Http.Webhook.Enabled)
+
+	assert.True(t, conf.Http.Status.Enabled)
 
 	assert.False(t, conf.GlobalOfflineConfig.Enabled)
 	assert.Equal(t, 5, conf.GlobalOfflineConfig.CachePollInterval)
@@ -373,17 +377,23 @@ log:
 	})
 }
 
-func TestMetricsConfig_YAML(t *testing.T) {
+func TestDiagConfig_YAML(t *testing.T) {
 	utils.UseTempFile(`
-metrics:
+diag:
   enabled: false
   port: 8091
+  status:
+    enabled: false
+  metrics:
+    enabled: false
 `, func(file string) {
 		conf, err := LoadConfigFromFileAndEnvironment(file)
 		require.NoError(t, err)
 
-		assert.False(t, conf.Metrics.Enabled)
-		assert.Equal(t, 8091, conf.Metrics.Port)
+		assert.False(t, conf.Diag.Enabled)
+		assert.Equal(t, 8091, conf.Diag.Port)
+		assert.False(t, conf.Diag.Status.Enabled)
+		assert.False(t, conf.Diag.Metrics.Enabled)
 	})
 }
 
@@ -429,6 +439,8 @@ http:
     headers:
       CUSTOM-HEADER1: "sse-val1"
       CUSTOM-HEADER2: "sse-val2"
+  status:
+    enabled: false
 `, func(file string) {
 		conf, err := LoadConfigFromFileAndEnvironment(file)
 		require.NoError(t, err)
@@ -463,6 +475,8 @@ http:
 		assert.Equal(t, "api-val2", conf.Http.Api.Headers["CUSTOM-HEADER2"])
 		assert.Equal(t, "api-auth1", conf.Http.Api.AuthHeaders["X-API-KEY1"])
 		assert.Equal(t, "api-auth2", conf.Http.Api.AuthHeaders["X-API-KEY2"])
+
+		assert.False(t, conf.Http.Status.Enabled)
 	})
 }
 

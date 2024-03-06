@@ -10,7 +10,7 @@ import (
 )
 
 func TestMeasure(t *testing.T) {
-	handler := NewHandler().(*handler)
+	handler := NewReporter().(*reporter)
 	h := Measure(handler, func(writer http.ResponseWriter, request *http.Request) {
 		writer.WriteHeader(http.StatusOK)
 	})
@@ -32,7 +32,7 @@ func TestMeasure(t *testing.T) {
 }
 
 func TestMeasure_Non_Success(t *testing.T) {
-	handler := NewHandler().(*handler)
+	handler := NewReporter().(*reporter)
 	h := Measure(handler, func(writer http.ResponseWriter, request *http.Request) {
 		writer.WriteHeader(http.StatusBadRequest)
 	})
@@ -54,7 +54,7 @@ func TestMeasure_Non_Success(t *testing.T) {
 }
 
 func TestIntercept(t *testing.T) {
-	handler := NewHandler().(*handler)
+	handler := NewReporter().(*reporter)
 	h := http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		writer.WriteHeader(http.StatusOK)
 	})

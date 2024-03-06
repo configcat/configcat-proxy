@@ -4,9 +4,9 @@ import (
 	"crypto/tls"
 	"fmt"
 	"github.com/configcat/configcat-proxy/config"
+	"github.com/configcat/configcat-proxy/diag/metrics"
 	"github.com/configcat/configcat-proxy/grpc/proto"
 	"github.com/configcat/configcat-proxy/log"
-	"github.com/configcat/configcat-proxy/metrics"
 	"github.com/configcat/configcat-proxy/sdk"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -24,7 +24,7 @@ type Server struct {
 	errorChannel chan error
 }
 
-func NewServer(sdkClients map[string]sdk.Client, metrics metrics.Handler, conf *config.Config, logger log.Logger, errorChan chan error) *Server {
+func NewServer(sdkClients map[string]sdk.Client, metrics metrics.Reporter, conf *config.Config, logger log.Logger, errorChan chan error) *Server {
 	grpcLog := logger.WithLevel(conf.Grpc.Log.GetLevel()).WithPrefix("grpc")
 	opts := make([]grpc.ServerOption, 0)
 	if conf.Tls.Enabled {

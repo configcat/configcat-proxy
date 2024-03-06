@@ -3,9 +3,9 @@ package file
 import (
 	"context"
 	"github.com/configcat/configcat-proxy/config"
+	"github.com/configcat/configcat-proxy/diag/status"
 	"github.com/configcat/configcat-proxy/internal/utils"
 	"github.com/configcat/configcat-proxy/log"
-	"github.com/configcat/configcat-proxy/status"
 	"github.com/configcat/go-sdk/v9/configcatcache"
 	"github.com/stretchr/testify/assert"
 	"testing"
