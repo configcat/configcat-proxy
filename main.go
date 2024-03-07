@@ -18,6 +18,13 @@ import (
 )
 
 func main() {
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGQUIT)
+
+	os.Exit(run(sigChan))
+}
+
+func run(closeSignal chan os.Signal) int {
 	logger := log.NewLogger(os.Stderr, os.Stdout, log.Warn)
 	logger.Reportf("service starting...")
 	var configFile string
@@ -27,12 +34,12 @@ func main() {
 	conf, err := config.LoadConfigFromFileAndEnvironment(configFile)
 	if err != nil {
 		logger.Errorf("%s", err)
-		os.Exit(1)
+		return 1
 	}
 	err = conf.Validate()
 	if err != nil {
 		logger.Errorf("%s", err)
-		os.Exit(1)
+		return 1
 	}
 
 	logger = logger.WithLevel(conf.Log.GetLevel())
@@ -79,12 +86,9 @@ func main() {
 		grpcServer.Listen()
 	}
 
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGQUIT)
-
 	for {
 		select {
-		case <-sigChan:
+		case <-closeSignal:
 			if evalReporter != nil {
 				evalReporter.Close()
 			}
@@ -119,10 +123,10 @@ func main() {
 				}()
 			}
 			wg.Wait()
-			os.Exit(0)
+			return 0
 		case err = <-errorChan:
 			logger.Errorf("%s", err)
-			os.Exit(1)
+			return 1
 		}
 	}
 }
