@@ -32,6 +32,8 @@ func NewServer(handler http.Handler, log log.Logger, conf *config.Config, errorC
 		for _, c := range conf.Tls.Certificates {
 			if cert, err := tls.LoadX509KeyPair(c.Cert, c.Key); err == nil {
 				t.Certificates = append(t.Certificates, cert)
+			} else {
+				httpLog.Errorf("failed to load the certificate and key pair: %s", err)
 			}
 		}
 		httpServer.TLSConfig = t

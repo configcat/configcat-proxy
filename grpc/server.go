@@ -34,6 +34,8 @@ func NewServer(sdkClients map[string]sdk.Client, metrics metrics.Reporter, conf 
 		for _, c := range conf.Tls.Certificates {
 			if cert, err := tls.LoadX509KeyPair(c.Cert, c.Key); err == nil {
 				t.Certificates = append(t.Certificates, cert)
+			} else {
+				grpcLog.Errorf("failed to load the certificate and key pair: %s", err)
 			}
 		}
 		opts = append(opts, grpc.Creds(credentials.NewTLS(t)))

@@ -9,7 +9,6 @@ import (
 	"github.com/configcat/configcat-proxy/grpc"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/sdk"
-	"github.com/configcat/configcat-proxy/sdk/statistics"
 	"github.com/configcat/configcat-proxy/web"
 	"os"
 	"os/signal"
@@ -47,7 +46,7 @@ func run(closeSignal chan os.Signal) int {
 	errorChan := make(chan error)
 
 	// in the future we might implement an evaluation statistics reporter
-	var evalReporter statistics.Reporter
+	// var evalReporter statistics.Reporter
 
 	statusReporter := status.NewReporter(&conf)
 
@@ -66,7 +65,7 @@ func run(closeSignal chan os.Signal) int {
 	for key, sdkConf := range conf.SDKs {
 		sdkClients[key] = sdk.NewClient(&sdk.Context{
 			SDKConf:            sdkConf,
-			EvalReporter:       evalReporter,
+			EvalReporter:       nil,
 			MetricsReporter:    metricsReporter,
 			StatusReporter:     statusReporter,
 			ProxyConf:          &conf.HttpProxy,
@@ -89,9 +88,6 @@ func run(closeSignal chan os.Signal) int {
 	for {
 		select {
 		case <-closeSignal:
-			if evalReporter != nil {
-				evalReporter.Close()
-			}
 			for _, sdkClient := range sdkClients {
 				sdkClient.Close()
 			}
