@@ -9,8 +9,17 @@ log:
   level: "debug"
 
 grpc:
-  enabled: false
+  enabled: true
   port: 50052
+
+diag:
+  enabled: false
 
 http:
   port: 8090
+
+tls:
+  enabled: true
+  certificates:
+    - cert: "./internal/resources/cert/localhost.crt"
+      key: "./internal/resources/cert/localhost.key"

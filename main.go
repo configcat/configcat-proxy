@@ -16,6 +16,11 @@ import (
 	"syscall"
 )
 
+const (
+	exitOk = iota
+	exitFailure
+)
+
 func main() {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGQUIT)
@@ -33,12 +38,12 @@ func run(closeSignal chan os.Signal) int {
 	conf, err := config.LoadConfigFromFileAndEnvironment(configFile)
 	if err != nil {
 		logger.Errorf("%s", err)
-		return 1
+		return exitFailure
 	}
 	err = conf.Validate()
 	if err != nil {
 		logger.Errorf("%s", err)
-		return 1
+		return exitFailure
 	}
 
 	logger = logger.WithLevel(conf.Log.GetLevel())
@@ -76,12 +81,18 @@ func run(closeSignal chan os.Signal) int {
 	}
 	router := web.NewRouter(sdkClients, metricsReporter, statusReporter, &conf.Http, logger)
 
-	httpServer := web.NewServer(router.Handler(), logger, &conf, errorChan)
+	httpServer, err := web.NewServer(router.Handler(), logger, &conf, errorChan)
+	if err != nil {
+		return exitFailure
+	}
 	httpServer.Listen()
 
 	var grpcServer *grpc.Server
 	if conf.Grpc.Enabled {
-		grpcServer = grpc.NewServer(sdkClients, metricsReporter, &conf, logger, errorChan)
+		grpcServer, err = grpc.NewServer(sdkClients, metricsReporter, &conf, logger, errorChan)
+		if err != nil {
+			return exitFailure
+		}
 		grpcServer.Listen()
 	}
 
@@ -119,10 +130,10 @@ func run(closeSignal chan os.Signal) int {
 				}()
 			}
 			wg.Wait()
-			return 0
+			return exitOk
 		case err = <-errorChan:
 			logger.Errorf("%s", err)
-			return 1
+			return exitFailure
 		}
 	}
 }

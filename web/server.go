@@ -19,7 +19,7 @@ type Server struct {
 	errorChannel chan error
 }
 
-func NewServer(handler http.Handler, log log.Logger, conf *config.Config, errorChan chan error) *Server {
+func NewServer(handler http.Handler, log log.Logger, conf *config.Config, errorChan chan error) (*Server, error) {
 	httpLog := log.WithPrefix("http")
 	httpServer := &http.Server{
 		Addr:    ":" + strconv.Itoa(conf.Http.Port),
@@ -34,6 +34,7 @@ func NewServer(handler http.Handler, log log.Logger, conf *config.Config, errorC
 				t.Certificates = append(t.Certificates, cert)
 			} else {
 				httpLog.Errorf("failed to load the certificate and key pair: %s", err)
+				return nil, err
 			}
 		}
 		httpServer.TLSConfig = t
@@ -45,7 +46,7 @@ func NewServer(handler http.Handler, log log.Logger, conf *config.Config, errorC
 		httpServer:   httpServer,
 		errorChannel: errorChan,
 	}
-	return srv
+	return srv, nil
 }
 
 func (s *Server) Listen() {

@@ -24,7 +24,7 @@ type Server struct {
 	errorChannel chan error
 }
 
-func NewServer(sdkClients map[string]sdk.Client, metrics metrics.Reporter, conf *config.Config, logger log.Logger, errorChan chan error) *Server {
+func NewServer(sdkClients map[string]sdk.Client, metrics metrics.Reporter, conf *config.Config, logger log.Logger, errorChan chan error) (*Server, error) {
 	grpcLog := logger.WithLevel(conf.Grpc.Log.GetLevel()).WithPrefix("grpc")
 	opts := make([]grpc.ServerOption, 0)
 	if conf.Tls.Enabled {
@@ -36,6 +36,7 @@ func NewServer(sdkClients map[string]sdk.Client, metrics metrics.Reporter, conf 
 				t.Certificates = append(t.Certificates, cert)
 			} else {
 				grpcLog.Errorf("failed to load the certificate and key pair: %s", err)
+				return nil, err
 			}
 		}
 		opts = append(opts, grpc.Creds(credentials.NewTLS(t)))
@@ -53,7 +54,7 @@ func NewServer(sdkClients map[string]sdk.Client, metrics metrics.Reporter, conf 
 		errorChannel: errorChan,
 		grpcServer:   grpcServer,
 		conf:         conf,
-	}
+	}, nil
 }
 
 func (s *Server) Listen() {

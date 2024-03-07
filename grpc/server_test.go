@@ -1,11 +1,14 @@
-package web
+package grpc
 
 import (
 	"github.com/configcat/configcat-proxy/config"
+	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/internal/utils"
 	"github.com/configcat/configcat-proxy/log"
+	"github.com/configcat/configcat-proxy/sdk"
+	"github.com/configcat/go-sdk/v9/configcattest"
 	"github.com/stretchr/testify/assert"
-	"net/http"
+	"net/http/httptest"
 	"strings"
 	"sync"
 	"testing"
@@ -14,7 +17,22 @@ import (
 
 func TestNewServer(t *testing.T) {
 	errChan := make(chan error)
-	srv, _ := NewServer(http.HandlerFunc(ServeHTTP), log.NewNullLogger(), &config.Config{Http: config.HttpConfig{Port: 5050}}, errChan)
+
+	key := configcattest.RandomSDKKey()
+	var h configcattest.Handler
+	_ = h.SetFlags(key, map[string]*configcattest.Flag{
+		"flag": {
+			Default: "test1",
+		},
+	})
+	sdkSrv := httptest.NewServer(&h)
+	defer sdkSrv.Close()
+
+	ctx := testutils.NewTestSdkContext(&config.SDKConfig{BaseUrl: sdkSrv.URL, Key: key, PollInterval: 1}, nil)
+	sdkClient := sdk.NewClient(ctx, log.NewNullLogger())
+	defer sdkClient.Close()
+
+	srv, _ := NewServer(map[string]sdk.Client{"test": sdkClient}, nil, &config.Config{Grpc: config.GrpcConfig{Port: 5060}}, log.NewNullLogger(), errChan)
 
 	wg := sync.WaitGroup{}
 	wg.Add(1)
@@ -47,7 +65,7 @@ cAanE4yl3NNEZoDmMdSj2U11BneKSzHDR+l2hDF9wBifWGI9DQ1ItfA5I6MwnL+0
 J03vcwPSwme4bKC/avAT2oDD7jLGLA+kuhMqHvVq7nXRzs46xyFPBBv7fBxXjPPG
 c89d0ISafKtZ9kIKaRrzu2HX+b0fzKr0vtHYDLtC1U5oU7GPB12eupERkmWYlhrw
 hDL3X7kt3jEZFkzGV1XL1IJx/g==
------END CERTIFICATE-----`, func(cert string) {
+-----END CERTIFICATE-----`, func(certFile string) {
 		utils.UseTempFile(`-----BEGIN PRIVATE KEY-----
 MIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQDokw043wD7ySw2
 dpsDb7tKaIUhz0c832UXNeolSOvhEpdA8I3Y5chERTv7bNRkJ4RNoIMpL6MR+M1M
@@ -76,15 +94,30 @@ CU+ceTbM2uy3hVnQLvCnraN7hkF02Fa9ZwP6nmnsvhfdaIUP5WLm3A+qMWu/PL0i
 F/dUCUF6M/DyihQUnOl+MD9Sg89ZHiftqXSY8jGR14uH4woStyUFHiFbtajmnqV7
 MK4Li/LGWcksyoF+hbPNXMFCIA==
 -----END PRIVATE KEY-----
-`, func(key string) {
+`, func(keyFile string) {
 			errChan := make(chan error)
 			tlsConf := config.TlsConfig{
 				Enabled: true,
 				Certificates: []config.CertConfig{
-					{Cert: strings.ReplaceAll(cert, "\\", "/"), Key: strings.ReplaceAll(key, "\\", "/")},
+					{Cert: strings.ReplaceAll(certFile, "\\", "/"), Key: strings.ReplaceAll(keyFile, "\\", "/")},
 				},
 			}
-			srv, _ := NewServer(http.HandlerFunc(ServeHTTP), log.NewNullLogger(), &config.Config{Http: config.HttpConfig{Port: 5050}, Tls: tlsConf}, errChan)
+
+			key := configcattest.RandomSDKKey()
+			var h configcattest.Handler
+			_ = h.SetFlags(key, map[string]*configcattest.Flag{
+				"flag": {
+					Default: "test1",
+				},
+			})
+			sdkSrv := httptest.NewServer(&h)
+			defer sdkSrv.Close()
+
+			ctx := testutils.NewTestSdkContext(&config.SDKConfig{BaseUrl: sdkSrv.URL, Key: key, PollInterval: 1}, nil)
+			sdkClient := sdk.NewClient(ctx, log.NewNullLogger())
+			defer sdkClient.Close()
+
+			srv, _ := NewServer(map[string]sdk.Client{"test": sdkClient}, nil, &config.Config{Grpc: config.GrpcConfig{Port: 5060}, Tls: tlsConf}, log.NewNullLogger(), errChan)
 
 			wg := sync.WaitGroup{}
 			wg.Add(1)
@@ -102,23 +135,6 @@ MK4Li/LGWcksyoF+hbPNXMFCIA==
 	})
 }
 
-func TestNewServer_Invalid_Port(t *testing.T) {
-	errChan := make(chan error)
-	srv, _ := NewServer(http.HandlerFunc(ServeHTTP), log.NewNullLogger(), &config.Config{Http: config.HttpConfig{Port: -1}}, errChan)
-
-	wg := sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		srv.Listen()
-		wg.Done()
-	}()
-	time.Sleep(1 * time.Second)
-	srv.Shutdown()
-	wg.Wait()
-
-	assert.NotNil(t, readFromErrChan(errChan))
-}
-
 func TestNewServer_TLS_Missing_Cert(t *testing.T) {
 	errChan := make(chan error)
 	tlsConf := config.TlsConfig{
@@ -127,12 +143,23 @@ func TestNewServer_TLS_Missing_Cert(t *testing.T) {
 			{Cert: "./non-existing.cert", Key: "./non-existing.key"},
 		},
 	}
-	_, err := NewServer(http.HandlerFunc(ServeHTTP), log.NewNullLogger(), &config.Config{Http: config.HttpConfig{Port: 5050}, Tls: tlsConf}, errChan)
-	assert.Error(t, err)
-}
 
-func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
+	key := configcattest.RandomSDKKey()
+	var h configcattest.Handler
+	_ = h.SetFlags(key, map[string]*configcattest.Flag{
+		"flag": {
+			Default: "test1",
+		},
+	})
+	sdkSrv := httptest.NewServer(&h)
+	defer sdkSrv.Close()
+
+	ctx := testutils.NewTestSdkContext(&config.SDKConfig{BaseUrl: sdkSrv.URL, Key: key, PollInterval: 1}, nil)
+	sdkClient := sdk.NewClient(ctx, log.NewNullLogger())
+	defer sdkClient.Close()
+
+	_, err := NewServer(map[string]sdk.Client{"test": sdkClient}, nil, &config.Config{Grpc: config.GrpcConfig{Port: 5060}, Tls: tlsConf}, log.NewDebugLogger(), errChan)
+	assert.Error(t, err)
 }
 
 func readFromErrChan(ch chan error) error {
