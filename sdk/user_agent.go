@@ -4,7 +4,7 @@ import (
 	"net/http"
 )
 
-const proxyVersion = "0.4.0"
+const proxyVersion = "0.4.1"
 
 type userAgentInterceptor struct {
 	http.RoundTripper
