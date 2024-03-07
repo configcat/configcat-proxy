@@ -13,7 +13,7 @@ import (
 func TestNewServer(t *testing.T) {
 	errChan := make(chan error)
 	conf := config.DiagConfig{
-		Port:    5050,
+		Port:    5051,
 		Enabled: true,
 		Status:  config.StatusConfig{Enabled: true},
 		Metrics: config.MetricsConfig{Enabled: true},
@@ -21,12 +21,12 @@ func TestNewServer(t *testing.T) {
 	srv := NewServer(&conf, status.NewReporter(&config.Config{SDKs: map[string]*config.SDKConfig{"sdk": {Key: "key"}}}), metrics.NewReporter(), log.NewNullLogger(), errChan)
 	go srv.Listen()
 
-	req, _ := http.NewRequest(http.MethodGet, "http://localhost:5050/status", http.NoBody)
+	req, _ := http.NewRequest(http.MethodGet, "http://localhost:5051/status", http.NoBody)
 	resp, err := http.DefaultClient.Do(req)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
-	req, _ = http.NewRequest(http.MethodGet, "http://localhost:5050/metrics", http.NoBody)
+	req, _ = http.NewRequest(http.MethodGet, "http://localhost:5051/metrics", http.NoBody)
 	resp, err = http.DefaultClient.Do(req)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -39,7 +39,7 @@ func TestNewServer(t *testing.T) {
 func TestNewServer_NotEnabled(t *testing.T) {
 	errChan := make(chan error)
 	conf := config.DiagConfig{
-		Port:    5050,
+		Port:    5052,
 		Enabled: true,
 		Status:  config.StatusConfig{Enabled: false},
 		Metrics: config.MetricsConfig{Enabled: false},
@@ -48,12 +48,12 @@ func TestNewServer_NotEnabled(t *testing.T) {
 	srv := NewServer(&conf, status.NewReporter(&config.Config{SDKs: map[string]*config.SDKConfig{"sdk": {Key: "key"}}}), metrics.NewReporter(), log.NewNullLogger(), errChan)
 	go srv.Listen()
 
-	req, _ := http.NewRequest(http.MethodGet, "http://localhost:5050/status", http.NoBody)
+	req, _ := http.NewRequest(http.MethodGet, "http://localhost:5052/status", http.NoBody)
 	resp, err := http.DefaultClient.Do(req)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
 
-	req, _ = http.NewRequest(http.MethodGet, "http://localhost:5050/metrics", http.NoBody)
+	req, _ = http.NewRequest(http.MethodGet, "http://localhost:5052/metrics", http.NoBody)
 	resp, err = http.DefaultClient.Do(req)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
@@ -66,7 +66,7 @@ func TestNewServer_NotEnabled(t *testing.T) {
 func TestNewServer_NilReporters(t *testing.T) {
 	errChan := make(chan error)
 	conf := config.DiagConfig{
-		Port:    5050,
+		Port:    5053,
 		Enabled: true,
 		Status:  config.StatusConfig{Enabled: true},
 		Metrics: config.MetricsConfig{Enabled: true},
@@ -74,12 +74,12 @@ func TestNewServer_NilReporters(t *testing.T) {
 	srv := NewServer(&conf, nil, nil, log.NewNullLogger(), errChan)
 	go srv.Listen()
 
-	req, _ := http.NewRequest(http.MethodGet, "http://localhost:5050/status", http.NoBody)
+	req, _ := http.NewRequest(http.MethodGet, "http://localhost:5053/status", http.NoBody)
 	resp, err := http.DefaultClient.Do(req)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
 
-	req, _ = http.NewRequest(http.MethodGet, "http://localhost:5050/metrics", http.NoBody)
+	req, _ = http.NewRequest(http.MethodGet, "http://localhost:5053/metrics", http.NoBody)
 	resp, err = http.DefaultClient.Do(req)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusNotFound, resp.StatusCode)

@@ -14,6 +14,9 @@ import (
 func TestAppMain(t *testing.T) {
 	resetFlags()
 	t.Setenv("CONFIGCAT_SDKS", `{"sdk1":"XxPbCKmzIUGORk4vsufpzw/iC_KABprDEueeQs3yovVnQ"}`)
+	t.Setenv("CONFIGCAT_HTTP_PORT", "5081")
+	t.Setenv("CONFIGCAT_GRPC_PORT", "5082")
+	t.Setenv("CONFIGCAT_DIAG_PORT", "5083")
 
 	var exitCode int
 	closeSignal := make(chan os.Signal, 1)

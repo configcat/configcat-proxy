@@ -14,7 +14,7 @@ import (
 
 func TestNewServer(t *testing.T) {
 	errChan := make(chan error)
-	srv, _ := NewServer(http.HandlerFunc(ServeHTTP), log.NewNullLogger(), &config.Config{Http: config.HttpConfig{Port: 5050}}, errChan)
+	srv, _ := NewServer(http.HandlerFunc(ServeHTTP), log.NewNullLogger(), &config.Config{Http: config.HttpConfig{Port: 5071}}, errChan)
 
 	wg := sync.WaitGroup{}
 	wg.Add(1)
@@ -84,7 +84,7 @@ MK4Li/LGWcksyoF+hbPNXMFCIA==
 					{Cert: strings.ReplaceAll(cert, "\\", "/"), Key: strings.ReplaceAll(key, "\\", "/")},
 				},
 			}
-			srv, _ := NewServer(http.HandlerFunc(ServeHTTP), log.NewNullLogger(), &config.Config{Http: config.HttpConfig{Port: 5050}, Tls: tlsConf}, errChan)
+			srv, _ := NewServer(http.HandlerFunc(ServeHTTP), log.NewNullLogger(), &config.Config{Http: config.HttpConfig{Port: 5072}, Tls: tlsConf}, errChan)
 
 			wg := sync.WaitGroup{}
 			wg.Add(1)
@@ -127,7 +127,7 @@ func TestNewServer_TLS_Missing_Cert(t *testing.T) {
 			{Cert: "./non-existing.cert", Key: "./non-existing.key"},
 		},
 	}
-	_, err := NewServer(http.HandlerFunc(ServeHTTP), log.NewNullLogger(), &config.Config{Http: config.HttpConfig{Port: 5050}, Tls: tlsConf}, errChan)
+	_, err := NewServer(http.HandlerFunc(ServeHTTP), log.NewNullLogger(), &config.Config{Http: config.HttpConfig{Port: 5073}, Tls: tlsConf}, errChan)
 	assert.Error(t, err)
 }
 

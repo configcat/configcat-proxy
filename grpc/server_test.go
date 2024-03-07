@@ -32,7 +32,7 @@ func TestNewServer(t *testing.T) {
 	sdkClient := sdk.NewClient(ctx, log.NewNullLogger())
 	defer sdkClient.Close()
 
-	srv, _ := NewServer(map[string]sdk.Client{"test": sdkClient}, nil, &config.Config{Grpc: config.GrpcConfig{Port: 5060}}, log.NewNullLogger(), errChan)
+	srv, _ := NewServer(map[string]sdk.Client{"test": sdkClient}, nil, &config.Config{Grpc: config.GrpcConfig{Port: 5061}}, log.NewNullLogger(), errChan)
 
 	wg := sync.WaitGroup{}
 	wg.Add(1)
@@ -117,7 +117,7 @@ MK4Li/LGWcksyoF+hbPNXMFCIA==
 			sdkClient := sdk.NewClient(ctx, log.NewNullLogger())
 			defer sdkClient.Close()
 
-			srv, _ := NewServer(map[string]sdk.Client{"test": sdkClient}, nil, &config.Config{Grpc: config.GrpcConfig{Port: 5060}, Tls: tlsConf}, log.NewNullLogger(), errChan)
+			srv, _ := NewServer(map[string]sdk.Client{"test": sdkClient}, nil, &config.Config{Grpc: config.GrpcConfig{Port: 5062}, Tls: tlsConf}, log.NewNullLogger(), errChan)
 
 			wg := sync.WaitGroup{}
 			wg.Add(1)
@@ -158,7 +158,7 @@ func TestNewServer_TLS_Missing_Cert(t *testing.T) {
 	sdkClient := sdk.NewClient(ctx, log.NewNullLogger())
 	defer sdkClient.Close()
 
-	_, err := NewServer(map[string]sdk.Client{"test": sdkClient}, nil, &config.Config{Grpc: config.GrpcConfig{Port: 5060}, Tls: tlsConf}, log.NewDebugLogger(), errChan)
+	_, err := NewServer(map[string]sdk.Client{"test": sdkClient}, nil, &config.Config{Grpc: config.GrpcConfig{Port: 5063}, Tls: tlsConf}, log.NewDebugLogger(), errChan)
 	assert.Error(t, err)
 }
 
