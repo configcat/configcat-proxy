@@ -2,7 +2,8 @@
 
 [![Build Status](https://github.com/configcat/configcat-proxy/actions/workflows/proxy-ci.yml/badge.svg?branch=main)](https://github.com/configcat/configcat-proxy/actions/workflows/proxy-ci.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/configcat/configcat-proxy)](https://goreportcard.com/report/github.com/configcat/configcat-proxy)
-[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=configcat_configcat-proxy&metric=alert_status)](https://sonarcloud.io/dashboard?id=configcat_configcat-proxy)
+[![Sonar Quality Gate](https://img.shields.io/sonar/quality_gate/configcat_configcat-proxy?logo=sonarcloud&server=https%3A%2F%2Fsonarcloud.io)](https://sonarcloud.io/project/overview?id=configcat_configcat-proxy)
+[![Sonar Coverage](https://img.shields.io/sonar/coverage/configcat_configcat-proxy?logo=SonarCloud&server=https%3A%2F%2Fsonarcloud.io)](https://sonarcloud.io/project/overview?id=configcat_configcat-proxy)
 
 > [!NOTE]\
 > The ConfigCat Proxy is in a public beta phase. If you have feedback or questions, please file a [GitHub Issue](https://github.com/configcat/configcat-proxy/issues) or [contact us](https://configcat.com/support).
