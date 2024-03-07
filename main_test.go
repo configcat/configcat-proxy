@@ -1,7 +1,9 @@
 package main
 
 import (
+	"flag"
 	"github.com/stretchr/testify/assert"
+	"io"
 	"os"
 	"sync"
 	"syscall"
@@ -10,6 +12,7 @@ import (
 )
 
 func TestAppMain(t *testing.T) {
+	resetFlags()
 	t.Setenv("CONFIGCAT_SDKS", `{"sdk1":"XxPbCKmzIUGORk4vsufpzw/iC_KABprDEueeQs3yovVnQ"}`)
 
 	var exitCode int
@@ -28,6 +31,7 @@ func TestAppMain(t *testing.T) {
 }
 
 func TestAppMain_Invalid_Conf(t *testing.T) {
+	resetFlags()
 	var exitCode int
 	closeSignal := make(chan os.Signal, 1)
 	wg := sync.WaitGroup{}
@@ -44,6 +48,7 @@ func TestAppMain_Invalid_Conf(t *testing.T) {
 }
 
 func TestAppMain_Invalid_Config_YAML(t *testing.T) {
+	resetFlags()
 	oldArgs := os.Args
 	defer func() { os.Args = oldArgs }()
 	os.Args = []string{"app", "-c=/tmp/non-existing.yml"}
@@ -64,6 +69,7 @@ func TestAppMain_Invalid_Config_YAML(t *testing.T) {
 }
 
 func TestAppMain_ErrorChannel(t *testing.T) {
+	resetFlags()
 	t.Setenv("CONFIGCAT_SDKS", `{"sdk1":"XxPbCKmzIUGORk4vsufpzw/iC_KABprDEueeQs3yovVnQ"}`)
 	t.Setenv("CONFIGCAT_TLS_ENABLED", "true")
 	t.Setenv("CONFIGCAT_TLS_CERTIFICATES", `[{"key":"./key","cert":"./cert"}]`)
@@ -80,4 +86,9 @@ func TestAppMain_ErrorChannel(t *testing.T) {
 	wg.Wait()
 
 	assert.Equal(t, 1, exitCode)
+}
+
+func resetFlags() {
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
+	flag.CommandLine.SetOutput(io.Discard)
 }
