@@ -68,11 +68,49 @@ func TestAppMain_Invalid_Config_YAML(t *testing.T) {
 	assert.Equal(t, 1, exitCode)
 }
 
-func TestAppMain_ErrorChannel(t *testing.T) {
+func TestAppMain_Invalid_TLS_Cert(t *testing.T) {
 	resetFlags()
 	t.Setenv("CONFIGCAT_SDKS", `{"sdk1":"XxPbCKmzIUGORk4vsufpzw/iC_KABprDEueeQs3yovVnQ"}`)
 	t.Setenv("CONFIGCAT_TLS_ENABLED", "true")
 	t.Setenv("CONFIGCAT_TLS_CERTIFICATES", `[{"key":"./key","cert":"./cert"}]`)
+	var exitCode int
+	closeSignal := make(chan os.Signal, 1)
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		exitCode = run(closeSignal)
+		wg.Done()
+	}()
+	time.Sleep(1 * time.Second)
+	closeSignal <- syscall.SIGTERM
+	wg.Wait()
+
+	assert.Equal(t, 1, exitCode)
+}
+
+func TestAppMain_ErrorChan_Diag_Conflicting_Ports(t *testing.T) {
+	resetFlags()
+	t.Setenv("CONFIGCAT_SDKS", `{"sdk1":"XxPbCKmzIUGORk4vsufpzw/iC_KABprDEueeQs3yovVnQ"}`)
+	t.Setenv("CONFIGCAT_DIAG_PORT", "8050")
+	var exitCode int
+	closeSignal := make(chan os.Signal, 1)
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		exitCode = run(closeSignal)
+		wg.Done()
+	}()
+	time.Sleep(1 * time.Second)
+	closeSignal <- syscall.SIGTERM
+	wg.Wait()
+
+	assert.Equal(t, 1, exitCode)
+}
+
+func TestAppMain_ErrorChan_Grpc_Conflicting_Ports(t *testing.T) {
+	resetFlags()
+	t.Setenv("CONFIGCAT_SDKS", `{"sdk1":"XxPbCKmzIUGORk4vsufpzw/iC_KABprDEueeQs3yovVnQ"}`)
+	t.Setenv("CONFIGCAT_GRPC_PORT", "8051")
 	var exitCode int
 	closeSignal := make(chan os.Signal, 1)
 	wg := sync.WaitGroup{}
