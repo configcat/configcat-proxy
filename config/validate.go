@@ -21,7 +21,7 @@ func (c *Config) Validate() error {
 	if err := c.Http.validate(); err != nil {
 		return err
 	}
-	if err := c.Metrics.validate(); err != nil {
+	if err := c.Diag.validate(); err != nil {
 		return err
 	}
 	if err := c.Grpc.validate(); err != nil {
@@ -170,9 +170,9 @@ func (l *LocalConfig) validate(sdkId string) error {
 	return nil
 }
 
-func (m *MetricsConfig) validate() error {
-	if m.Port < 1 || m.Port > 65535 {
-		return fmt.Errorf("metrics: invalid port %d", m.Port)
+func (d *DiagConfig) validate() error {
+	if d.Port < 1 || d.Port > 65535 {
+		return fmt.Errorf("diag: invalid port %d", d.Port)
 	}
 	return nil
 }

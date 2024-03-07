@@ -3,11 +3,13 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/model"
 	"github.com/configcat/configcat-proxy/sdk"
+	configcat "github.com/configcat/go-sdk/v9"
 	"github.com/julienschmidt/httprouter"
 	"io"
 	"net/http"
@@ -51,7 +53,12 @@ func (s *Server) Eval(w http.ResponseWriter, r *http.Request) {
 	}
 	eval, err := sdkClient.Eval(evalReq.Key, evalReq.User)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		var errKeyNotFound configcat.ErrKeyNotFound
+		if errors.As(err, &errKeyNotFound) {
+			http.Error(w, "evaluation failed; the setting with the key '"+evalReq.Key+"' not found", http.StatusBadRequest)
+		} else {
+			http.Error(w, "the request failed; please check the logs for more details", http.StatusInternalServerError)
+		}
 		return
 	}
 	payload := model.PayloadFromEvalData(&eval)

@@ -3,9 +3,9 @@ package web
 import (
 	"fmt"
 	"github.com/configcat/configcat-proxy/config"
+	"github.com/configcat/configcat-proxy/diag/status"
 	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/log"
-	"github.com/configcat/configcat-proxy/status"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"

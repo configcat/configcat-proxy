@@ -2,9 +2,9 @@ package grpc
 
 import (
 	"context"
+	"github.com/configcat/configcat-proxy/diag/metrics"
 	"github.com/configcat/configcat-proxy/grpc/proto"
 	"github.com/configcat/configcat-proxy/log"
-	"github.com/configcat/configcat-proxy/metrics"
 	"github.com/configcat/configcat-proxy/model"
 	"github.com/configcat/configcat-proxy/sdk"
 	"github.com/configcat/configcat-proxy/stream"
@@ -21,7 +21,7 @@ type flagService struct {
 	closed       chan struct{}
 }
 
-func newFlagService(sdkClients map[string]sdk.Client, metrics metrics.Handler, log log.Logger) *flagService {
+func newFlagService(sdkClients map[string]sdk.Client, metrics metrics.Reporter, log log.Logger) *flagService {
 	return &flagService{
 		streamServer: stream.NewServer(sdkClients, metrics, log, "grpc"),
 		log:          log,

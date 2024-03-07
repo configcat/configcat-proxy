@@ -84,7 +84,7 @@ func (c *Config) loadEnv() error {
 	if err := c.Tls.loadEnv(envPrefix); err != nil {
 		return err
 	}
-	if err := c.Metrics.loadEnv(envPrefix); err != nil {
+	if err := c.Diag.loadEnv(envPrefix); err != nil {
 		return err
 	}
 	if err := c.Cache.loadEnv(envPrefix); err != nil {
@@ -131,6 +131,9 @@ func (h *HttpConfig) loadEnv(prefix string) error {
 		return err
 	}
 	if err := h.Webhook.loadEnv(prefix); err != nil {
+		return err
+	}
+	if err := h.Status.loadEnv(prefix); err != nil {
 		return err
 	}
 	return h.Api.loadEnv(prefix)
@@ -309,12 +312,34 @@ func (l *LogConfig) loadEnv(prefix string) error {
 	return nil
 }
 
+func (d *DiagConfig) loadEnv(prefix string) error {
+	prefix = concatPrefix(prefix, "DIAG")
+	if err := readEnv(prefix, "ENABLED", &d.Enabled, toBool); err != nil {
+		return err
+	}
+	if err := readEnv(prefix, "PORT", &d.Port, toInt); err != nil {
+		return err
+	}
+	if err := d.Status.loadEnv(prefix); err != nil {
+		return err
+	}
+	if err := d.Metrics.loadEnv(prefix); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (m *MetricsConfig) loadEnv(prefix string) error {
 	prefix = concatPrefix(prefix, "METRICS")
 	if err := readEnv(prefix, "ENABLED", &m.Enabled, toBool); err != nil {
 		return err
 	}
-	if err := readEnv(prefix, "PORT", &m.Port, toInt); err != nil {
+	return nil
+}
+
+func (s *StatusConfig) loadEnv(prefix string) error {
+	prefix = concatPrefix(prefix, "STATUS")
+	if err := readEnv(prefix, "ENABLED", &s.Enabled, toBool); err != nil {
 		return err
 	}
 	return nil

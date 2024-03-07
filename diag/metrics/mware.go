@@ -17,7 +17,7 @@ func (r *requestInterceptor) WriteHeader(statusCode int) {
 	r.ResponseWriter.WriteHeader(statusCode)
 }
 
-func Measure(metricsHandler Handler, next http.HandlerFunc) http.HandlerFunc {
+func Measure(metricsHandler Reporter, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		interceptor := requestInterceptor{w, http.StatusOK}
@@ -25,18 +25,18 @@ func Measure(metricsHandler Handler, next http.HandlerFunc) http.HandlerFunc {
 		next(&interceptor, r)
 
 		duration := time.Since(start)
-		metricsHandler.(*handler).responseTime.WithLabelValues(r.URL.Path, r.Method, strconv.Itoa(interceptor.statusCode)).Observe(duration.Seconds())
+		metricsHandler.(*reporter).responseTime.WithLabelValues(r.URL.Path, r.Method, strconv.Itoa(interceptor.statusCode)).Observe(duration.Seconds())
 	}
 }
 
 type clientInterceptor struct {
 	http.RoundTripper
 
-	metricsHandler Handler
+	metricsHandler Reporter
 	sdkId          string
 }
 
-func InterceptSdk(sdkId string, metricsHandler Handler, transport http.RoundTripper) http.RoundTripper {
+func InterceptSdk(sdkId string, metricsHandler Reporter, transport http.RoundTripper) http.RoundTripper {
 	return &clientInterceptor{metricsHandler: metricsHandler, RoundTripper: transport, sdkId: sdkId}
 }
 
@@ -50,6 +50,6 @@ func (i *clientInterceptor) RoundTrip(r *http.Request) (*http.Response, error) {
 	} else {
 		stat = resp.Status
 	}
-	i.metricsHandler.(*handler).sdkResponseTime.WithLabelValues(i.sdkId, r.URL.String(), stat).Observe(duration.Seconds())
+	i.metricsHandler.(*reporter).sdkResponseTime.WithLabelValues(i.sdkId, r.URL.String(), stat).Observe(duration.Seconds())
 	return resp, err
 }

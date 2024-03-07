@@ -2,9 +2,9 @@ package testutils
 
 import (
 	"github.com/configcat/configcat-proxy/config"
+	"github.com/configcat/configcat-proxy/diag/status"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/sdk"
-	"github.com/configcat/configcat-proxy/status"
 	configcat "github.com/configcat/go-sdk/v9"
 	"github.com/configcat/go-sdk/v9/configcattest"
 	"net/http/httptest"
@@ -43,12 +43,12 @@ func NewTestSdkContext(conf *config.SDKConfig, cacheConf *config.CacheConfig) *s
 		cacheConf = &config.CacheConfig{}
 	}
 	return &sdk.Context{
-		SDKConf:        conf,
-		ProxyConf:      &config.HttpProxyConfig{},
-		CacheConf:      cacheConf,
-		StatusReporter: status.NewNullReporter(),
-		MetricsHandler: nil,
-		EvalReporter:   nil,
-		SdkId:          "test",
+		SDKConf:         conf,
+		ProxyConf:       &config.HttpProxyConfig{},
+		CacheConf:       cacheConf,
+		StatusReporter:  status.NewNullReporter(),
+		MetricsReporter: nil,
+		EvalReporter:    nil,
+		SdkId:           "test",
 	}
 }

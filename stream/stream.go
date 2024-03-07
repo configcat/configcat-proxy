@@ -1,8 +1,8 @@
 package stream
 
 import (
+	"github.com/configcat/configcat-proxy/diag/metrics"
 	"github.com/configcat/configcat-proxy/log"
-	"github.com/configcat/configcat-proxy/metrics"
 	"github.com/configcat/configcat-proxy/model"
 	"github.com/configcat/configcat-proxy/sdk"
 	"hash/maphash"
@@ -32,7 +32,7 @@ type stream struct {
 	log              log.Logger
 	serverType       string
 	sdkId            string
-	metrics          metrics.Handler
+	metrics          metrics.Reporter
 	channels         map[string]map[uint64]channel
 	connEstablished  chan *connEstablished
 	connClosed       chan *connClosed
@@ -40,7 +40,7 @@ type stream struct {
 	seed             maphash.Seed
 }
 
-func NewStream(sdkId string, sdkClient sdk.Client, metrics metrics.Handler, log log.Logger, serverType string) Stream {
+func NewStream(sdkId string, sdkClient sdk.Client, metrics metrics.Reporter, log log.Logger, serverType string) Stream {
 	s := &stream{
 		channels:         make(map[string]map[uint64]channel),
 		connEstablished:  make(chan *connEstablished),

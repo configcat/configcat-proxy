@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"github.com/alicebob/miniredis/v2"
 	"github.com/configcat/configcat-proxy/config"
+	"github.com/configcat/configcat-proxy/diag/status"
 	"github.com/configcat/configcat-proxy/internal/utils"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/model"
 	"github.com/configcat/configcat-proxy/sdk/statistics"
-	"github.com/configcat/configcat-proxy/status"
 	"github.com/configcat/go-sdk/v9/configcatcache"
 	"github.com/configcat/go-sdk/v9/configcattest"
 	"github.com/stretchr/testify/assert"
@@ -375,13 +375,13 @@ func newTestSdkContext(conf *config.SDKConfig, cacheConf *config.CacheConfig) *C
 		cacheConf = &config.CacheConfig{}
 	}
 	return &Context{
-		SDKConf:        conf,
-		ProxyConf:      &config.HttpProxyConfig{},
-		CacheConf:      cacheConf,
-		StatusReporter: status.NewNullReporter(),
-		MetricsHandler: nil,
-		EvalReporter:   nil,
-		SdkId:          "test",
+		SDKConf:         conf,
+		ProxyConf:       &config.HttpProxyConfig{},
+		CacheConf:       cacheConf,
+		StatusReporter:  status.NewNullReporter(),
+		MetricsReporter: nil,
+		EvalReporter:    nil,
+		SdkId:           "test",
 	}
 }
 

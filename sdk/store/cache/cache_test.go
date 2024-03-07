@@ -2,7 +2,7 @@ package cache
 
 import (
 	"context"
-	"github.com/configcat/configcat-proxy/status"
+	"github.com/configcat/configcat-proxy/diag/status"
 	"github.com/configcat/go-sdk/v9/configcatcache"
 	"github.com/stretchr/testify/assert"
 	"testing"

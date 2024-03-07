@@ -65,7 +65,7 @@ func TestConfig_Validate(t *testing.T) {
 		require.ErrorContains(t, conf.Validate(), "offline: global offline mode enabled, but no cache is configured")
 	})
 	t.Run("redis enabled without addresses", func(t *testing.T) {
-		conf := Config{SDKs: map[string]*SDKConfig{"env1": {Key: "Key"}}, Cache: CacheConfig{Redis: RedisConfig{Enabled: true}}, Grpc: GrpcConfig{Port: 100}, Metrics: MetricsConfig{Port: 90}, Http: HttpConfig{Port: 80}}
+		conf := Config{SDKs: map[string]*SDKConfig{"env1": {Key: "Key"}}, Cache: CacheConfig{Redis: RedisConfig{Enabled: true}}, Grpc: GrpcConfig{Port: 100}, Diag: DiagConfig{Port: 90}, Http: HttpConfig{Port: 80}}
 		require.ErrorContains(t, conf.Validate(), "redis: at least 1 server address required")
 	})
 	t.Run("redis invalid tls config", func(t *testing.T) {
@@ -106,11 +106,11 @@ func TestConfig_Validate(t *testing.T) {
 			require.ErrorContains(t, conf.Validate(), "http: invalid port -1")
 		})
 		t.Run("metrics", func(t *testing.T) {
-			conf := Config{SDKs: map[string]*SDKConfig{"env1": {Key: "Key"}}, Metrics: MetricsConfig{Port: -1}, Http: HttpConfig{Port: 80}}
-			require.ErrorContains(t, conf.Validate(), "metrics: invalid port -1")
+			conf := Config{SDKs: map[string]*SDKConfig{"env1": {Key: "Key"}}, Diag: DiagConfig{Port: -1}, Http: HttpConfig{Port: 80}}
+			require.ErrorContains(t, conf.Validate(), "diag: invalid port -1")
 		})
 		t.Run("grpc", func(t *testing.T) {
-			conf := Config{SDKs: map[string]*SDKConfig{"env1": {Key: "Key"}}, Grpc: GrpcConfig{Port: -1}, Metrics: MetricsConfig{Port: 90}, Http: HttpConfig{Port: 80}}
+			conf := Config{SDKs: map[string]*SDKConfig{"env1": {Key: "Key"}}, Grpc: GrpcConfig{Port: -1}, Diag: DiagConfig{Port: 90}, Http: HttpConfig{Port: 80}}
 			require.ErrorContains(t, conf.Validate(), "grpc: invalid port -1")
 		})
 	})

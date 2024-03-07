@@ -3,12 +3,13 @@ package main
 import (
 	"flag"
 	"github.com/configcat/configcat-proxy/config"
+	"github.com/configcat/configcat-proxy/diag"
+	"github.com/configcat/configcat-proxy/diag/metrics"
+	"github.com/configcat/configcat-proxy/diag/status"
 	"github.com/configcat/configcat-proxy/grpc"
 	"github.com/configcat/configcat-proxy/log"
-	"github.com/configcat/configcat-proxy/metrics"
 	"github.com/configcat/configcat-proxy/sdk"
 	"github.com/configcat/configcat-proxy/sdk/statistics"
-	"github.com/configcat/configcat-proxy/status"
 	"github.com/configcat/configcat-proxy/web"
 	"os"
 	"os/signal"
@@ -38,24 +39,28 @@ func main() {
 
 	errorChan := make(chan error)
 
-	var metricsHandler metrics.Handler
-	var metricServer *metrics.Server
-	if conf.Metrics.Enabled {
-		metricsHandler = metrics.NewHandler()
-		metricServer = metrics.NewServer(metricsHandler.HttpHandler(), &conf.Metrics, logger, errorChan)
-		metricServer.Listen()
-	}
-
 	// in the future we might implement an evaluation statistics reporter
 	var evalReporter statistics.Reporter
 
 	statusReporter := status.NewReporter(&conf)
+
+	var metricsReporter metrics.Reporter
+	if conf.Diag.Metrics.Enabled {
+		metricsReporter = metrics.NewReporter()
+	}
+
+	var diagServer *diag.Server
+	if conf.Diag.Enabled && (conf.Diag.Metrics.Enabled || conf.Diag.Status.Enabled) {
+		diagServer = diag.NewServer(&conf.Diag, statusReporter, metricsReporter, logger, errorChan)
+		diagServer.Listen()
+	}
+
 	sdkClients := make(map[string]sdk.Client)
 	for key, sdkConf := range conf.SDKs {
 		sdkClients[key] = sdk.NewClient(&sdk.Context{
 			SDKConf:            sdkConf,
 			EvalReporter:       evalReporter,
-			MetricsHandler:     metricsHandler,
+			MetricsReporter:    metricsReporter,
 			StatusReporter:     statusReporter,
 			ProxyConf:          &conf.HttpProxy,
 			CacheConf:          &conf.Cache,
@@ -63,14 +68,14 @@ func main() {
 			SdkId:              key,
 		}, logger)
 	}
-	router := web.NewRouter(sdkClients, metricsHandler, statusReporter, &conf.Http, logger)
+	router := web.NewRouter(sdkClients, metricsReporter, statusReporter, &conf.Http, logger)
 
 	httpServer := web.NewServer(router.Handler(), logger, &conf, errorChan)
 	httpServer.Listen()
 
 	var grpcServer *grpc.Server
 	if conf.Grpc.Enabled {
-		grpcServer = grpc.NewServer(sdkClients, metricsHandler, &conf, logger, errorChan)
+		grpcServer = grpc.NewServer(sdkClients, metricsReporter, &conf, logger, errorChan)
 		grpcServer.Listen()
 	}
 
@@ -89,28 +94,27 @@ func main() {
 			router.Close()
 
 			shutDownCount := 1
-			if metricServer != nil {
-				shutDownCount++
-			}
 			if grpcServer != nil {
 				shutDownCount++
 			}
-
+			if diagServer != nil {
+				shutDownCount++
+			}
 			wg := sync.WaitGroup{}
 			wg.Add(shutDownCount)
 			go func() {
 				httpServer.Shutdown()
 				wg.Done()
 			}()
-			if grpcServer != nil {
+			if diagServer != nil {
 				go func() {
-					grpcServer.Shutdown()
+					diagServer.Shutdown()
 					wg.Done()
 				}()
 			}
-			if metricServer != nil {
+			if grpcServer != nil {
 				go func() {
-					metricServer.Shutdown()
+					grpcServer.Shutdown()
 					wg.Done()
 				}()
 			}

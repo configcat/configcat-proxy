@@ -136,15 +136,19 @@ func TestLogConfig_ENV(t *testing.T) {
 	assert.Equal(t, log.Error, conf.Log.GetLevel())
 }
 
-func TestMetricsConfig_ENV(t *testing.T) {
-	t.Setenv("CONFIGCAT_METRICS_ENABLED", "false")
-	t.Setenv("CONFIGCAT_METRICS_PORT", "8091")
+func TestDiagConfig_ENV(t *testing.T) {
+	t.Setenv("CONFIGCAT_DIAG_ENABLED", "false")
+	t.Setenv("CONFIGCAT_DIAG_PORT", "8091")
+	t.Setenv("CONFIGCAT_DIAG_METRICS_ENABLED", "false")
+	t.Setenv("CONFIGCAT_DIAG_STATUS_ENABLED", "false")
 
 	conf, err := LoadConfigFromFileAndEnvironment("")
 	require.NoError(t, err)
 
-	assert.False(t, conf.Metrics.Enabled)
-	assert.Equal(t, 8091, conf.Metrics.Port)
+	assert.False(t, conf.Diag.Enabled)
+	assert.Equal(t, 8091, conf.Diag.Port)
+	assert.False(t, conf.Diag.Status.Enabled)
+	assert.False(t, conf.Diag.Metrics.Enabled)
 }
 
 func TestGlobalOfflineConfig_ENV(t *testing.T) {
@@ -178,6 +182,7 @@ func TestHttpConfig_ENV(t *testing.T) {
 	t.Setenv("CONFIGCAT_HTTP_API_CORS_ALLOWED_ORIGINS", `["https://example1.com","https://example2.com"]`)
 	t.Setenv("CONFIGCAT_HTTP_API_HEADERS", `{"CUSTOM-HEADER1": "api-val1", "CUSTOM-HEADER2": "api-val2"}`)
 	t.Setenv("CONFIGCAT_HTTP_API_AUTH_HEADERS", `{"X-API-KEY1": "api-auth1", "X-API-KEY2": "api-auth2"}`)
+	t.Setenv("CONFIGCAT_HTTP_STATUS_ENABLED", "true")
 
 	conf, err := LoadConfigFromFileAndEnvironment("")
 	require.NoError(t, err)
@@ -212,6 +217,8 @@ func TestHttpConfig_ENV(t *testing.T) {
 	assert.Equal(t, "api-val2", conf.Http.Api.Headers["CUSTOM-HEADER2"])
 	assert.Equal(t, "api-auth1", conf.Http.Api.AuthHeaders["X-API-KEY1"])
 	assert.Equal(t, "api-auth2", conf.Http.Api.AuthHeaders["X-API-KEY2"])
+
+	assert.True(t, conf.Http.Status.Enabled)
 }
 
 func TestCORSConfig_ENV(t *testing.T) {

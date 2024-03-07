@@ -3,15 +3,15 @@ package sdk
 import (
 	"context"
 	"github.com/configcat/configcat-proxy/config"
+	"github.com/configcat/configcat-proxy/diag/metrics"
+	"github.com/configcat/configcat-proxy/diag/status"
 	"github.com/configcat/configcat-proxy/log"
-	"github.com/configcat/configcat-proxy/metrics"
 	"github.com/configcat/configcat-proxy/model"
 	"github.com/configcat/configcat-proxy/sdk/statistics"
 	"github.com/configcat/configcat-proxy/sdk/store"
 	"github.com/configcat/configcat-proxy/sdk/store/cache"
 	"github.com/configcat/configcat-proxy/sdk/store/cache/redis"
 	"github.com/configcat/configcat-proxy/sdk/store/file"
-	"github.com/configcat/configcat-proxy/status"
 	"github.com/configcat/go-sdk/v9"
 	"github.com/configcat/go-sdk/v9/configcatcache"
 	"net/http"
@@ -45,7 +45,7 @@ type Context struct {
 	ProxyConf          *config.HttpProxyConfig
 	CacheConf          *config.CacheConfig
 	GlobalDefaultAttrs model.UserAttrs
-	MetricsHandler     metrics.Handler
+	MetricsReporter    metrics.Reporter
 	StatusReporter     status.Reporter
 	EvalReporter       statistics.Reporter
 }
@@ -116,8 +116,8 @@ func NewClient(sdkCtx *Context, log log.Logger) Client {
 		clientConfig.Hooks.OnConfigChanged = func() {
 			client.signal()
 		}
-		if sdkCtx.MetricsHandler != nil {
-			clientConfig.Transport = metrics.InterceptSdk(sdkCtx.SdkId, sdkCtx.MetricsHandler, clientConfig.Transport)
+		if sdkCtx.MetricsReporter != nil {
+			clientConfig.Transport = metrics.InterceptSdk(sdkCtx.SdkId, sdkCtx.MetricsReporter, clientConfig.Transport)
 		}
 		clientConfig.Transport = status.InterceptSdk(sdkCtx.SdkId, sdkCtx.StatusReporter, clientConfig.Transport)
 	} else {

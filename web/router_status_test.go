@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/configcat/configcat-proxy/config"
+	"github.com/configcat/configcat-proxy/diag/status"
 	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/internal/utils"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/sdk"
-	"github.com/configcat/configcat-proxy/status"
 	"github.com/configcat/go-sdk/v9/configcattest"
 	"github.com/stretchr/testify/assert"
 	"io"
@@ -95,5 +95,5 @@ func newStatusRouter(t *testing.T) *HttpRouter {
 		srv.Close()
 		client.Close()
 	})
-	return NewRouter(map[string]sdk.Client{"test": client}, nil, reporter, &config.HttpConfig{}, log.NewNullLogger())
+	return NewRouter(map[string]sdk.Client{"test": client}, nil, reporter, &config.HttpConfig{Status: config.StatusConfig{Enabled: true}}, log.NewNullLogger())
 }

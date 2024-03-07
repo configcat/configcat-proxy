@@ -37,7 +37,7 @@ type Config struct {
 	SDKs                map[string]*SDKConfig
 	Grpc                GrpcConfig
 	Tls                 TlsConfig
-	Metrics             MetricsConfig
+	Diag                DiagConfig
 	Http                HttpConfig
 	Cache               CacheConfig
 	HttpProxy           HttpProxyConfig     `yaml:"http_proxy"`
@@ -83,6 +83,7 @@ type HttpConfig struct {
 	Webhook  WebhookConfig
 	Sse      SseConfig
 	Api      ApiConfig
+	Status   StatusConfig
 }
 
 type WebhookConfig struct {
@@ -170,9 +171,19 @@ type TlsConfig struct {
 	Certificates []CertConfig
 }
 
+type DiagConfig struct {
+	Port    int           `yaml:"port"`
+	Enabled bool          `yaml:"enabled"`
+	Metrics MetricsConfig `yaml:"metrics"`
+	Status  StatusConfig  `yaml:"status"`
+}
+
 type MetricsConfig struct {
 	Enabled bool `yaml:"enabled"`
-	Port    int  `yaml:"port"`
+}
+
+type StatusConfig struct {
+	Enabled bool `yaml:"enabled"`
 }
 
 func LoadConfigFromFileAndEnvironment(filePath string) (Config, error) {
@@ -243,8 +254,10 @@ func (c *Config) setDefaults() {
 	c.Grpc.Enabled = true
 	c.Grpc.Port = 50051
 
-	c.Metrics.Enabled = true
-	c.Metrics.Port = 8051
+	c.Diag.Enabled = true
+	c.Diag.Status.Enabled = true
+	c.Diag.Metrics.Enabled = true
+	c.Diag.Port = 8051
 
 	c.Http.Sse.Enabled = true
 	c.Http.Sse.CORS.Enabled = true
@@ -256,6 +269,8 @@ func (c *Config) setDefaults() {
 	c.Http.Api.CORS.Enabled = true
 
 	c.Http.Webhook.Enabled = true
+
+	c.Http.Status.Enabled = false
 
 	c.Cache.Redis.DB = 0
 	c.Cache.Redis.Addresses = []string{"localhost:6379"}
