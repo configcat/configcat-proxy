@@ -81,13 +81,10 @@ func (af *allFlagsChannel) Notify(sdkClient sdk.Client, _ string) int {
 	}
 	final := make(map[string]*model.ResponsePayload)
 	for key, val := range values {
-		lp, ok := af.lastPayload[key]
-		if !ok || val.Value != lp.Value {
-			payload := model.PayloadFromEvalData(&val)
-			af.lastPayload[key] = &payload
-			final[key] = &payload
-		}
+		payload := model.PayloadFromEvalData(&val)
+		final[key] = &payload
 	}
+	af.lastPayload = final
 	if len(final) != 0 {
 		for _, conn := range af.connections {
 			sent++

@@ -11,11 +11,8 @@ import (
 func TestInMemoryStore(t *testing.T) {
 	t.Run("load default", func(t *testing.T) {
 		e := NewInMemoryStorage().(*inMemoryStore)
-		r, err := e.Get(context.Background(), "")
-		assert.NoError(t, err)
-		_, _, j, err := configcatcache.CacheSegmentsFromBytes(r)
-		assert.NotNil(t, r)
-		assert.Equal(t, j, e.LoadEntry().ConfigJson)
+		_, err := e.Get(context.Background(), "")
+		assert.Error(t, err)
 	})
 	t.Run("store, check etag", func(t *testing.T) {
 		e := NewInMemoryStorage().(*inMemoryStore)

@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"fmt"
 	configcat "github.com/configcat/go-sdk/v9"
 	"github.com/configcat/go-sdk/v9/configcatcache"
 )
@@ -30,6 +31,9 @@ func NewInMemoryStorage() configcat.ConfigCache {
 }
 
 func (r *inMemoryStore) Get(_ context.Context, _ string) ([]byte, error) {
+	if r.LoadEntry().Empty {
+		return nil, fmt.Errorf("no entry in cache")
+	}
 	return r.ComposeBytes(), nil
 }
 

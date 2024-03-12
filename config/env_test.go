@@ -166,6 +166,7 @@ func TestGlobalOfflineConfig_ENV(t *testing.T) {
 
 func TestHttpConfig_ENV(t *testing.T) {
 	t.Setenv("CONFIGCAT_HTTP_PORT", "8090")
+	t.Setenv("CONFIGCAT_HTTP_ENABLED", "true")
 	t.Setenv("CONFIGCAT_HTTP_LOG_LEVEL", "info")
 	t.Setenv("CONFIGCAT_HTTP_WEBHOOK_ENABLED", "true")
 	t.Setenv("CONFIGCAT_HTTP_WEBHOOK_AUTH_USER", "mickey")
@@ -189,6 +190,7 @@ func TestHttpConfig_ENV(t *testing.T) {
 
 	assert.Equal(t, log.Info, conf.Http.Log.GetLevel())
 	assert.Equal(t, 8090, conf.Http.Port)
+	assert.True(t, conf.Http.Enabled)
 	assert.True(t, conf.Http.Webhook.Enabled)
 	assert.Equal(t, "mickey", conf.Http.Webhook.Auth.User)
 	assert.Equal(t, "pass", conf.Http.Webhook.Auth.Password)
@@ -257,6 +259,13 @@ func TestGrpcConfig_ENV(t *testing.T) {
 	t.Setenv("CONFIGCAT_GRPC_PORT", "8060")
 	t.Setenv("CONFIGCAT_GRPC_LOG_LEVEL", "error")
 	t.Setenv("CONFIGCAT_GRPC_ENABLED", "true")
+	t.Setenv("CONFIGCAT_GRPC_HEALTH_CHECK_ENABLED", "false")
+	t.Setenv("CONFIGCAT_GRPC_SERVER_REFLECTION_ENABLED", "false")
+	t.Setenv("CONFIGCAT_GRPC_KEEP_ALIVE_MAX_CONNECTION_IDLE", "1")
+	t.Setenv("CONFIGCAT_GRPC_KEEP_ALIVE_MAX_CONNECTION_AGE", "2")
+	t.Setenv("CONFIGCAT_GRPC_KEEP_ALIVE_MAX_CONNECTION_AGE_GRACE", "3")
+	t.Setenv("CONFIGCAT_GRPC_KEEP_ALIVE_TIME", "4")
+	t.Setenv("CONFIGCAT_GRPC_KEEP_ALIVE_TIMEOUT", "5")
 
 	conf, err := LoadConfigFromFileAndEnvironment("")
 	require.NoError(t, err)
@@ -264,6 +273,13 @@ func TestGrpcConfig_ENV(t *testing.T) {
 	assert.Equal(t, log.Error, conf.Grpc.Log.GetLevel())
 	assert.Equal(t, 8060, conf.Grpc.Port)
 	assert.True(t, conf.Grpc.Enabled)
+	assert.False(t, conf.Grpc.ServerReflectionEnabled)
+	assert.False(t, conf.Grpc.HealthCheckEnabled)
+	assert.Equal(t, 1, conf.Grpc.KeepAlive.MaxConnectionIdle)
+	assert.Equal(t, 2, conf.Grpc.KeepAlive.MaxConnectionAge)
+	assert.Equal(t, 3, conf.Grpc.KeepAlive.MaxConnectionAgeGrace)
+	assert.Equal(t, 4, conf.Grpc.KeepAlive.Time)
+	assert.Equal(t, 5, conf.Grpc.KeepAlive.Timeout)
 }
 
 func TestHttpProxyConfig_ENV(t *testing.T) {

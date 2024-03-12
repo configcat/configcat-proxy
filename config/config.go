@@ -6,12 +6,14 @@ import (
 	"fmt"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/model"
+	"google.golang.org/grpc/keepalive"
 	"gopkg.in/yaml.v3"
 	"os"
 	"path"
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"time"
 )
 
 const defaultConfigName = "options.yml"
@@ -58,9 +60,20 @@ type SDKConfig struct {
 }
 
 type GrpcConfig struct {
-	Enabled bool `yaml:"enabled"`
-	Port    int  `yaml:"port"`
-	Log     LogConfig
+	Enabled                 bool            `yaml:"enabled"`
+	Port                    int             `yaml:"port"`
+	ServerReflectionEnabled bool            `yaml:"server_reflection_enabled"`
+	HealthCheckEnabled      bool            `yaml:"health_check_enabled"`
+	KeepAlive               KeepAliveConfig `yaml:"keep_alive"`
+	Log                     LogConfig
+}
+
+type KeepAliveConfig struct {
+	MaxConnectionIdle     int `yaml:"max_connection_idle"`
+	MaxConnectionAge      int `yaml:"max_connection_age"`
+	MaxConnectionAgeGrace int `yaml:"max_connection_age_grace"`
+	Time                  int `yaml:"time"`
+	Timeout               int `yaml:"timeout"`
 }
 
 type SseConfig struct {
@@ -77,6 +90,7 @@ type CertConfig struct {
 }
 
 type HttpConfig struct {
+	Enabled  bool
 	Port     int            `yaml:"port"`
 	CdnProxy CdnProxyConfig `yaml:"cdn_proxy"`
 	Log      LogConfig
@@ -250,9 +264,12 @@ func (t *TlsConfig) GetVersion() uint16 {
 
 func (c *Config) setDefaults() {
 	c.Http.Port = 8050
+	c.Http.Enabled = true
 
 	c.Grpc.Enabled = true
 	c.Grpc.Port = 50051
+	c.Grpc.HealthCheckEnabled = true
+	c.Grpc.ServerReflectionEnabled = true
 
 	c.Diag.Enabled = true
 	c.Diag.Status.Enabled = true
@@ -378,6 +395,30 @@ func (c *CORSConfig) compileRegexes() error {
 		}
 	}
 	return nil
+}
+
+func (k *KeepAliveConfig) ToParams() (keepalive.ServerParameters, bool) {
+	if k.MaxConnectionIdle == 0 && k.MaxConnectionAge == 0 && k.MaxConnectionAgeGrace == 0 &&
+		k.Time == 0 && k.Timeout == 0 {
+		return keepalive.ServerParameters{}, false
+	}
+	param := keepalive.ServerParameters{}
+	if k.MaxConnectionIdle != 0 {
+		param.MaxConnectionIdle = time.Duration(k.MaxConnectionIdle) * time.Second
+	}
+	if k.MaxConnectionAge != 0 {
+		param.MaxConnectionAge = time.Duration(k.MaxConnectionAge) * time.Second
+	}
+	if k.MaxConnectionAgeGrace != 0 {
+		param.MaxConnectionAgeGrace = time.Duration(k.MaxConnectionAgeGrace) * time.Second
+	}
+	if k.Time != 0 {
+		param.Time = time.Duration(k.Time) * time.Second
+	}
+	if k.Timeout != 0 {
+		param.Timeout = time.Duration(k.Timeout) * time.Second
+	}
+	return param, true
 }
 
 func defaultConfigPath() (string, bool) {

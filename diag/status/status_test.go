@@ -14,29 +14,12 @@ func TestReporter_Online(t *testing.T) {
 	t.Run("ok", func(t *testing.T) {
 		reporter := NewReporter(&config.Config{SDKs: map[string]*config.SDKConfig{"t": {}}})
 		srv := httptest.NewServer(reporter.HttpHandler())
-		reporter.ReportOk("t", "")
 		stat := readStatus(srv.URL)
 
-		assert.Equal(t, Healthy, stat.Status)
-		assert.Equal(t, Healthy, stat.SDKs["t"].Source.Status)
+		assert.Equal(t, Initializing, stat.Status)
+		assert.Equal(t, Initializing, stat.SDKs["t"].Source.Status)
 		assert.Equal(t, Online, stat.SDKs["t"].Mode)
-		assert.Equal(t, 1, len(stat.SDKs["t"].Source.Records))
-		assert.Equal(t, RemoteSrc, stat.SDKs["t"].Source.Type)
-		assert.Equal(t, NA, stat.Cache.Status)
-		assert.Equal(t, 0, len(stat.Cache.Records))
-	})
-
-	t.Run("degraded after 2 errors, then ok again", func(t *testing.T) {
-		reporter := NewReporter(&config.Config{SDKs: map[string]*config.SDKConfig{"t": {}}})
-		srv := httptest.NewServer(reporter.HttpHandler())
-		reporter.ReportError("t", "")
-		reporter.ReportError("t", "")
-		stat := readStatus(srv.URL)
-
-		assert.Equal(t, Degraded, stat.Status)
-		assert.Equal(t, Degraded, stat.SDKs["t"].Source.Status)
-		assert.Equal(t, Online, stat.SDKs["t"].Mode)
-		assert.Equal(t, 2, len(stat.SDKs["t"].Source.Records))
+		assert.Equal(t, 0, len(stat.SDKs["t"].Source.Records))
 		assert.Equal(t, RemoteSrc, stat.SDKs["t"].Source.Type)
 		assert.Equal(t, NA, stat.Cache.Status)
 		assert.Equal(t, 0, len(stat.Cache.Records))
@@ -47,7 +30,45 @@ func TestReporter_Online(t *testing.T) {
 		assert.Equal(t, Healthy, stat.Status)
 		assert.Equal(t, Healthy, stat.SDKs["t"].Source.Status)
 		assert.Equal(t, Online, stat.SDKs["t"].Mode)
-		assert.Equal(t, 3, len(stat.SDKs["t"].Source.Records))
+		assert.Equal(t, 1, len(stat.SDKs["t"].Source.Records))
+		assert.Equal(t, RemoteSrc, stat.SDKs["t"].Source.Type)
+		assert.Equal(t, NA, stat.Cache.Status)
+		assert.Equal(t, 0, len(stat.Cache.Records))
+	})
+
+	t.Run("down after 1 error, then ok, then degraded", func(t *testing.T) {
+		reporter := NewReporter(&config.Config{SDKs: map[string]*config.SDKConfig{"t": {}}})
+		srv := httptest.NewServer(reporter.HttpHandler())
+		reporter.ReportError("t", "")
+		stat := readStatus(srv.URL)
+
+		assert.Equal(t, Down, stat.Status)
+		assert.Equal(t, Down, stat.SDKs["t"].Source.Status)
+		assert.Equal(t, Online, stat.SDKs["t"].Mode)
+		assert.Equal(t, 1, len(stat.SDKs["t"].Source.Records))
+		assert.Equal(t, RemoteSrc, stat.SDKs["t"].Source.Type)
+		assert.Equal(t, NA, stat.Cache.Status)
+		assert.Equal(t, 0, len(stat.Cache.Records))
+
+		reporter.ReportOk("t", "")
+		stat = readStatus(srv.URL)
+
+		assert.Equal(t, Healthy, stat.Status)
+		assert.Equal(t, Healthy, stat.SDKs["t"].Source.Status)
+		assert.Equal(t, Online, stat.SDKs["t"].Mode)
+		assert.Equal(t, 2, len(stat.SDKs["t"].Source.Records))
+		assert.Equal(t, RemoteSrc, stat.SDKs["t"].Source.Type)
+		assert.Equal(t, NA, stat.Cache.Status)
+		assert.Equal(t, 0, len(stat.Cache.Records))
+
+		reporter.ReportError("t", "")
+		reporter.ReportError("t", "")
+		stat = readStatus(srv.URL)
+
+		assert.Equal(t, Degraded, stat.Status)
+		assert.Equal(t, Degraded, stat.SDKs["t"].Source.Status)
+		assert.Equal(t, Online, stat.SDKs["t"].Mode)
+		assert.Equal(t, 4, len(stat.SDKs["t"].Source.Records))
 		assert.Equal(t, RemoteSrc, stat.SDKs["t"].Source.Type)
 		assert.Equal(t, NA, stat.Cache.Status)
 		assert.Equal(t, 0, len(stat.Cache.Records))
@@ -92,13 +113,26 @@ func TestReporter_Offline(t *testing.T) {
 		srv := httptest.NewServer(reporter.HttpHandler())
 		stat := readStatus(srv.URL)
 
-		assert.Equal(t, Degraded, stat.Status)
-		assert.Equal(t, Degraded, stat.SDKs["t"].Source.Status)
+		assert.Equal(t, Down, stat.Status)
+		assert.Equal(t, Down, stat.SDKs["t"].Source.Status)
 		assert.Equal(t, Offline, stat.SDKs["t"].Mode)
 		assert.Equal(t, 1, len(stat.SDKs["t"].Source.Records))
 		assert.Equal(t, CacheSrc, stat.SDKs["t"].Source.Type)
 		assert.Equal(t, NA, stat.Cache.Status)
 		assert.Equal(t, 0, len(stat.Cache.Records))
+	})
+	t.Run("cache err", func(t *testing.T) {
+		reporter := NewReporter(&config.Config{SDKs: map[string]*config.SDKConfig{"t": {Offline: config.OfflineConfig{Enabled: true, UseCache: true}}}, Cache: config.CacheConfig{Redis: config.RedisConfig{Enabled: true}}})
+		srv := httptest.NewServer(reporter.HttpHandler())
+		reporter.ReportError("t", "")
+		reporter.ReportError("t", "")
+		stat := readStatus(srv.URL)
+
+		assert.Equal(t, Down, stat.Status)
+		assert.Equal(t, Down, stat.SDKs["t"].Source.Status)
+		assert.Equal(t, Offline, stat.SDKs["t"].Mode)
+		assert.Equal(t, 2, len(stat.SDKs["t"].Source.Records))
+		assert.Equal(t, CacheSrc, stat.SDKs["t"].Source.Type)
 	})
 	t.Run("cache valid", func(t *testing.T) {
 		reporter := NewReporter(&config.Config{SDKs: map[string]*config.SDKConfig{"t": {Offline: config.OfflineConfig{Enabled: true, UseCache: true}}}, Cache: config.CacheConfig{Redis: config.RedisConfig{Enabled: true}}})
@@ -117,29 +151,20 @@ func TestReporter_Offline(t *testing.T) {
 	})
 }
 
-func TestReporter_StatusCopy(t *testing.T) {
-	reporter := NewReporter(&config.Config{SDKs: map[string]*config.SDKConfig{"t": {}}}).(*reporter)
-	reporter.ReportError("t", "")
-	stat := reporter.getStatus()
-
-	assert.Equal(t, Healthy, reporter.status.Status)
-	assert.Equal(t, Degraded, stat.Status)
-}
-
 func TestReporter_Degraded_Calc(t *testing.T) {
-	t.Run("1 record, 1 error", func(t *testing.T) {
+	t.Run("1 record first, 1 error", func(t *testing.T) {
 		reporter := NewReporter(&config.Config{SDKs: map[string]*config.SDKConfig{"t": {}}}).(*reporter)
 		reporter.ReportError("t", "")
-		stat := reporter.getStatus()
+		stat := reporter.GetStatus()
 
-		assert.Equal(t, Degraded, stat.Status)
-		assert.Equal(t, Degraded, stat.SDKs["t"].Source.Status)
+		assert.Equal(t, Down, stat.Status)
+		assert.Equal(t, Down, stat.SDKs["t"].Source.Status)
 	})
 	t.Run("2 records, 1 error then 1 ok", func(t *testing.T) {
 		reporter := NewReporter(&config.Config{SDKs: map[string]*config.SDKConfig{"t": {}}}).(*reporter)
 		reporter.ReportError("t", "")
 		reporter.ReportOk("t", "")
-		stat := reporter.getStatus()
+		stat := reporter.GetStatus()
 
 		assert.Equal(t, Healthy, stat.Status)
 		assert.Equal(t, Healthy, stat.SDKs["t"].Source.Status)
@@ -148,7 +173,7 @@ func TestReporter_Degraded_Calc(t *testing.T) {
 		reporter := NewReporter(&config.Config{SDKs: map[string]*config.SDKConfig{"t": {}}}).(*reporter)
 		reporter.ReportOk("t", "")
 		reporter.ReportError("t", "")
-		stat := reporter.getStatus()
+		stat := reporter.GetStatus()
 
 		assert.Equal(t, Healthy, stat.Status)
 		assert.Equal(t, Healthy, stat.SDKs["t"].Source.Status)
@@ -158,7 +183,7 @@ func TestReporter_Degraded_Calc(t *testing.T) {
 		reporter.ReportOk("t", "")
 		reporter.ReportError("t", "")
 		reporter.ReportError("t", "")
-		stat := reporter.getStatus()
+		stat := reporter.GetStatus()
 
 		assert.Equal(t, Degraded, stat.Status)
 		assert.Equal(t, Degraded, stat.SDKs["t"].Source.Status)
@@ -168,7 +193,7 @@ func TestReporter_Degraded_Calc(t *testing.T) {
 		reporter.ReportOk("t", "")
 		reporter.ReportError("t", "")
 		reporter.ReportOk("t", "")
-		stat := reporter.getStatus()
+		stat := reporter.GetStatus()
 
 		assert.Equal(t, Healthy, stat.Status)
 		assert.Equal(t, Healthy, stat.SDKs["t"].Source.Status)
@@ -178,21 +203,40 @@ func TestReporter_Degraded_Calc(t *testing.T) {
 		reporter.ReportError("t", "")
 		reporter.ReportOk("t", "")
 		reporter.ReportError("t", "")
-		stat := reporter.getStatus()
+		stat := reporter.GetStatus()
 
 		assert.Equal(t, Healthy, stat.Status)
 		assert.Equal(t, Healthy, stat.SDKs["t"].Source.Status)
 	})
-	t.Run("2 envs 1 degraded", func(t *testing.T) {
+	t.Run("2 envs 1 down", func(t *testing.T) {
 		reporter := NewReporter(&config.Config{SDKs: map[string]*config.SDKConfig{"t1": {}, "t2": {}}}).(*reporter)
 		reporter.ReportError("t1", "")
 		reporter.ReportOk("t2", "")
-		stat := reporter.getStatus()
+		stat := reporter.GetStatus()
+
+		assert.Equal(t, Degraded, stat.Status)
+		assert.Equal(t, Down, stat.SDKs["t1"].Source.Status)
+		assert.Equal(t, Healthy, stat.SDKs["t2"].Source.Status)
+	})
+	t.Run("2 envs 1 degraded", func(t *testing.T) {
+		reporter := NewReporter(&config.Config{SDKs: map[string]*config.SDKConfig{"t1": {}, "t2": {}}}).(*reporter)
+		reporter.ReportError("t1", "")
+		reporter.ReportOk("t1", "")
+		reporter.ReportError("t1", "")
+		reporter.ReportError("t1", "")
+		reporter.ReportOk("t2", "")
+		stat := reporter.GetStatus()
 
 		assert.Equal(t, Degraded, stat.Status)
 		assert.Equal(t, Degraded, stat.SDKs["t1"].Source.Status)
 		assert.Equal(t, Healthy, stat.SDKs["t2"].Source.Status)
 	})
+}
+
+func TestNewNullReporter(t *testing.T) {
+	rep := NewNullReporter().(*reporter)
+	assert.Empty(t, rep.records)
+	assert.Empty(t, rep.conf.SDKs)
 }
 
 func readStatus(url string) Status {

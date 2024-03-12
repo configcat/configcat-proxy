@@ -9,6 +9,7 @@ import (
 	"github.com/configcat/configcat-proxy/sdk"
 	"github.com/configcat/go-sdk/v9/configcattest"
 	"github.com/stretchr/testify/assert"
+	"net/http/httptest"
 	"runtime"
 	"testing"
 	"time"
@@ -19,6 +20,9 @@ func TestStream_Receive(t *testing.T) {
 
 	str := NewStream("test", clients["test"], nil, log.NewNullLogger(), "test")
 	defer str.Close()
+
+	assert.True(t, str.CanEval("flag"))
+	assert.False(t, str.CanEval("non-existing"))
 
 	sConn := str.CreateConnection("flag", nil)
 	aConn := str.CreateConnection(AllFlagsDiscriminator, nil)
@@ -96,6 +100,34 @@ func TestStream_Receive_Close(t *testing.T) {
 	_ = str.CreateConnection("flag", nil)
 	_ = str.CreateConnection(AllFlagsDiscriminator, nil)
 	_ = str.CreateConnection(AllFlagsDiscriminator, nil)
+}
+
+func TestStream_IsInValidState_True(t *testing.T) {
+	key := configcattest.RandomSDKKey()
+	var h configcattest.Handler
+	_ = h.SetFlags(key, map[string]*configcattest.Flag{
+		"flag": {
+			Default: true,
+		},
+	})
+	srv := httptest.NewServer(&h)
+	defer srv.Close()
+
+	ctx := testutils.NewTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key}, nil)
+	client := sdk.NewClient(ctx, log.NewNullLogger())
+	defer client.Close()
+
+	str := NewStream("test", client, nil, log.NewNullLogger(), "test")
+	assert.True(t, str.IsInValidState())
+}
+
+func TestStream_IsInValidState_False(t *testing.T) {
+	ctx := testutils.NewTestSdkContext(&config.SDKConfig{BaseUrl: "http://localhost", Key: configcattest.RandomSDKKey()}, nil)
+	client := sdk.NewClient(ctx, log.NewNullLogger())
+	defer client.Close()
+
+	str := NewStream("test", client, nil, log.NewNullLogger(), "test")
+	assert.False(t, str.IsInValidState())
 }
 
 func TestStream_Goroutines(t *testing.T) {

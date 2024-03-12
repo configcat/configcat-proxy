@@ -69,8 +69,8 @@ func TestInterceptSdk(t *testing.T) {
 
 		stat := readStatus(repSrv.URL)
 
-		assert.Equal(t, Degraded, stat.Status)
-		assert.Equal(t, Degraded, stat.SDKs["test"].Source.Status)
+		assert.Equal(t, Down, stat.Status)
+		assert.Equal(t, Down, stat.SDKs["test"].Source.Status)
 		assert.Equal(t, Online, stat.SDKs["test"].Mode)
 		assert.Equal(t, 1, len(stat.SDKs["test"].Source.Records))
 		assert.Contains(t, stat.SDKs["test"].Source.Records[0], "unexpected response received: 400 Bad Request")

@@ -2,6 +2,8 @@ package grpc
 
 import (
 	"github.com/configcat/configcat-proxy/config"
+	"github.com/configcat/configcat-proxy/diag/metrics"
+	"github.com/configcat/configcat-proxy/diag/status"
 	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/internal/utils"
 	"github.com/configcat/configcat-proxy/log"
@@ -30,9 +32,10 @@ func TestNewServer(t *testing.T) {
 
 	ctx := testutils.NewTestSdkContext(&config.SDKConfig{BaseUrl: sdkSrv.URL, Key: key, PollInterval: 1}, nil)
 	sdkClient := sdk.NewClient(ctx, log.NewNullLogger())
+	conf := config.Config{Grpc: config.GrpcConfig{Port: 5061, HealthCheckEnabled: true, ServerReflectionEnabled: true, KeepAlive: config.KeepAliveConfig{Timeout: 10}}, SDKs: map[string]*config.SDKConfig{key: ctx.SDKConf}}
 	defer sdkClient.Close()
 
-	srv, _ := NewServer(map[string]sdk.Client{"test": sdkClient}, nil, &config.Config{Grpc: config.GrpcConfig{Port: 5061}}, log.NewNullLogger(), errChan)
+	srv, _ := NewServer(map[string]sdk.Client{"test": sdkClient}, metrics.NewReporter(), status.NewReporter(&conf), &conf, log.NewDebugLogger(), errChan)
 
 	wg := sync.WaitGroup{}
 	wg.Add(1)
@@ -115,9 +118,10 @@ MK4Li/LGWcksyoF+hbPNXMFCIA==
 
 			ctx := testutils.NewTestSdkContext(&config.SDKConfig{BaseUrl: sdkSrv.URL, Key: key, PollInterval: 1}, nil)
 			sdkClient := sdk.NewClient(ctx, log.NewNullLogger())
+			conf := config.Config{Grpc: config.GrpcConfig{Port: 5062}, Tls: tlsConf, SDKs: map[string]*config.SDKConfig{key: ctx.SDKConf}}
 			defer sdkClient.Close()
 
-			srv, _ := NewServer(map[string]sdk.Client{"test": sdkClient}, nil, &config.Config{Grpc: config.GrpcConfig{Port: 5062}, Tls: tlsConf}, log.NewNullLogger(), errChan)
+			srv, _ := NewServer(map[string]sdk.Client{"test": sdkClient}, nil, status.NewReporter(&conf), &conf, log.NewNullLogger(), errChan)
 
 			wg := sync.WaitGroup{}
 			wg.Add(1)
@@ -156,9 +160,10 @@ func TestNewServer_TLS_Missing_Cert(t *testing.T) {
 
 	ctx := testutils.NewTestSdkContext(&config.SDKConfig{BaseUrl: sdkSrv.URL, Key: key, PollInterval: 1}, nil)
 	sdkClient := sdk.NewClient(ctx, log.NewNullLogger())
+	conf := config.Config{Grpc: config.GrpcConfig{Port: 5063}, Tls: tlsConf, SDKs: map[string]*config.SDKConfig{key: ctx.SDKConf}}
 	defer sdkClient.Close()
 
-	_, err := NewServer(map[string]sdk.Client{"test": sdkClient}, nil, &config.Config{Grpc: config.GrpcConfig{Port: 5063}, Tls: tlsConf}, log.NewDebugLogger(), errChan)
+	_, err := NewServer(map[string]sdk.Client{"test": sdkClient}, nil, status.NewReporter(&conf), &conf, log.NewNullLogger(), errChan)
 	assert.Error(t, err)
 }
 

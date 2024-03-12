@@ -13,6 +13,7 @@ import (
 func TestRedisStorage(t *testing.T) {
 	s := miniredis.RunT(t)
 	srv := NewRedisStore(&config.RedisConfig{Addresses: []string{s.Addr()}}).(*redisStore)
+	defer srv.Close()
 
 	cacheEntry := configcatcache.CacheSegmentsToBytes(time.Now(), "etag", []byte(`test`))
 	err := srv.Set(context.Background(), "key", cacheEntry)
@@ -27,6 +28,7 @@ func TestRedisStorage(t *testing.T) {
 
 func TestRedisStorage_Unavailable(t *testing.T) {
 	srv := NewRedisStore(&config.RedisConfig{Addresses: []string{"nonexisting"}}).(*redisStore)
+	defer srv.Close()
 
 	cacheEntry := configcatcache.CacheSegmentsToBytes(time.Now(), "etag", []byte(`test`))
 	err := srv.Set(context.Background(), "", cacheEntry)

@@ -2,12 +2,14 @@ package grpc
 
 import (
 	"context"
+	"errors"
 	"github.com/configcat/configcat-proxy/diag/metrics"
 	"github.com/configcat/configcat-proxy/grpc/proto"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/model"
 	"github.com/configcat/configcat-proxy/sdk"
 	"github.com/configcat/configcat-proxy/stream"
+	configcat "github.com/configcat/go-sdk/v9"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -47,6 +49,13 @@ func (s *flagService) EvalFlagStream(req *proto.EvalRequest, stream proto.FlagSe
 	if str == nil {
 		return status.Error(codes.InvalidArgument, "sdk not found for identifier: '"+req.GetSdkId()+"'")
 	}
+	if !str.IsInValidState() {
+		return status.Error(codes.Internal, "sdk with identifier '"+req.GetSdkId()+"' is in an invalid state; please check the logs for more details")
+	}
+	if !str.CanEval(req.GetKey()) {
+		return status.Error(codes.InvalidArgument, "feature flag or setting with key '"+req.GetKey()+"' not found")
+	}
+
 	conn := str.CreateConnection(req.GetKey(), user)
 
 	for {
@@ -85,6 +94,10 @@ func (s *flagService) EvalAllFlagsStream(req *proto.EvalRequest, evalStream prot
 	if str == nil {
 		return status.Error(codes.InvalidArgument, "sdk not found for identifier: '"+req.GetSdkId()+"'")
 	}
+	if !str.IsInValidState() {
+		return status.Error(codes.Internal, "sdk with identifier '"+req.GetSdkId()+"' is in an invalid state; please check the logs for more details")
+	}
+
 	conn := str.CreateConnection(stream.AllFlagsDiscriminator, user)
 
 	for {
@@ -128,10 +141,17 @@ func (s *flagService) EvalFlag(_ context.Context, req *proto.EvalRequest) (*prot
 	if !ok {
 		return nil, status.Error(codes.InvalidArgument, "sdk not found for identifier: '"+req.GetSdkId()+"'")
 	}
-
+	if !sdkClient.IsInValidState() {
+		return nil, status.Error(codes.Internal, "sdk with identifier '"+req.GetSdkId()+"' is in an invalid state; please check the logs for more details")
+	}
 	value, err := sdkClient.Eval(req.GetKey(), user)
 	if err != nil {
-		return nil, err
+		var errKeyNotFound configcat.ErrKeyNotFound
+		if errors.As(err, &errKeyNotFound) {
+			return nil, status.Error(codes.NotFound, "feature flag or setting with key '"+req.GetKey()+"' not found")
+		} else {
+			return nil, status.Error(codes.Unknown, "the request failed; please check the logs for more details")
+		}
 	}
 	payload := model.PayloadFromEvalData(&value)
 	return s.toPayload(&payload), nil
@@ -151,7 +171,9 @@ func (s *flagService) EvalAllFlags(_ context.Context, req *proto.EvalRequest) (*
 	if !ok {
 		return nil, status.Error(codes.InvalidArgument, "sdk not found for identifier: '"+req.GetSdkId()+"'")
 	}
-
+	if !sdkClient.IsInValidState() {
+		return nil, status.Error(codes.Internal, "sdk with identifier '"+req.GetSdkId()+"' is in an invalid state; please check the logs for more details")
+	}
 	values := sdkClient.EvalAll(user)
 	final := make(map[string]*proto.EvalResponse)
 	for key, value := range values {
@@ -169,6 +191,9 @@ func (s *flagService) GetKeys(_ context.Context, req *proto.KeysRequest) (*proto
 	sdkClient, ok := s.sdkClients[req.GetSdkId()]
 	if !ok {
 		return nil, status.Error(codes.InvalidArgument, "sdk not found for identifier: '"+req.GetSdkId()+"'")
+	}
+	if !sdkClient.IsInValidState() {
+		return nil, status.Error(codes.Internal, "sdk with identifier '"+req.GetSdkId()+"' is in an invalid state; please check the logs for more details")
 	}
 
 	keys := sdkClient.Keys()

@@ -54,6 +54,14 @@ func (s *Server) SingleFlag(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "SDK not found for identifier: '"+sdkId+"'", http.StatusNotFound)
 		return
 	}
+	if !str.IsInValidState() {
+		http.Error(w, "SDK with identifier '"+sdkId+"' is in an invalid state; please check the logs for more details", http.StatusInternalServerError)
+		return
+	}
+	if !str.CanEval(evalReq.Key) {
+		http.Error(w, "feature flag or setting with key '"+evalReq.Key+"' not found", http.StatusBadRequest)
+		return
+	}
 
 	conn := str.CreateConnection(evalReq.Key, evalReq.User)
 	w.WriteHeader(http.StatusOK)
@@ -75,6 +83,10 @@ func (s *Server) AllFlags(w http.ResponseWriter, r *http.Request) {
 	str := s.streamServer.GetStreamOrNil(sdkId)
 	if str == nil {
 		http.Error(w, "SDK not found for identifier: '"+sdkId+"'", http.StatusNotFound)
+		return
+	}
+	if !str.IsInValidState() {
+		http.Error(w, "SDK with identifier '"+sdkId+"' is in an invalid state; please check the logs for more details", http.StatusInternalServerError)
 		return
 	}
 

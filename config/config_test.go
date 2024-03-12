@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
+	"time"
 )
 
 func TestConfig_Defaults(t *testing.T) {
@@ -14,9 +15,12 @@ func TestConfig_Defaults(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, 8050, conf.Http.Port)
+	assert.True(t, conf.Http.Enabled)
 
 	assert.Equal(t, 50051, conf.Grpc.Port)
 	assert.True(t, conf.Grpc.Enabled)
+	assert.True(t, conf.Grpc.HealthCheckEnabled)
+	assert.True(t, conf.Grpc.ServerReflectionEnabled)
 
 	assert.Equal(t, 8051, conf.Diag.Port)
 	assert.True(t, conf.Diag.Enabled)
@@ -400,6 +404,7 @@ diag:
 func TestHttpConfig_YAML(t *testing.T) {
 	utils.UseTempFile(`
 http:
+  enabled: true
   port: 8090
   log: 
     level: "info"
@@ -445,6 +450,7 @@ http:
 		conf, err := LoadConfigFromFileAndEnvironment(file)
 		require.NoError(t, err)
 
+		assert.True(t, conf.Http.Enabled)
 		assert.Equal(t, log.Info, conf.Http.Log.GetLevel())
 		assert.Equal(t, 8090, conf.Http.Port)
 		assert.True(t, conf.Http.Webhook.Enabled)
@@ -546,6 +552,14 @@ func TestGrpcConfig_YAML(t *testing.T) {
 grpc:
   enabled: true
   port: 8060
+  server_reflection_enabled: false
+  health_check_enabled: false
+  keep_alive:
+    max_connection_idle: 1
+    max_connection_age: 2
+    max_connection_age_grace: 3
+    time: 4
+    timeout: 5
   log:
     level: "error"
 `, func(file string) {
@@ -555,6 +569,13 @@ grpc:
 		assert.Equal(t, log.Error, conf.Grpc.Log.GetLevel())
 		assert.Equal(t, 8060, conf.Grpc.Port)
 		assert.True(t, conf.Grpc.Enabled)
+		assert.False(t, conf.Grpc.ServerReflectionEnabled)
+		assert.False(t, conf.Grpc.HealthCheckEnabled)
+		assert.Equal(t, 1, conf.Grpc.KeepAlive.MaxConnectionIdle)
+		assert.Equal(t, 2, conf.Grpc.KeepAlive.MaxConnectionAge)
+		assert.Equal(t, 3, conf.Grpc.KeepAlive.MaxConnectionAgeGrace)
+		assert.Equal(t, 4, conf.Grpc.KeepAlive.Time)
+		assert.Equal(t, 5, conf.Grpc.KeepAlive.Timeout)
 	})
 }
 
@@ -590,4 +611,26 @@ default_user_attributes:
 		assert.Equal(t, 5, conf.DefaultAttrs["attr5"])
 		assert.Equal(t, []string{"a", "b"}, conf.DefaultAttrs["attr6"])
 	})
+}
+
+func TestGrpcConfig_KeepAlive(t *testing.T) {
+	conf := KeepAliveConfig{MaxConnectionIdle: 1, MaxConnectionAge: 2, MaxConnectionAgeGrace: 3, Time: 4, Timeout: 5}
+	param, ok := conf.ToParams()
+
+	assert.True(t, ok)
+	assert.Equal(t, 1*time.Second, param.MaxConnectionIdle)
+	assert.Equal(t, 2*time.Second, param.MaxConnectionAge)
+	assert.Equal(t, 3*time.Second, param.MaxConnectionAgeGrace)
+	assert.Equal(t, 4*time.Second, param.Time)
+	assert.Equal(t, 5*time.Second, param.Timeout)
+
+	conf = KeepAliveConfig{MaxConnectionIdle: 1}
+	param, ok = conf.ToParams()
+
+	assert.True(t, ok)
+	assert.Equal(t, 1*time.Second, param.MaxConnectionIdle)
+	assert.Equal(t, time.Duration(0), param.MaxConnectionAge)
+	assert.Equal(t, time.Duration(0), param.MaxConnectionAgeGrace)
+	assert.Equal(t, time.Duration(0), param.Time)
+	assert.Equal(t, time.Duration(0), param.Timeout)
 }

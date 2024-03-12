@@ -19,6 +19,7 @@ type EntryWithEtag struct {
 	ConfigJson []byte
 	ETag       string
 	FetchTime  time.Time
+	Empty      bool
 }
 
 type entryStore struct {
@@ -32,7 +33,7 @@ func NewEntryStore() EntryStore {
 	}
 	config := configcat.ConfigJson{}
 	initial, _ := json.Marshal(config)
-	e.entry.Store(entryWithEtag(initial, time.Time{}, utils.GenerateEtag(initial)))
+	e.entry.Store(entryWithEtag(initial, time.Time{}, utils.GenerateEtag(initial), true))
 	return &e
 }
 
@@ -46,12 +47,13 @@ func (e *entryStore) ComposeBytes() []byte {
 }
 
 func (e *entryStore) StoreEntry(configJson []byte, fetchTime time.Time, eTag string) {
-	e.entry.Store(entryWithEtag(configJson, fetchTime, eTag))
+	e.entry.Store(entryWithEtag(configJson, fetchTime, eTag, false))
 }
 
-func entryWithEtag(configJson []byte, fetchTime time.Time, eTag string) *EntryWithEtag {
+func entryWithEtag(configJson []byte, fetchTime time.Time, eTag string, empty bool) *EntryWithEtag {
 	return &EntryWithEtag{
 		ConfigJson: configJson,
 		ETag:       eTag,
-		FetchTime:  fetchTime}
+		FetchTime:  fetchTime,
+		Empty:      empty}
 }

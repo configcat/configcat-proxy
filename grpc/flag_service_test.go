@@ -157,8 +157,9 @@ func TestGrpc_EvalAllFlagsStream(t *testing.T) {
 		payload, err = cl.Recv()
 		assert.NoError(t, err)
 	})
-	assert.Equal(t, 2, len(payload.GetValues()))
+	assert.Equal(t, 3, len(payload.GetValues()))
 	assert.Equal(t, "test12", payload.GetValues()["flag1"].GetStringValue())
+	assert.Equal(t, "test2", payload.GetValues()["flag2"].GetStringValue())
 	assert.Equal(t, "test3", payload.GetValues()["flag3"].GetStringValue())
 }
 
@@ -206,6 +207,9 @@ func TestGrpc_EvalFlag(t *testing.T) {
 
 	assert.Equal(t, "test1", resp.GetStringValue())
 
+	_, err = client.EvalFlag(context.Background(), &proto.EvalRequest{Key: "non-existing", SdkId: "test", User: map[string]*proto.UserValue{"id": {Value: &proto.UserValue_StringValue{StringValue: "u1"}}}})
+	assert.Error(t, err)
+
 	_ = h.SetFlags(key, map[string]*configcattest.Flag{
 		"flag": {
 			Default: "test2",
@@ -219,6 +223,165 @@ func TestGrpc_EvalFlag(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, "test2", resp.GetStringValue())
+}
+
+func TestGrpc_SDK_InvalidState(t *testing.T) {
+	ctx := testutils.NewTestSdkContext(&config.SDKConfig{BaseUrl: "http://localhost", Key: configcattest.RandomSDKKey()}, nil)
+	sdkClient := sdk.NewClient(ctx, log.NewNullLogger())
+	defer sdkClient.Close()
+	flagSrv := newFlagService(map[string]sdk.Client{"test": sdkClient}, nil, log.NewNullLogger())
+
+	lis := bufconn.Listen(1024 * 1024)
+
+	srv := grpc.NewServer()
+	defer srv.GracefulStop()
+
+	proto.RegisterFlagServiceServer(srv, flagSrv)
+	go func() {
+		_ = srv.Serve(lis)
+	}()
+
+	conn, err := grpc.DialContext(context.Background(),
+		"bufnet",
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithContextDialer(func(ctx context.Context, s string) (net.Conn, error) {
+			return lis.Dial()
+		}))
+
+	assert.NoError(t, err)
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	client := proto.NewFlagServiceClient(conn)
+
+	_, err = client.EvalFlag(context.Background(), &proto.EvalRequest{Key: "flag", SdkId: "test"})
+	assert.ErrorContains(t, err, "sdk with identifier 'test' is in an invalid state; please check the logs for more details")
+
+	_, err = client.EvalAllFlags(context.Background(), &proto.EvalRequest{Key: "flag", SdkId: "test"})
+	assert.ErrorContains(t, err, "sdk with identifier 'test' is in an invalid state; please check the logs for more details")
+
+	cl, err := client.EvalFlagStream(context.Background(), &proto.EvalRequest{Key: "flag", SdkId: "test"})
+	utils.WithTimeout(2*time.Second, func() {
+		_, err = cl.Recv()
+		assert.ErrorContains(t, err, "sdk with identifier 'test' is in an invalid state; please check the logs for more details")
+	})
+
+	cl1, err := client.EvalAllFlagsStream(context.Background(), &proto.EvalRequest{Key: "flag", SdkId: "test"})
+	utils.WithTimeout(2*time.Second, func() {
+		_, err = cl1.Recv()
+		assert.ErrorContains(t, err, "sdk with identifier 'test' is in an invalid state; please check the logs for more details")
+	})
+
+	_, err = client.GetKeys(context.Background(), &proto.KeysRequest{SdkId: "test"})
+	assert.ErrorContains(t, err, "sdk with identifier 'test' is in an invalid state; please check the logs for more details")
+}
+
+func TestGrpc_Invalid_SdkKey(t *testing.T) {
+	key := configcattest.RandomSDKKey()
+	var h configcattest.Handler
+	_ = h.SetFlags(key, map[string]*configcattest.Flag{
+		"flag1": {
+			Default: "test1",
+		},
+	})
+	sdkSrv := httptest.NewServer(&h)
+	defer sdkSrv.Close()
+	ctx := testutils.NewTestSdkContext(&config.SDKConfig{BaseUrl: sdkSrv.URL, Key: key}, nil)
+	sdkClient := sdk.NewClient(ctx, log.NewNullLogger())
+	defer sdkClient.Close()
+	flagSrv := newFlagService(map[string]sdk.Client{"test": sdkClient}, nil, log.NewNullLogger())
+	lis := bufconn.Listen(1024 * 1024)
+	srv := grpc.NewServer()
+	defer srv.GracefulStop()
+	proto.RegisterFlagServiceServer(srv, flagSrv)
+	go func() {
+		_ = srv.Serve(lis)
+	}()
+
+	conn, err := grpc.DialContext(context.Background(),
+		"bufnet",
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithContextDialer(func(ctx context.Context, s string) (net.Conn, error) {
+			return lis.Dial()
+		}))
+
+	assert.NoError(t, err)
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	client := proto.NewFlagServiceClient(conn)
+
+	_, err = client.EvalFlag(context.Background(), &proto.EvalRequest{Key: "flag", SdkId: "non-existing"})
+	assert.ErrorContains(t, err, "sdk not found for identifier: 'non-existing'")
+
+	_, err = client.EvalAllFlags(context.Background(), &proto.EvalRequest{Key: "flag", SdkId: "non-existing"})
+	assert.ErrorContains(t, err, "sdk not found for identifier: 'non-existing'")
+
+	cl, err := client.EvalFlagStream(context.Background(), &proto.EvalRequest{Key: "flag", SdkId: "non-existing"})
+	utils.WithTimeout(2*time.Second, func() {
+		_, err = cl.Recv()
+		assert.ErrorContains(t, err, "sdk not found for identifier: 'non-existing'")
+	})
+
+	cl1, err := client.EvalAllFlagsStream(context.Background(), &proto.EvalRequest{Key: "flag", SdkId: "non-existing"})
+	utils.WithTimeout(2*time.Second, func() {
+		_, err = cl1.Recv()
+		assert.ErrorContains(t, err, "sdk not found for identifier: 'non-existing'")
+	})
+
+	_, err = client.GetKeys(context.Background(), &proto.KeysRequest{SdkId: "non-existing"})
+	assert.ErrorContains(t, err, "sdk not found for identifier: 'non-existing'")
+
+	_, err = client.Refresh(context.Background(), &proto.RefreshRequest{SdkId: "non-existing"})
+	assert.ErrorContains(t, err, "sdk not found for identifier: 'non-existing'")
+}
+
+func TestGrpc_Invalid_FlagKey(t *testing.T) {
+	key := configcattest.RandomSDKKey()
+	var h configcattest.Handler
+	_ = h.SetFlags(key, map[string]*configcattest.Flag{
+		"flag1": {
+			Default: "test1",
+		},
+	})
+	sdkSrv := httptest.NewServer(&h)
+	defer sdkSrv.Close()
+	ctx := testutils.NewTestSdkContext(&config.SDKConfig{BaseUrl: sdkSrv.URL, Key: key}, nil)
+	sdkClient := sdk.NewClient(ctx, log.NewNullLogger())
+	defer sdkClient.Close()
+	flagSrv := newFlagService(map[string]sdk.Client{"test": sdkClient}, nil, log.NewNullLogger())
+	lis := bufconn.Listen(1024 * 1024)
+	srv := grpc.NewServer()
+	defer srv.GracefulStop()
+	proto.RegisterFlagServiceServer(srv, flagSrv)
+	go func() {
+		_ = srv.Serve(lis)
+	}()
+
+	conn, err := grpc.DialContext(context.Background(),
+		"bufnet",
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithContextDialer(func(ctx context.Context, s string) (net.Conn, error) {
+			return lis.Dial()
+		}))
+
+	assert.NoError(t, err)
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	client := proto.NewFlagServiceClient(conn)
+
+	_, err = client.EvalFlag(context.Background(), &proto.EvalRequest{Key: "flag", SdkId: "test"})
+	assert.ErrorContains(t, err, "feature flag or setting with key 'flag' not found")
+
+	cl, err := client.EvalFlagStream(context.Background(), &proto.EvalRequest{Key: "flag", SdkId: "test"})
+	utils.WithTimeout(2*time.Second, func() {
+		_, err = cl.Recv()
+		assert.ErrorContains(t, err, "feature flag or setting with key 'flag' not found")
+	})
 }
 
 func TestGrpc_EvalAllFlags(t *testing.T) {

@@ -20,9 +20,11 @@ const (
 	RemoteSrc SDKSource = "remote"
 	CacheSrc  SDKSource = "cache"
 
-	Healthy  HealthStatus = "healthy"
-	Degraded HealthStatus = "degraded"
-	NA       HealthStatus = "n/a"
+	Healthy      HealthStatus = "healthy"
+	Degraded     HealthStatus = "degraded"
+	Initializing HealthStatus = "initializing"
+	Down         HealthStatus = "down"
+	NA           HealthStatus = "n/a"
 
 	Offline SDKMode = "offline"
 	Online  SDKMode = "online"
@@ -34,6 +36,7 @@ const maxLastErrorsMeaningDegraded = 2
 type Reporter interface {
 	ReportOk(component string, message string)
 	ReportError(component string, message string)
+	GetStatus() Status
 
 	HttpHandler() http.HandlerFunc
 }
@@ -75,7 +78,7 @@ type reporter struct {
 }
 
 func NewNullReporter() Reporter {
-	return &reporter{records: make(map[string][]record)}
+	return &reporter{records: make(map[string][]record), conf: &config.Config{SDKs: map[string]*config.SDKConfig{}}}
 }
 
 func NewReporter(conf *config.Config) Reporter {
@@ -83,22 +86,23 @@ func NewReporter(conf *config.Config) Reporter {
 		conf:    conf,
 		records: make(map[string][]record),
 		status: Status{
-			Status: Healthy,
+			Status: Initializing,
 			Cache: CacheStatus{
-				Status: Healthy,
+				Status: Initializing,
 			},
 		},
 	}
-	sdks := make(map[string]*SdkStatus, len(conf.SDKs))
+	r.status.SDKs = make(map[string]*SdkStatus, len(conf.SDKs))
 	for key, sdk := range conf.SDKs {
 		status := &SdkStatus{
 			Mode:   Online,
 			SdkKey: utils.Obfuscate(sdk.Key, 5),
 			Source: SdkSourceStatus{
 				Type:   RemoteSrc,
-				Status: Healthy,
+				Status: Initializing,
 			},
 		}
+		r.status.SDKs[key] = status
 		if sdk.Offline.Enabled {
 			status.Mode = Offline
 			if sdk.Offline.Local.FilePath != "" {
@@ -111,13 +115,10 @@ func NewReporter(conf *config.Config) Reporter {
 		if !conf.Cache.Redis.Enabled {
 			r.status.Cache.Status = NA
 			if status.Source.Type == CacheSrc {
-				status.Source.Status = Degraded
 				r.ReportError(key, "cache offline source enabled without a configured cache")
 			}
 		}
-		sdks[key] = status
 	}
-	r.status.SDKs = sdks
 	return r
 }
 
@@ -131,7 +132,7 @@ func (r *reporter) ReportError(component string, message string) {
 
 func (r *reporter) HttpHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, _ *http.Request) {
-		status, err := json.Marshal(r.getStatus())
+		status, err := json.Marshal(r.GetStatus())
 		if err != nil {
 			http.Error(w, "Error producing status", http.StatusInternalServerError)
 		}
@@ -140,29 +141,11 @@ func (r *reporter) HttpHandler() http.HandlerFunc {
 	}
 }
 
-func (r *reporter) getStatus() Status {
+func (r *reporter) GetStatus() Status {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	current := r.status
-	overallStatus := Healthy
-	for key := range r.conf.SDKs {
-		if sdk, ok := r.records[key]; ok {
-			rec, stat := r.checkStatus(sdk)
-			current.SDKs[key].Source.Records = rec
-			current.SDKs[key].Source.Status = stat
-			if stat == Degraded {
-				overallStatus = Degraded
-			}
-		}
-	}
-	if cache, ok := r.records[Cache]; ok {
-		rec, stat := r.checkStatus(cache)
-		current.Cache.Records = rec
-		current.Cache.Status = stat
-	}
-	current.Status = overallStatus
-	return current
+	return r.status
 }
 
 func (r *reporter) checkStatus(records []record) ([]string, HealthStatus) {
@@ -198,4 +181,37 @@ func (r *reporter) appendRecord(component string, message string, isError bool) 
 		recs = recs[1:]
 	}
 	r.records[component] = recs
+	rec, stat := r.checkStatus(recs)
+	if component == Cache {
+		r.status.Cache.Records = rec
+		r.status.Cache.Status = stat
+	} else if sdk, ok := r.status.SDKs[component]; ok {
+		sdk.Source.Records = rec
+		if stat == Degraded && (sdk.Source.Status == Initializing || sdk.Source.Status == Down) {
+			stat = Down
+		}
+		sdk.Source.Status = stat
+	}
+	allSdksDown := true
+	hasDegradedSdk := false
+	for key := range r.conf.SDKs {
+		if sdk, ok := r.status.SDKs[key]; ok {
+			if sdk.Source.Status != Down {
+				allSdksDown = false
+			}
+			if sdk.Source.Status != Healthy {
+				hasDegradedSdk = true
+			}
+		}
+	}
+	if !hasDegradedSdk && !allSdksDown {
+		r.status.Status = Healthy
+	} else {
+		if hasDegradedSdk {
+			r.status.Status = Degraded
+		}
+		if allSdksDown {
+			r.status.Status = Down
+		}
+	}
 }

@@ -33,6 +33,28 @@ func TestAppMain(t *testing.T) {
 	assert.Equal(t, 0, exitCode)
 }
 
+func TestAppMain_Disabled_Everything(t *testing.T) {
+	resetFlags()
+	t.Setenv("CONFIGCAT_SDKS", `{"sdk1":"XxPbCKmzIUGORk4vsufpzw/iC_KABprDEueeQs3yovVnQ"}`)
+	t.Setenv("CONFIGCAT_HTTP_ENABLED", "false")
+	t.Setenv("CONFIGCAT_GRPC_ENABLED", "false")
+	t.Setenv("CONFIGCAT_DIAG_ENABLED", "false")
+
+	var exitCode int
+	closeSignal := make(chan os.Signal, 1)
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		exitCode = run(closeSignal)
+		wg.Done()
+	}()
+	time.Sleep(1 * time.Second)
+	closeSignal <- syscall.SIGTERM
+	wg.Wait()
+
+	assert.Equal(t, 0, exitCode)
+}
+
 func TestAppMain_Invalid_Conf(t *testing.T) {
 	resetFlags()
 	var exitCode int

@@ -46,16 +46,16 @@ func (s *Server) Eval(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to parse JSON body: "+err.Error(), http.StatusBadRequest)
 		return
 	}
-	sdkClient, err := s.getSDKClient(r.Context())
+	sdkClient, err, code := s.getSDKClient(r.Context())
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		http.Error(w, err.Error(), code)
 		return
 	}
 	eval, err := sdkClient.Eval(evalReq.Key, evalReq.User)
 	if err != nil {
 		var errKeyNotFound configcat.ErrKeyNotFound
 		if errors.As(err, &errKeyNotFound) {
-			http.Error(w, "evaluation failed; the setting with the key '"+evalReq.Key+"' not found", http.StatusBadRequest)
+			http.Error(w, "feature flag or setting with key '"+evalReq.Key+"' not found", http.StatusBadRequest)
 		} else {
 			http.Error(w, "the request failed; please check the logs for more details", http.StatusInternalServerError)
 		}
@@ -83,9 +83,9 @@ func (s *Server) EvalAll(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to parse JSON body: "+err.Error(), http.StatusBadRequest)
 		return
 	}
-	sdkClient, err := s.getSDKClient(r.Context())
+	sdkClient, err, code := s.getSDKClient(r.Context())
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		http.Error(w, err.Error(), code)
 		return
 	}
 	details := sdkClient.EvalAll(evalReq.User)
@@ -103,9 +103,9 @@ func (s *Server) EvalAll(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) Keys(w http.ResponseWriter, r *http.Request) {
-	sdkClient, err := s.getSDKClient(r.Context())
+	sdkClient, err, code := s.getSDKClient(r.Context())
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		http.Error(w, err.Error(), code)
 		return
 	}
 	keys := sdkClient.Keys()
@@ -119,9 +119,9 @@ func (s *Server) Keys(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) Refresh(w http.ResponseWriter, r *http.Request) {
-	sdkClient, err := s.getSDKClient(r.Context())
+	sdkClient, err, code := s.getSDKClient(r.Context())
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		http.Error(w, err.Error(), code)
 		return
 	}
 	err = sdkClient.Refresh()
@@ -135,15 +135,18 @@ func (s *Server) ICanHasCoffee(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusTeapot)
 }
 
-func (s *Server) getSDKClient(ctx context.Context) (sdk.Client, error) {
+func (s *Server) getSDKClient(ctx context.Context) (sdk.Client, error, int) {
 	vars := httprouter.ParamsFromContext(ctx)
 	sdkId := vars.ByName("sdkId")
 	if sdkId == "" {
-		return nil, fmt.Errorf("'sdkId' path parameter must be set")
+		return nil, fmt.Errorf("'sdkId' path parameter must be set"), http.StatusNotFound
 	}
 	sdkClient, ok := s.sdkClients[sdkId]
 	if !ok {
-		return nil, fmt.Errorf("invalid SDK identifier: '%s'", sdkId)
+		return nil, fmt.Errorf("invalid SDK identifier: '%s'", sdkId), http.StatusNotFound
 	}
-	return sdkClient, nil
+	if !sdkClient.IsInValidState() {
+		return nil, fmt.Errorf("SDK with identifier '%s' is in an invalid state; please check the logs for more details", sdkId), http.StatusInternalServerError
+	}
+	return sdkClient, nil, http.StatusOK
 }
