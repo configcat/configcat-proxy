@@ -127,7 +127,7 @@ func (s *HttpRouter) setupCDNProxyRoutes(conf *config.CdnProxyConfig, sdkClients
 	}
 	s.router.HandlerFunc(http.MethodGet, path, handler)
 	s.router.HandlerFunc(http.MethodOptions, path, handler)
-	l.Reportf("CDN proxy enabled, accepting requests on paths: %s", path)
+	l.Reportf("CDN proxy enabled, accepting requests on path: %s", path)
 }
 
 func (s *HttpRouter) setupStatusRoutes(reporter status.Reporter, l log.Logger) {
