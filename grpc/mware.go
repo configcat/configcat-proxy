@@ -73,7 +73,7 @@ func DebugLogStreamInterceptor(log log.Logger) grpc.StreamServerInterceptor {
 }
 
 func isHealthCheck(method string) bool {
-	if strings.Contains(method, "Health/Check") {
+	if strings.Contains(method, "grpc.health") {
 		return true
 	}
 	return false
