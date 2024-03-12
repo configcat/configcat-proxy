@@ -28,7 +28,7 @@ func DebugLogUnaryInterceptor(log log.Logger) grpc.UnaryServerInterceptor {
 		}
 		start := time.Now()
 
-		log.Debugf("rpc starting %s %s %s", info.FullMethod, peerCtx.Addr, md["user-agent"])
+		log.Debugf("rpc starting %s [peer: %s] %s", info.FullMethod, peerCtx.Addr, md["user-agent"])
 		resp, err := handler(ctx, req)
 
 		stat, ok := status.FromError(err)
@@ -36,7 +36,7 @@ func DebugLogUnaryInterceptor(log log.Logger) grpc.UnaryServerInterceptor {
 			stat = status.FromContextError(err)
 		}
 		duration := time.Since(start)
-		log.Debugf("request finished %s %s %s [code: %s] [duration: %dms]",
+		log.Debugf("request finished %s [peer: %s] %s [code: %s] [duration: %dms]",
 			info.FullMethod, peerCtx.Addr, md["user-agent"], stat.Code().String(), duration.Milliseconds())
 		return resp, err
 	}
@@ -58,7 +58,7 @@ func DebugLogStreamInterceptor(log log.Logger) grpc.StreamServerInterceptor {
 		}
 		start := time.Now()
 
-		log.Debugf("rpc starting %s %s %s", info.FullMethod, peerCtx.Addr, md["user-agent"])
+		log.Debugf("rpc starting %s [peer: %s] %s", info.FullMethod, peerCtx.Addr, md["user-agent"])
 		err := handler(srv, ss)
 
 		stat, ok := status.FromError(err)
@@ -66,7 +66,7 @@ func DebugLogStreamInterceptor(log log.Logger) grpc.StreamServerInterceptor {
 			stat = status.FromContextError(err)
 		}
 		duration := time.Since(start)
-		log.Debugf("request finished %s %s %s [code: %s] [duration: %dms]",
+		log.Debugf("request finished %s [peer: %s] %s [code: %s] [duration: %dms]",
 			info.FullMethod, peerCtx.Addr, md["user-agent"], stat.Code().String(), duration.Milliseconds())
 		return err
 	}

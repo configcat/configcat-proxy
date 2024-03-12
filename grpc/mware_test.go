@@ -31,8 +31,8 @@ func TestDebug_UnaryInterceptor(t *testing.T) {
 	assert.NoError(t, err)
 
 	outLog := out.String()
-	assert.Contains(t, outLog, "[debug] rpc starting test-method 127.0.0.1/32")
-	assert.Contains(t, outLog, "[debug] request finished test-method 127.0.0.1/32 [test-agent] [code: OK] [duration: 0ms]")
+	assert.Contains(t, outLog, "[debug] rpc starting test-method [peer: 127.0.0.1/32]")
+	assert.Contains(t, outLog, "[debug] request finished test-method [peer: 127.0.0.1/32] [test-agent] [code: OK] [duration: 0ms]")
 }
 
 func TestDebug_StreamInterceptor(t *testing.T) {
@@ -54,8 +54,8 @@ func TestDebug_StreamInterceptor(t *testing.T) {
 	assert.NoError(t, err)
 
 	outLog := out.String()
-	assert.Contains(t, outLog, "[debug] rpc starting test-method 127.0.0.1/32")
-	assert.Contains(t, outLog, "[debug] request finished test-method 127.0.0.1/32 [test-agent] [code: OK] [duration: 0ms]")
+	assert.Contains(t, outLog, "[debug] rpc starting test-method [peer: 127.0.0.1/32] [test-agent]")
+	assert.Contains(t, outLog, "[debug] request finished test-method [peer: 127.0.0.1/32] [test-agent] [code: OK] [duration: 0ms]")
 }
 
 func TestIsHealthCheck(t *testing.T) {
