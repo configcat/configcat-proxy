@@ -33,29 +33,11 @@ func newFlagService(sdkClients map[string]sdk.Client, metrics metrics.Reporter, 
 }
 
 func (s *flagService) EvalFlagStream(req *proto.EvalRequest, stream proto.FlagService_EvalFlagStreamServer) error {
-	if req.GetSdkId() == "" {
-		return status.Error(codes.InvalidArgument, "sdk id parameter missing")
-	}
-	if req.GetKey() == "" {
-		return status.Error(codes.InvalidArgument, "key request parameter missing")
-	}
-
 	var user model.UserAttrs
-	if req.GetUser() != nil {
-		user = getUserAttrs(req.GetUser())
+	str, err := s.parseEvalStreamRequest(req, &user, true)
+	if err != nil {
+		return err
 	}
-
-	str := s.streamServer.GetStreamOrNil(req.GetSdkId())
-	if str == nil {
-		return status.Error(codes.InvalidArgument, "sdk not found for identifier: '"+req.GetSdkId()+"'")
-	}
-	if !str.IsInValidState() {
-		return status.Error(codes.Internal, "sdk with identifier '"+req.GetSdkId()+"' is in an invalid state; please check the logs for more details")
-	}
-	if !str.CanEval(req.GetKey()) {
-		return status.Error(codes.InvalidArgument, "feature flag or setting with key '"+req.GetKey()+"' not found")
-	}
-
 	conn := str.CreateConnection(req.GetKey(), user)
 
 	for {
@@ -81,23 +63,11 @@ func (s *flagService) EvalFlagStream(req *proto.EvalRequest, stream proto.FlagSe
 }
 
 func (s *flagService) EvalAllFlagsStream(req *proto.EvalRequest, evalStream proto.FlagService_EvalAllFlagsStreamServer) error {
-	if req.GetSdkId() == "" {
-		return status.Error(codes.InvalidArgument, "sdk id parameter missing")
-	}
-
 	var user model.UserAttrs
-	if req.GetUser() != nil {
-		user = getUserAttrs(req.GetUser())
+	str, err := s.parseEvalStreamRequest(req, &user, false)
+	if err != nil {
+		return err
 	}
-
-	str := s.streamServer.GetStreamOrNil(req.GetSdkId())
-	if str == nil {
-		return status.Error(codes.InvalidArgument, "sdk not found for identifier: '"+req.GetSdkId()+"'")
-	}
-	if !str.IsInValidState() {
-		return status.Error(codes.Internal, "sdk with identifier '"+req.GetSdkId()+"' is in an invalid state; please check the logs for more details")
-	}
-
 	conn := str.CreateConnection(stream.AllFlagsDiscriminator, user)
 
 	for {
@@ -124,24 +94,10 @@ func (s *flagService) EvalAllFlagsStream(req *proto.EvalRequest, evalStream prot
 }
 
 func (s *flagService) EvalFlag(_ context.Context, req *proto.EvalRequest) (*proto.EvalResponse, error) {
-	if req.GetSdkId() == "" {
-		return nil, status.Error(codes.InvalidArgument, "sdk id parameter missing")
-	}
-	if req.GetKey() == "" {
-		return nil, status.Error(codes.InvalidArgument, "key request parameter missing")
-	}
-
 	var user model.UserAttrs
-	if req.GetUser() != nil {
-		user = getUserAttrs(req.GetUser())
-	}
-
-	sdkClient, ok := s.sdkClients[req.GetSdkId()]
-	if !ok {
-		return nil, status.Error(codes.InvalidArgument, "sdk not found for identifier: '"+req.GetSdkId()+"'")
-	}
-	if !sdkClient.IsInValidState() {
-		return nil, status.Error(codes.Internal, "sdk with identifier '"+req.GetSdkId()+"' is in an invalid state; please check the logs for more details")
+	sdkClient, err := s.parseEvalRequest(req, &user, true)
+	if err != nil {
+		return nil, err
 	}
 	value, err := sdkClient.Eval(req.GetKey(), user)
 	if err != nil {
@@ -157,21 +113,10 @@ func (s *flagService) EvalFlag(_ context.Context, req *proto.EvalRequest) (*prot
 }
 
 func (s *flagService) EvalAllFlags(_ context.Context, req *proto.EvalRequest) (*proto.EvalAllResponse, error) {
-	if req.GetSdkId() == "" {
-		return nil, status.Error(codes.InvalidArgument, "sdk id parameter missing")
-	}
-
 	var user model.UserAttrs
-	if req.GetUser() != nil {
-		user = getUserAttrs(req.GetUser())
-	}
-
-	sdkClient, ok := s.sdkClients[req.GetSdkId()]
-	if !ok {
-		return nil, status.Error(codes.InvalidArgument, "sdk not found for identifier: '"+req.GetSdkId()+"'")
-	}
-	if !sdkClient.IsInValidState() {
-		return nil, status.Error(codes.Internal, "sdk with identifier '"+req.GetSdkId()+"' is in an invalid state; please check the logs for more details")
+	sdkClient, err := s.parseEvalRequest(req, &user, false)
+	if err != nil {
+		return nil, err
 	}
 	values := sdkClient.EvalAll(user)
 	final := make(map[string]*proto.EvalResponse)
@@ -235,6 +180,53 @@ func (s *flagService) toPayload(resp *model.ResponsePayload) *proto.EvalResponse
 func (s *flagService) Close() {
 	close(s.closed)
 	s.streamServer.Close()
+}
+
+func (s *flagService) parseEvalStreamRequest(req *proto.EvalRequest, user *model.UserAttrs, checkKey bool) (stream.Stream, error) {
+	if req.GetSdkId() == "" {
+		return nil, status.Error(codes.InvalidArgument, "sdk id parameter missing")
+	}
+	if checkKey && req.GetKey() == "" {
+		return nil, status.Error(codes.InvalidArgument, "key request parameter missing")
+	}
+
+	if req.GetUser() != nil {
+		*user = getUserAttrs(req.GetUser())
+	}
+
+	str := s.streamServer.GetStreamOrNil(req.GetSdkId())
+	if str == nil {
+		return nil, status.Error(codes.InvalidArgument, "sdk not found for identifier: '"+req.GetSdkId()+"'")
+	}
+	if !str.IsInValidState() {
+		return nil, status.Error(codes.Internal, "sdk with identifier '"+req.GetSdkId()+"' is in an invalid state; please check the logs for more details")
+	}
+	if checkKey && !str.CanEval(req.GetKey()) {
+		return nil, status.Error(codes.InvalidArgument, "feature flag or setting with key '"+req.GetKey()+"' not found")
+	}
+	return str, nil
+}
+
+func (s *flagService) parseEvalRequest(req *proto.EvalRequest, user *model.UserAttrs, checkKey bool) (sdk.Client, error) {
+	if req.GetSdkId() == "" {
+		return nil, status.Error(codes.InvalidArgument, "sdk id parameter missing")
+	}
+	if checkKey && req.GetKey() == "" {
+		return nil, status.Error(codes.InvalidArgument, "key request parameter missing")
+	}
+
+	if req.GetUser() != nil {
+		*user = getUserAttrs(req.GetUser())
+	}
+
+	sdkClient, ok := s.sdkClients[req.GetSdkId()]
+	if !ok {
+		return nil, status.Error(codes.InvalidArgument, "sdk not found for identifier: '"+req.GetSdkId()+"'")
+	}
+	if !sdkClient.IsInValidState() {
+		return nil, status.Error(codes.Internal, "sdk with identifier '"+req.GetSdkId()+"' is in an invalid state; please check the logs for more details")
+	}
+	return sdkClient, nil
 }
 
 func getUserAttrs(attrs map[string]*proto.UserValue) model.UserAttrs {
