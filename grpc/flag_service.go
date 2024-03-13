@@ -127,7 +127,6 @@ func (s *flagService) EvalFlag(_ context.Context, req *proto.EvalRequest) (*prot
 	if req.GetSdkId() == "" {
 		return nil, status.Error(codes.InvalidArgument, "sdk id parameter missing")
 	}
-
 	if req.GetKey() == "" {
 		return nil, status.Error(codes.InvalidArgument, "key request parameter missing")
 	}

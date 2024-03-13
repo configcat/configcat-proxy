@@ -35,18 +35,8 @@ func NewServer(sdkClients map[string]sdk.Client, config *config.ApiConfig, log l
 }
 
 func (s *Server) Eval(w http.ResponseWriter, r *http.Request) {
-	reqBody, err := io.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, "Failed to read request body", http.StatusBadRequest)
-		return
-	}
 	var evalReq model.EvalRequest
-	err = json.Unmarshal(reqBody, &evalReq)
-	if err != nil {
-		http.Error(w, "Failed to parse JSON body: "+err.Error(), http.StatusBadRequest)
-		return
-	}
-	sdkClient, err, code := s.getSDKClient(r.Context())
+	sdkClient, err, code := s.parseRequest(r, &evalReq)
 	if err != nil {
 		http.Error(w, err.Error(), code)
 		return
@@ -72,18 +62,8 @@ func (s *Server) Eval(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) EvalAll(w http.ResponseWriter, r *http.Request) {
-	reqBody, err := io.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, "Failed to read request body", http.StatusBadRequest)
-		return
-	}
 	var evalReq model.EvalRequest
-	err = json.Unmarshal(reqBody, &evalReq)
-	if err != nil {
-		http.Error(w, "Failed to parse JSON body: "+err.Error(), http.StatusBadRequest)
-		return
-	}
-	sdkClient, err, code := s.getSDKClient(r.Context())
+	sdkClient, err, code := s.parseRequest(r, &evalReq)
 	if err != nil {
 		http.Error(w, err.Error(), code)
 		return
@@ -133,6 +113,22 @@ func (s *Server) Refresh(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) ICanHasCoffee(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusTeapot)
+}
+
+func (s *Server) parseRequest(r *http.Request, evalReq *model.EvalRequest) (sdk.Client, error, int) {
+	reqBody, err := io.ReadAll(r.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read request body"), http.StatusBadRequest
+	}
+	err = json.Unmarshal(reqBody, &evalReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse JSON body: " + err.Error()), http.StatusBadRequest
+	}
+	sdkClient, err, code := s.getSDKClient(r.Context())
+	if err != nil {
+		return nil, err, code
+	}
+	return sdkClient, nil, http.StatusOK
 }
 
 func (s *Server) getSDKClient(ctx context.Context) (sdk.Client, error, int) {
