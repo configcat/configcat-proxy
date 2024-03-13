@@ -69,7 +69,7 @@ func TestAPI_Eval(t *testing.T) {
 		srv.Eval(res, req)
 
 		assert.Equal(t, 400, res.Code)
-		assert.Contains(t, res.Body.String(), `Failed to parse JSON body: 'Identifier' has an invalid type, only 'string', 'number', and 'string[]' types are allowed`)
+		assert.Contains(t, res.Body.String(), `failed to parse JSON body: 'Identifier' has an invalid type, only 'string', 'number', and 'string[]' types are allowed`)
 	})
 	t.Run("offline", func(t *testing.T) {
 		utils.UseTempFile(`{"f":{"flag":{"i":"","v":{"b":true},"t":0}}}`, func(path string) {
@@ -142,7 +142,7 @@ func TestAPI_EvalAll(t *testing.T) {
 		srv.EvalAll(res, req)
 
 		assert.Equal(t, 400, res.Code)
-		assert.Contains(t, res.Body.String(), `Failed to parse JSON body: 'Identifier' has an invalid type, only 'string', 'number', and 'string[]' types are allowed`)
+		assert.Contains(t, res.Body.String(), `failed to parse JSON body: 'Identifier' has an invalid type, only 'string', 'number', and 'string[]' types are allowed`)
 	})
 	t.Run("offline", func(t *testing.T) {
 		utils.UseTempFile(`{"f":{"flag":{"i":"","v":{"b":true},"t":0}}}`, func(path string) {

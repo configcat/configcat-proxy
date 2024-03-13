@@ -170,7 +170,7 @@ func TestSSE_Get_User_Invalid(t *testing.T) {
 	srv.SingleFlag(res, req)
 
 	assert.Equal(t, http.StatusBadRequest, res.Code)
-	assert.Contains(t, res.Body.String(), "Failed to deserialize incoming 'data': 'Identifier' has an invalid type, only 'string', 'number', and 'string[]' types are allowed")
+	assert.Contains(t, res.Body.String(), "failed to deserialize incoming 'data': 'Identifier' has an invalid type, only 'string', 'number', and 'string[]' types are allowed")
 }
 
 func TestSSE_Get_All_User(t *testing.T) {
@@ -212,7 +212,7 @@ func TestSSE_Get_All_User_Invalid(t *testing.T) {
 	srv.AllFlags(res, req)
 
 	assert.Equal(t, http.StatusBadRequest, res.Code)
-	assert.Contains(t, res.Body.String(), "Failed to deserialize incoming 'data': 'Identifier' has an invalid type, only 'string', 'number', and 'string[]' types are allowed")
+	assert.Contains(t, res.Body.String(), "failed to deserialize incoming 'data': 'Identifier' has an invalid type, only 'string', 'number', and 'string[]' types are allowed")
 }
 
 func newServer(t *testing.T, conf *config.SseConfig) *Server {
