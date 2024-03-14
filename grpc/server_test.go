@@ -43,7 +43,7 @@ func TestNewServer(t *testing.T) {
 		srv.Listen()
 		wg.Done()
 	}()
-	time.Sleep(1 * time.Second)
+	time.Sleep(500 * time.Millisecond)
 	srv.Shutdown()
 	wg.Wait()
 
@@ -129,7 +129,7 @@ MK4Li/LGWcksyoF+hbPNXMFCIA==
 				srv.Listen()
 				wg.Done()
 			}()
-			time.Sleep(1 * time.Second)
+			time.Sleep(500 * time.Millisecond)
 			srv.Shutdown()
 			wg.Wait()
 
