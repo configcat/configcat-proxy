@@ -25,6 +25,7 @@ services:
     environment:
       - CONFIGCAT_LOG_LEVEL=debug
       - CONFIGCAT_GRPC_KEEP_ALIVE_MAX_CONNECTION_IDLE=15
+      - CONFIGCAT_GRPC_SERVER_REFLECTION_ENABLED=true
       - CONFIGCAT_SDKS={"sdk1":"XxPbCKmzIUGORk4vsufpzw/iC_KABprDEueeQs3yovVnQ", "sdk2":"XxPbCKmzIUGORk4vsufpzw/6ft7XQudcEuIXY49grZM9w"}
       - CONFIGCAT_SDK1_BASE_URL=https://test-cdn-global.configcat.com
       - CONFIGCAT_SDK1_POLL_INTERVAL=300

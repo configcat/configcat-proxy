@@ -269,7 +269,7 @@ func (c *Config) setDefaults() {
 	c.Grpc.Enabled = true
 	c.Grpc.Port = 50051
 	c.Grpc.HealthCheckEnabled = true
-	c.Grpc.ServerReflectionEnabled = true
+	c.Grpc.ServerReflectionEnabled = false
 
 	c.Diag.Enabled = true
 	c.Diag.Status.Enabled = true

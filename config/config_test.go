@@ -20,7 +20,7 @@ func TestConfig_Defaults(t *testing.T) {
 	assert.Equal(t, 50051, conf.Grpc.Port)
 	assert.True(t, conf.Grpc.Enabled)
 	assert.True(t, conf.Grpc.HealthCheckEnabled)
-	assert.True(t, conf.Grpc.ServerReflectionEnabled)
+	assert.False(t, conf.Grpc.ServerReflectionEnabled)
 
 	assert.Equal(t, 8051, conf.Diag.Port)
 	assert.True(t, conf.Diag.Enabled)
@@ -552,7 +552,7 @@ func TestGrpcConfig_YAML(t *testing.T) {
 grpc:
   enabled: true
   port: 8060
-  server_reflection_enabled: false
+  server_reflection_enabled: true
   health_check_enabled: false
   keep_alive:
     max_connection_idle: 1
@@ -569,7 +569,7 @@ grpc:
 		assert.Equal(t, log.Error, conf.Grpc.Log.GetLevel())
 		assert.Equal(t, 8060, conf.Grpc.Port)
 		assert.True(t, conf.Grpc.Enabled)
-		assert.False(t, conf.Grpc.ServerReflectionEnabled)
+		assert.True(t, conf.Grpc.ServerReflectionEnabled)
 		assert.False(t, conf.Grpc.HealthCheckEnabled)
 		assert.Equal(t, 1, conf.Grpc.KeepAlive.MaxConnectionIdle)
 		assert.Equal(t, 2, conf.Grpc.KeepAlive.MaxConnectionAge)
