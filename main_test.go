@@ -26,7 +26,7 @@ func TestAppMain(t *testing.T) {
 		exitCode = run(closeSignal)
 		wg.Done()
 	}()
-	time.Sleep(5 * time.Second)
+	time.Sleep(2 * time.Second)
 	closeSignal <- syscall.SIGTERM
 	wg.Wait()
 
@@ -55,6 +55,28 @@ func TestAppMain_Disabled_Everything(t *testing.T) {
 	assert.Equal(t, 0, exitCode)
 }
 
+func TestAppMain_GRPCOnly(t *testing.T) {
+	resetFlags()
+	t.Setenv("CONFIGCAT_SDKS", `{"sdk1":"XxPbCKmzIUGORk4vsufpzw/iC_KABprDEueeQs3yovVnQ"}`)
+	t.Setenv("CONFIGCAT_GRPC_PORT", "5092")
+	t.Setenv("CONFIGCAT_HTTP_ENABLED", "false")
+	t.Setenv("CONFIGCAT_DIAG_ENABLED", "false")
+
+	var exitCode int
+	closeSignal := make(chan os.Signal, 1)
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		exitCode = run(closeSignal)
+		wg.Done()
+	}()
+	time.Sleep(2 * time.Second)
+	closeSignal <- syscall.SIGTERM
+	wg.Wait()
+
+	assert.Equal(t, 0, exitCode)
+}
+
 func TestAppMain_Invalid_Conf(t *testing.T) {
 	resetFlags()
 	var exitCode int
@@ -65,8 +87,6 @@ func TestAppMain_Invalid_Conf(t *testing.T) {
 		exitCode = run(closeSignal)
 		wg.Done()
 	}()
-	time.Sleep(1 * time.Second)
-	closeSignal <- syscall.SIGTERM
 	wg.Wait()
 
 	assert.Equal(t, 1, exitCode)
@@ -86,8 +106,6 @@ func TestAppMain_Invalid_Config_YAML(t *testing.T) {
 		exitCode = run(closeSignal)
 		wg.Done()
 	}()
-	time.Sleep(1 * time.Second)
-	closeSignal <- syscall.SIGTERM
 	wg.Wait()
 
 	assert.Equal(t, 1, exitCode)
@@ -106,8 +124,6 @@ func TestAppMain_Invalid_TLS_Cert(t *testing.T) {
 		exitCode = run(closeSignal)
 		wg.Done()
 	}()
-	time.Sleep(1 * time.Second)
-	closeSignal <- syscall.SIGTERM
 	wg.Wait()
 
 	assert.Equal(t, 1, exitCode)
@@ -125,8 +141,6 @@ func TestAppMain_ErrorChan_Diag_Conflicting_Ports(t *testing.T) {
 		exitCode = run(closeSignal)
 		wg.Done()
 	}()
-	time.Sleep(1 * time.Second)
-	closeSignal <- syscall.SIGTERM
 	wg.Wait()
 
 	assert.Equal(t, 1, exitCode)
@@ -144,8 +158,6 @@ func TestAppMain_ErrorChan_Grpc_Conflicting_Ports(t *testing.T) {
 		exitCode = run(closeSignal)
 		wg.Done()
 	}()
-	time.Sleep(1 * time.Second)
-	closeSignal <- syscall.SIGTERM
 	wg.Wait()
 
 	assert.Equal(t, 1, exitCode)
