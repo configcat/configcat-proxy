@@ -191,27 +191,28 @@ func (r *reporter) appendRecord(component string, message string, isError bool) 
 			stat = Down
 		}
 		sdk.Source.Status = stat
-	}
-	allSdksDown := true
-	hasDegradedSdk := false
-	for key := range r.conf.SDKs {
-		if sdk, ok := r.status.SDKs[key]; ok {
-			if sdk.Source.Status != Down {
-				allSdksDown = false
-			}
-			if sdk.Source.Status != Healthy {
-				hasDegradedSdk = true
+
+		allSdksDown := true
+		hasDegradedSdk := false
+		for key := range r.conf.SDKs {
+			if sdk, ok := r.status.SDKs[key]; ok {
+				if sdk.Source.Status != Down {
+					allSdksDown = false
+				}
+				if sdk.Source.Status != Healthy {
+					hasDegradedSdk = true
+				}
 			}
 		}
-	}
-	if !hasDegradedSdk && !allSdksDown {
-		r.status.Status = Healthy
-	} else {
-		if hasDegradedSdk {
-			r.status.Status = Degraded
-		}
-		if allSdksDown {
-			r.status.Status = Down
+		if !hasDegradedSdk && !allSdksDown {
+			r.status.Status = Healthy
+		} else {
+			if hasDegradedSdk {
+				r.status.Status = Degraded
+			}
+			if allSdksDown {
+				r.status.Status = Down
+			}
 		}
 	}
 }
