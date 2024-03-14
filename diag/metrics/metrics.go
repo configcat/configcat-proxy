@@ -10,26 +10,36 @@ import (
 type Reporter interface {
 	IncrementConnection(sdkId string, streamType string, flag string)
 	DecrementConnection(sdkId string, streamType string, flag string)
+	AddSentMessageCount(count int, sdkId string, streamType string, flag string)
 
 	HttpHandler() http.Handler
 }
 
 type reporter struct {
-	registry        *prometheus.Registry
-	responseTime    *prometheus.HistogramVec
-	sdkResponseTime *prometheus.HistogramVec
-	connections     *prometheus.GaugeVec
+	registry          *prometheus.Registry
+	httpResponseTime  *prometheus.HistogramVec
+	grpcResponseTime  *prometheus.HistogramVec
+	sdkResponseTime   *prometheus.HistogramVec
+	connections       *prometheus.GaugeVec
+	streamMessageSent *prometheus.CounterVec
 }
 
 func NewReporter() Reporter {
 	reg := prometheus.NewRegistry()
 
-	respTime := prometheus.NewHistogramVec(prometheus.HistogramOpts{
+	httpRespTime := prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Namespace: "configcat",
 		Name:      "http_request_duration_seconds",
 		Help:      "Histogram of Proxy HTTP response time in seconds.",
 		Buckets:   prometheus.DefBuckets,
 	}, []string{"route", "method", "status"})
+
+	grpcRespTime := prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Namespace: "configcat",
+		Name:      "grpc_rpc_duration_seconds",
+		Help:      "Histogram of RPC response latency in seconds.",
+		Buckets:   prometheus.DefBuckets,
+	}, []string{"method", "code"})
 
 	sdkRespTime := prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Namespace: "configcat",
@@ -44,30 +54,44 @@ func NewReporter() Reporter {
 		Help:      "Number of active client connections per stream.",
 	}, []string{"sdk", "type", "flag"})
 
+	streamMessageSent := prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "configcat",
+		Name:      "stream_msg_sent_total",
+		Help:      "Total number of stream messages sent by the server.",
+	}, []string{"sdk", "type", "flag"})
+
 	reg.MustRegister(
 		collectors.NewGoCollector(),
 		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
-		respTime,
+		httpRespTime,
+		grpcRespTime,
 		sdkRespTime,
 		connections,
+		streamMessageSent,
 	)
 
 	return &reporter{
-		registry:        reg,
-		responseTime:    respTime,
-		sdkResponseTime: sdkRespTime,
-		connections:     connections,
+		registry:          reg,
+		httpResponseTime:  httpRespTime,
+		grpcResponseTime:  grpcRespTime,
+		sdkResponseTime:   sdkRespTime,
+		connections:       connections,
+		streamMessageSent: streamMessageSent,
 	}
 }
 
-func (h *reporter) HttpHandler() http.Handler {
-	return promhttp.HandlerFor(h.registry, promhttp.HandlerOpts{Registry: h.registry})
+func (r *reporter) HttpHandler() http.Handler {
+	return promhttp.HandlerFor(r.registry, promhttp.HandlerOpts{Registry: r.registry})
 }
 
-func (h *reporter) IncrementConnection(sdkId string, streamType string, flag string) {
-	h.connections.WithLabelValues(sdkId, streamType, flag).Inc()
+func (r *reporter) IncrementConnection(sdkId string, streamType string, flag string) {
+	r.connections.WithLabelValues(sdkId, streamType, flag).Inc()
 }
 
-func (h *reporter) DecrementConnection(sdkId string, streamType string, flag string) {
-	h.connections.WithLabelValues(sdkId, streamType, flag).Dec()
+func (r *reporter) DecrementConnection(sdkId string, streamType string, flag string) {
+	r.connections.WithLabelValues(sdkId, streamType, flag).Dec()
+}
+
+func (r *reporter) AddSentMessageCount(count int, sdkId string, streamType string, flag string) {
+	r.streamMessageSent.WithLabelValues(sdkId, streamType, flag).Add(float64(count))
 }

@@ -35,7 +35,7 @@ func NewServer(sdkClients map[string]sdk.Client, metrics metrics.Reporter, conf 
 func (s *Server) SingleFlag(w http.ResponseWriter, r *http.Request) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
-		http.Error(w, "Streaming not supported", http.StatusNotImplemented)
+		http.Error(w, "streaming not supported", http.StatusNotImplemented)
 		return
 	}
 
@@ -54,6 +54,14 @@ func (s *Server) SingleFlag(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "SDK not found for identifier: '"+sdkId+"'", http.StatusNotFound)
 		return
 	}
+	if !str.IsInValidState() {
+		http.Error(w, "SDK with identifier '"+sdkId+"' is in an invalid state; please check the logs for more details", http.StatusInternalServerError)
+		return
+	}
+	if !str.CanEval(evalReq.Key) {
+		http.Error(w, "feature flag or setting with key '"+evalReq.Key+"' not found", http.StatusBadRequest)
+		return
+	}
 
 	conn := str.CreateConnection(evalReq.Key, evalReq.User)
 	w.WriteHeader(http.StatusOK)
@@ -67,7 +75,7 @@ func (s *Server) SingleFlag(w http.ResponseWriter, r *http.Request) {
 func (s *Server) AllFlags(w http.ResponseWriter, r *http.Request) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
-		http.Error(w, "Streaming not supported", http.StatusNotImplemented)
+		http.Error(w, "streaming not supported", http.StatusNotImplemented)
 		return
 	}
 
@@ -75,6 +83,10 @@ func (s *Server) AllFlags(w http.ResponseWriter, r *http.Request) {
 	str := s.streamServer.GetStreamOrNil(sdkId)
 	if str == nil {
 		http.Error(w, "SDK not found for identifier: '"+sdkId+"'", http.StatusNotFound)
+		return
+	}
+	if !str.IsInValidState() {
+		http.Error(w, "SDK with identifier '"+sdkId+"' is in an invalid state; please check the logs for more details", http.StatusInternalServerError)
 		return
 	}
 
@@ -138,13 +150,13 @@ func prepareResponse(w http.ResponseWriter, r *http.Request, dataMustSet bool) (
 	} else {
 		streamContext, err := utils.Base64URLDecode(streamData)
 		if err != nil {
-			http.Error(w, "Failed to decode incoming '"+streamDataName+"'", http.StatusBadRequest)
+			http.Error(w, "failed to decode incoming '"+streamDataName+"'", http.StatusBadRequest)
 			return nil, ""
 		}
 		var evalReq model.EvalRequest
 		err = json.Unmarshal(streamContext, &evalReq)
 		if err != nil {
-			http.Error(w, "Failed to deserialize incoming '"+streamDataName+"': "+err.Error(), http.StatusBadRequest)
+			http.Error(w, "failed to deserialize incoming '"+streamDataName+"': "+err.Error(), http.StatusBadRequest)
 			return nil, ""
 		}
 		return &evalReq, sdkId

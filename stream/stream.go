@@ -9,6 +9,8 @@ import (
 )
 
 type Stream interface {
+	CanEval(key string) bool
+	IsInValidState() bool
 	CreateConnection(key string, user model.UserAttrs) *Connection
 	CloseConnection(conn *Connection, key string)
 	Close()
@@ -86,6 +88,20 @@ func (s *stream) run() {
 	}
 }
 
+func (s *stream) CanEval(key string) bool {
+	keys := s.sdkClient.Keys()
+	for _, k := range keys {
+		if k == key {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *stream) IsInValidState() bool {
+	return s.sdkClient.IsInValidState()
+}
+
 func (s *stream) CreateConnection(key string, user model.UserAttrs) *Connection {
 	var discriminator uint64
 	if user != nil {
@@ -130,6 +146,9 @@ func (s *stream) addConnection(established *connEstablished) {
 	}
 	ch.AddConnection(established.conn)
 	established.conn.receive <- ch.LastPayload()
+	if s.metrics != nil {
+		s.metrics.AddSentMessageCount(1, s.sdkId, s.serverType, established.key)
+	}
 }
 
 func (s *stream) removeConnection(closed *connClosed) {
@@ -154,7 +173,11 @@ func (s *stream) notifyConnections() {
 	sent := 0
 	for key, bucket := range s.channels {
 		for _, ch := range bucket {
-			sent += ch.Notify(s.sdkClient, key)
+			count := ch.Notify(s.sdkClient, key)
+			sent += count
+			if s.metrics != nil {
+				s.metrics.AddSentMessageCount(count, s.sdkId, s.serverType, key)
+			}
 		}
 	}
 	if sent > 0 {

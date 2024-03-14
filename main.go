@@ -79,17 +79,21 @@ func run(closeSignal chan os.Signal) int {
 			SdkId:              key,
 		}, logger)
 	}
-	router := web.NewRouter(sdkClients, metricsReporter, statusReporter, &conf.Http, logger)
 
-	httpServer, err := web.NewServer(router.Handler(), logger, &conf, errorChan)
-	if err != nil {
-		return exitFailure
+	var httpServer *web.Server
+	var router *web.HttpRouter
+	if conf.Http.Enabled {
+		router = web.NewRouter(sdkClients, metricsReporter, statusReporter, &conf.Http, logger)
+		httpServer, err = web.NewServer(router.Handler(), logger, &conf, errorChan)
+		if err != nil {
+			return exitFailure
+		}
+		httpServer.Listen()
 	}
-	httpServer.Listen()
 
 	var grpcServer *grpc.Server
 	if conf.Grpc.Enabled {
-		grpcServer, err = grpc.NewServer(sdkClients, metricsReporter, &conf, logger, errorChan)
+		grpcServer, err = grpc.NewServer(sdkClients, metricsReporter, statusReporter, &conf, logger, errorChan)
 		if err != nil {
 			return exitFailure
 		}
@@ -102,9 +106,14 @@ func run(closeSignal chan os.Signal) int {
 			for _, sdkClient := range sdkClients {
 				sdkClient.Close()
 			}
-			router.Close()
+			if router != nil {
+				router.Close()
+			}
 
-			shutDownCount := 1
+			shutDownCount := 0
+			if httpServer != nil {
+				shutDownCount++
+			}
 			if grpcServer != nil {
 				shutDownCount++
 			}
@@ -113,10 +122,12 @@ func run(closeSignal chan os.Signal) int {
 			}
 			wg := sync.WaitGroup{}
 			wg.Add(shutDownCount)
-			go func() {
-				httpServer.Shutdown()
-				wg.Done()
-			}()
+			if httpServer != nil {
+				go func() {
+					httpServer.Shutdown()
+					wg.Done()
+				}()
+			}
 			if diagServer != nil {
 				go func() {
 					diagServer.Shutdown()

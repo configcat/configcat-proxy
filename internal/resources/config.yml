@@ -6,14 +6,16 @@ sdks:
     webhook_signing_key: "configcat_whsk_Dj59sEWxRmm+84izQ8Cbn9o4Pnjz7E+/hxcmyfEVT+A="
 
 log:
-  level: "debug"
+  level: "error"
 
 grpc:
   enabled: true
+  log:
+    level: "debug"
   port: 50052
 
 diag:
-  enabled: false
+  enabled: true
 
 http:
   port: 8090

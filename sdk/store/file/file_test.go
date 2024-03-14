@@ -19,6 +19,8 @@ func TestFileStore_Existing(t *testing.T) {
 		utils.WithTimeout(2*time.Second, func() {
 			<-str.Modified()
 		})
+		err := str.Set(context.Background(), "", []byte{}) // set does nothing
+		assert.NoError(t, err)
 		res, err := str.Get(context.Background(), "")
 		assert.NoError(t, err)
 		_, _, j, _ := configcatcache.CacheSegmentsFromBytes(res)

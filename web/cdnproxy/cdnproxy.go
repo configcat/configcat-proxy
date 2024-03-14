@@ -26,9 +26,9 @@ func NewServer(sdkClients map[string]sdk.Client, config *config.CdnProxyConfig, 
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	sdkClient, err := s.getSDKClient(r.Context())
+	sdkClient, err, code := s.getSDKClient(r.Context())
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		http.Error(w, err.Error(), code)
 		return
 	}
 	w.Header().Set("Cache-Control", "max-age=0, must-revalidate")
@@ -48,12 +48,15 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Server) getSDKClient(ctx context.Context) (sdk.Client, error) {
+func (s *Server) getSDKClient(ctx context.Context) (sdk.Client, error, int) {
 	vars := httprouter.ParamsFromContext(ctx)
 	sdkId := vars.ByName("sdkId")
 	sdkClient, ok := s.sdkClients[sdkId]
 	if !ok {
-		return nil, fmt.Errorf("invalid SDK identifier: '%s'", sdkId)
+		return nil, fmt.Errorf("invalid SDK identifier: '%s'", sdkId), http.StatusNotFound
 	}
-	return sdkClient, nil
+	if !sdkClient.IsInValidState() {
+		return nil, fmt.Errorf("SDK with identifier '%s' is in an invalid state; please check the logs for more details", sdkId), http.StatusInternalServerError
+	}
+	return sdkClient, nil, http.StatusOK
 }

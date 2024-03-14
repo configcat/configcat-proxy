@@ -370,6 +370,60 @@ func TestSdk_DefaultAttrs(t *testing.T) {
 	assert.Equal(t, model.UserAttrs{"a": "g", "c": "d", "e": "h"}, evalData.User.(model.UserAttrs))
 }
 
+func TestSdk_WebHookParams(t *testing.T) {
+	key := configcattest.RandomSDKKey()
+	var h configcattest.Handler
+	_ = h.SetFlags(key, map[string]*configcattest.Flag{
+		"flag": {
+			Default: true,
+		},
+	})
+	srv := httptest.NewServer(&h)
+	defer srv.Close()
+
+	ctx := newTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key, WebhookSigningKey: "key", WebhookSignatureValidFor: 5}, nil)
+	client := NewClient(ctx, log.NewNullLogger())
+	defer client.Close()
+
+	assert.Equal(t, "key", client.WebhookSigningKey())
+	assert.Equal(t, 5, client.WebhookSignatureValidFor())
+}
+
+func TestSdk_IsInValidState_True(t *testing.T) {
+	key := configcattest.RandomSDKKey()
+	var h configcattest.Handler
+	_ = h.SetFlags(key, map[string]*configcattest.Flag{
+		"flag": {
+			Default: true,
+		},
+	})
+	srv := httptest.NewServer(&h)
+	defer srv.Close()
+
+	ctx := newTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key}, nil)
+	client := NewClient(ctx, log.NewNullLogger())
+	defer client.Close()
+
+	assert.True(t, client.IsInValidState())
+}
+
+func TestSdk_IsInValidState_False(t *testing.T) {
+	ctx := newTestSdkContext(&config.SDKConfig{BaseUrl: "https://localhost", Key: configcattest.RandomSDKKey()}, nil)
+	client := NewClient(ctx, log.NewDebugLogger())
+	defer client.Close()
+
+	assert.False(t, client.IsInValidState())
+}
+
+func TestSdk_IsInValidState_EmptyCache_False(t *testing.T) {
+	r := miniredis.RunT(t)
+	ctx := newTestSdkContext(&config.SDKConfig{BaseUrl: "https://localhost", Key: configcattest.RandomSDKKey()}, &config.CacheConfig{Redis: config.RedisConfig{Enabled: true, Addresses: []string{r.Addr()}}})
+	client := NewClient(ctx, log.NewDebugLogger())
+	defer client.Close()
+
+	assert.False(t, client.IsInValidState())
+}
+
 func newTestSdkContext(conf *config.SDKConfig, cacheConf *config.CacheConfig) *Context {
 	if cacheConf == nil {
 		cacheConf = &config.CacheConfig{}

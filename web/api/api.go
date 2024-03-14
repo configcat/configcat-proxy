@@ -35,27 +35,17 @@ func NewServer(sdkClients map[string]sdk.Client, config *config.ApiConfig, log l
 }
 
 func (s *Server) Eval(w http.ResponseWriter, r *http.Request) {
-	reqBody, err := io.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, "Failed to read request body", http.StatusBadRequest)
-		return
-	}
 	var evalReq model.EvalRequest
-	err = json.Unmarshal(reqBody, &evalReq)
+	sdkClient, err, code := s.parseRequest(r, &evalReq)
 	if err != nil {
-		http.Error(w, "Failed to parse JSON body: "+err.Error(), http.StatusBadRequest)
-		return
-	}
-	sdkClient, err := s.getSDKClient(r.Context())
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		http.Error(w, err.Error(), code)
 		return
 	}
 	eval, err := sdkClient.Eval(evalReq.Key, evalReq.User)
 	if err != nil {
 		var errKeyNotFound configcat.ErrKeyNotFound
 		if errors.As(err, &errKeyNotFound) {
-			http.Error(w, "evaluation failed; the setting with the key '"+evalReq.Key+"' not found", http.StatusBadRequest)
+			http.Error(w, "feature flag or setting with key '"+evalReq.Key+"' not found", http.StatusBadRequest)
 		} else {
 			http.Error(w, "the request failed; please check the logs for more details", http.StatusInternalServerError)
 		}
@@ -72,20 +62,10 @@ func (s *Server) Eval(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) EvalAll(w http.ResponseWriter, r *http.Request) {
-	reqBody, err := io.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, "Failed to read request body", http.StatusBadRequest)
-		return
-	}
 	var evalReq model.EvalRequest
-	err = json.Unmarshal(reqBody, &evalReq)
+	sdkClient, err, code := s.parseRequest(r, &evalReq)
 	if err != nil {
-		http.Error(w, "Failed to parse JSON body: "+err.Error(), http.StatusBadRequest)
-		return
-	}
-	sdkClient, err := s.getSDKClient(r.Context())
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		http.Error(w, err.Error(), code)
 		return
 	}
 	details := sdkClient.EvalAll(evalReq.User)
@@ -103,9 +83,9 @@ func (s *Server) EvalAll(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) Keys(w http.ResponseWriter, r *http.Request) {
-	sdkClient, err := s.getSDKClient(r.Context())
+	sdkClient, err, code := s.getSDKClient(r.Context())
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		http.Error(w, err.Error(), code)
 		return
 	}
 	keys := sdkClient.Keys()
@@ -119,9 +99,9 @@ func (s *Server) Keys(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) Refresh(w http.ResponseWriter, r *http.Request) {
-	sdkClient, err := s.getSDKClient(r.Context())
+	sdkClient, err, code := s.getSDKClient(r.Context())
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		http.Error(w, err.Error(), code)
 		return
 	}
 	err = sdkClient.Refresh()
@@ -135,15 +115,34 @@ func (s *Server) ICanHasCoffee(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusTeapot)
 }
 
-func (s *Server) getSDKClient(ctx context.Context) (sdk.Client, error) {
+func (s *Server) parseRequest(r *http.Request, evalReq *model.EvalRequest) (sdk.Client, error, int) {
+	reqBody, err := io.ReadAll(r.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read request body"), http.StatusBadRequest
+	}
+	err = json.Unmarshal(reqBody, &evalReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse JSON body: " + err.Error()), http.StatusBadRequest
+	}
+	sdkClient, err, code := s.getSDKClient(r.Context())
+	if err != nil {
+		return nil, err, code
+	}
+	return sdkClient, nil, http.StatusOK
+}
+
+func (s *Server) getSDKClient(ctx context.Context) (sdk.Client, error, int) {
 	vars := httprouter.ParamsFromContext(ctx)
 	sdkId := vars.ByName("sdkId")
 	if sdkId == "" {
-		return nil, fmt.Errorf("'sdkId' path parameter must be set")
+		return nil, fmt.Errorf("'sdkId' path parameter must be set"), http.StatusNotFound
 	}
 	sdkClient, ok := s.sdkClients[sdkId]
 	if !ok {
-		return nil, fmt.Errorf("invalid SDK identifier: '%s'", sdkId)
+		return nil, fmt.Errorf("invalid SDK identifier: '%s'", sdkId), http.StatusNotFound
 	}
-	return sdkClient, nil
+	if !sdkClient.IsInValidState() {
+		return nil, fmt.Errorf("SDK with identifier '%s' is in an invalid state; please check the logs for more details", sdkId), http.StatusInternalServerError
+	}
+	return sdkClient, nil, http.StatusOK
 }

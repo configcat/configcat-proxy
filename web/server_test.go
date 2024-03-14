@@ -98,7 +98,6 @@ MK4Li/LGWcksyoF+hbPNXMFCIA==
 
 			assert.Nil(t, readFromErrChan(errChan))
 		})
-
 	})
 }
 

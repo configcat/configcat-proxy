@@ -37,6 +37,7 @@ type Client interface {
 	Close()
 	WebhookSigningKey() string
 	WebhookSignatureValidFor() int
+	IsInValidState() bool
 }
 
 type Context struct {
@@ -246,6 +247,10 @@ func (c *client) WebhookSigningKey() string {
 
 func (c *client) WebhookSignatureValidFor() int {
 	return c.sdkCtx.SDKConf.WebhookSignatureValidFor
+}
+
+func (c *client) IsInValidState() bool {
+	return !c.GetCachedJson().Empty
 }
 
 func (c *client) Close() {

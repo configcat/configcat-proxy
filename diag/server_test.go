@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"testing"
+	"time"
 )
 
 func TestNewServer(t *testing.T) {
@@ -19,7 +20,8 @@ func TestNewServer(t *testing.T) {
 		Metrics: config.MetricsConfig{Enabled: true},
 	}
 	srv := NewServer(&conf, status.NewReporter(&config.Config{SDKs: map[string]*config.SDKConfig{"sdk": {Key: "key"}}}), metrics.NewReporter(), log.NewNullLogger(), errChan)
-	go srv.Listen()
+	srv.Listen()
+	time.Sleep(500 * time.Millisecond)
 
 	req, _ := http.NewRequest(http.MethodGet, "http://localhost:5051/status", http.NoBody)
 	resp, err := http.DefaultClient.Do(req)
@@ -46,7 +48,8 @@ func TestNewServer_NotEnabled(t *testing.T) {
 	}
 
 	srv := NewServer(&conf, status.NewReporter(&config.Config{SDKs: map[string]*config.SDKConfig{"sdk": {Key: "key"}}}), metrics.NewReporter(), log.NewNullLogger(), errChan)
-	go srv.Listen()
+	srv.Listen()
+	time.Sleep(500 * time.Millisecond)
 
 	req, _ := http.NewRequest(http.MethodGet, "http://localhost:5052/status", http.NoBody)
 	resp, err := http.DefaultClient.Do(req)
@@ -72,7 +75,8 @@ func TestNewServer_NilReporters(t *testing.T) {
 		Metrics: config.MetricsConfig{Enabled: true},
 	}
 	srv := NewServer(&conf, nil, nil, log.NewNullLogger(), errChan)
-	go srv.Listen()
+	srv.Listen()
+	time.Sleep(500 * time.Millisecond)
 
 	req, _ := http.NewRequest(http.MethodGet, "http://localhost:5053/status", http.NoBody)
 	resp, err := http.DefaultClient.Do(req)

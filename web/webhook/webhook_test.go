@@ -30,7 +30,7 @@ func TestWebhook_Signature_Bad(t *testing.T) {
 	t.Run("headers missing", func(t *testing.T) {
 		res := httptest.NewRecorder()
 		req := http.Request{Method: http.MethodGet}
-		utils.AddSdkIdContextParam(&req)
+		testutils.AddSdkIdContextParam(&req)
 		srv.ServeHTTP(res, &req)
 		assert.Equal(t, http.StatusBadRequest, res.Code)
 	})
@@ -40,7 +40,7 @@ func TestWebhook_Signature_Bad(t *testing.T) {
 		req.Header.Set("X-ConfigCat-Webhook-Signature-V1", "wrong")
 		req.Header.Set("X-ConfigCat-Webhook-ID", "1")
 		req.Header.Set("X-ConfigCat-Webhook-Timestamp", strconv.FormatInt(time.Now().Unix(), 10))
-		utils.AddSdkIdContextParam(req)
+		testutils.AddSdkIdContextParam(req)
 		srv.ServeHTTP(res, req)
 		assert.Equal(t, http.StatusBadRequest, res.Code)
 	})
@@ -50,7 +50,7 @@ func TestWebhook_Signature_Bad(t *testing.T) {
 		req.Header.Set("X-ConfigCat-Webhook-Signature-V1", "wrong")
 		req.Header.Set("X-ConfigCat-Webhook-ID", "1")
 		req.Header.Set("X-ConfigCat-Webhook-Timestamp", strconv.FormatInt(time.Now().Unix(), 10))
-		utils.AddSdkIdContextParam(req)
+		testutils.AddSdkIdContextParam(req)
 		srv.ServeHTTP(res, req)
 		assert.Equal(t, http.StatusBadRequest, res.Code)
 	})
@@ -75,7 +75,7 @@ func TestWebhook_Signature_Ok(t *testing.T) {
 		req.Header.Set("X-ConfigCat-Webhook-Signature-V1", signature)
 		req.Header.Set("X-ConfigCat-Webhook-ID", id)
 		req.Header.Set("X-ConfigCat-Webhook-Timestamp", timestamp)
-		utils.AddSdkIdContextParam(req)
+		testutils.AddSdkIdContextParam(req)
 		sub := clients["test"].SubConfigChanged("hook1")
 		utils.WithTimeout(2*time.Second, func() {
 			<-clients["test"].Ready()
@@ -106,7 +106,7 @@ func TestWebhook_Signature_Ok(t *testing.T) {
 		req.Header.Set("X-ConfigCat-Webhook-Signature-V1", signature)
 		req.Header.Set("X-ConfigCat-Webhook-ID", id)
 		req.Header.Set("X-ConfigCat-Webhook-Timestamp", timestamp)
-		utils.AddSdkIdContextParam(req)
+		testutils.AddSdkIdContextParam(req)
 		sub := clients["test"].SubConfigChanged("hook1")
 		utils.WithTimeout(2*time.Second, func() {
 			<-clients["test"].Ready()
@@ -139,7 +139,7 @@ func TestWebhook_Signature_Replay_Reject(t *testing.T) {
 	req.Header.Set("X-ConfigCat-Webhook-Signature-V1", signature)
 	req.Header.Set("X-ConfigCat-Webhook-ID", id)
 	req.Header.Set("X-ConfigCat-Webhook-Timestamp", timestamp)
-	utils.AddSdkIdContextParam(req)
+	testutils.AddSdkIdContextParam(req)
 	time.Sleep(2100 * time.Millisecond) // expire timestamp
 	srv.ServeHTTP(res, req)
 	assert.Equal(t, http.StatusBadRequest, res.Code)

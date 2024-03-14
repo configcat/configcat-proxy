@@ -15,6 +15,14 @@ func TestUserAttributes_Identical(t *testing.T) {
 	assert.Equal(t, user1.Discriminator(s), user2.Discriminator(s))
 }
 
+func TestUserAttributes_GetAttributes(t *testing.T) {
+	user := UserAttrs{"email": "user1@test.com", "id": "user1", "custom1": 42}
+
+	assert.Equal(t, "user1@test.com", user.GetAttribute("email"))
+	assert.Equal(t, "user1", user.GetAttribute("id"))
+	assert.Equal(t, 42, user.GetAttribute("custom1"))
+}
+
 func TestUserAttributes_Merge(t *testing.T) {
 	a := UserAttrs{"a": "b", "c": "d"}
 	b := UserAttrs{"e": "f", "g": "h"}

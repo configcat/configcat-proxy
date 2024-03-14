@@ -118,6 +118,9 @@ func (s *SDKConfig) loadEnv(prefix string) error {
 
 func (h *HttpConfig) loadEnv(prefix string) error {
 	prefix = concatPrefix(prefix, "HTTP")
+	if err := readEnv(prefix, "ENABLED", &h.Enabled, toBool); err != nil {
+		return err
+	}
 	if err := readEnv(prefix, "PORT", &h.Port, toInt); err != nil {
 		return err
 	}
@@ -147,7 +150,33 @@ func (g *GrpcConfig) loadEnv(prefix string) error {
 	if err := readEnv(prefix, "PORT", &g.Port, toInt); err != nil {
 		return err
 	}
+	if err := readEnv(prefix, "HEALTH_CHECK_ENABLED", &g.HealthCheckEnabled, toBool); err != nil {
+		return err
+	}
+	if err := readEnv(prefix, "SERVER_REFLECTION_ENABLED", &g.ServerReflectionEnabled, toBool); err != nil {
+		return err
+	}
+	if err := g.KeepAlive.loadEnv(prefix); err != nil {
+		return err
+	}
 	return g.Log.loadEnv(prefix)
+}
+
+func (k *KeepAliveConfig) loadEnv(prefix string) error {
+	prefix = concatPrefix(prefix, "KEEP_ALIVE")
+	if err := readEnv(prefix, "MAX_CONNECTION_IDLE", &k.MaxConnectionIdle, toInt); err != nil {
+		return err
+	}
+	if err := readEnv(prefix, "MAX_CONNECTION_AGE", &k.MaxConnectionAge, toInt); err != nil {
+		return err
+	}
+	if err := readEnv(prefix, "MAX_CONNECTION_AGE_GRACE", &k.MaxConnectionAgeGrace, toInt); err != nil {
+		return err
+	}
+	if err := readEnv(prefix, "TIME", &k.Time, toInt); err != nil {
+		return err
+	}
+	return readEnv(prefix, "TIMEOUT", &k.Timeout, toInt)
 }
 
 func (h *HttpProxyConfig) loadEnv(prefix string) error {

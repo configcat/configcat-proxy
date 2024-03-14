@@ -25,3 +25,17 @@ func TestKeys(t *testing.T) {
 	assert.Contains(t, Keys(map[string]int{"a": 1, "b": 2}), "a")
 	assert.Contains(t, Keys(map[string]int{"a": 1, "b": 2}), "b")
 }
+
+func TestBase64URLDecode(t *testing.T) {
+	res, err := Base64URLDecode("dGVzdA==")
+	assert.NoError(t, err)
+	assert.Equal(t, "test", string(res))
+}
+
+func TestFastHashHex(t *testing.T) {
+	assert.Equal(t, "4fdcca5ddb678139", FastHashHex([]byte("test")))
+}
+
+func TestGenerateEtag(t *testing.T) {
+	assert.Equal(t, "W/\"4fdcca5ddb678139\"", GenerateEtag([]byte("test")))
+}

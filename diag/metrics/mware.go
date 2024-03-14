@@ -1,31 +1,50 @@
 package metrics
 
 import (
+	"context"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/status"
 	"net/http"
 	"strconv"
 	"time"
 )
 
-type requestInterceptor struct {
+type httpRequestInterceptor struct {
 	http.ResponseWriter
 
 	statusCode int
 }
 
-func (r *requestInterceptor) WriteHeader(statusCode int) {
+func (r *httpRequestInterceptor) WriteHeader(statusCode int) {
 	r.statusCode = statusCode
 	r.ResponseWriter.WriteHeader(statusCode)
 }
 
-func Measure(metricsHandler Reporter, next http.HandlerFunc) http.HandlerFunc {
+func Measure(metricsReporter Reporter, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-		interceptor := requestInterceptor{w, http.StatusOK}
+		interceptor := httpRequestInterceptor{w, http.StatusOK}
 
 		next(&interceptor, r)
 
 		duration := time.Since(start)
-		metricsHandler.(*reporter).responseTime.WithLabelValues(r.URL.Path, r.Method, strconv.Itoa(interceptor.statusCode)).Observe(duration.Seconds())
+		metricsReporter.(*reporter).httpResponseTime.WithLabelValues(r.URL.Path, r.Method, strconv.Itoa(interceptor.statusCode)).Observe(duration.Seconds())
+	}
+}
+
+func GrpcUnaryInterceptor(metricsReporter Reporter) grpc.UnaryServerInterceptor {
+	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+		start := time.Now()
+
+		resp, err := handler(ctx, req)
+
+		stat, ok := status.FromError(err)
+		if !ok {
+			stat = status.FromContextError(err)
+		}
+		duration := time.Since(start)
+		metricsReporter.(*reporter).grpcResponseTime.WithLabelValues(info.FullMethod, stat.Code().String()).Observe(duration.Seconds())
+		return resp, err
 	}
 }
 

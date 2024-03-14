@@ -27,6 +27,8 @@ func TestRedisNotify(t *testing.T) {
 		<-srv.Modified()
 	})
 	s.CheckGet(t, cacheKey, string(cacheEntry))
+	err = srv.Set(context.Background(), "", []byte{}) // set does nothing
+	assert.NoError(t, err)
 	res, err := srv.Get(context.Background(), "")
 	_, _, j, _ := configcatcache.CacheSegmentsFromBytes(res)
 	assert.NoError(t, err)

@@ -1,12 +1,9 @@
 package utils
 
 import (
-	"context"
 	"encoding/base64"
 	"encoding/hex"
 	"github.com/cespare/xxhash/v2"
-	"github.com/julienschmidt/httprouter"
-	"net/http"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -64,12 +61,6 @@ func Obfuscate(str string, clearLen int) string {
 	}
 	toObfuscate := str[0 : l-clearLen]
 	return strings.Repeat("*", utf8.RuneCountInString(toObfuscate)) + str[l-clearLen:l]
-}
-
-func AddSdkIdContextParam(r *http.Request) {
-	params := httprouter.Params{httprouter.Param{Key: "sdkId", Value: "test"}}
-	ctx := context.WithValue(context.Background(), httprouter.ParamsKey, params)
-	*r = *r.WithContext(ctx)
 }
 
 func Keys[M ~map[K]V, K comparable, V any](m M) []K {

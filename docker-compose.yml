@@ -12,7 +12,7 @@ configs:
     file: internal/resources/monitor/grafana_ds.yml
   grafana_dashboards_2:
     file: internal/resources/monitor/dashboards.yml
-  grafana_dashboard_9:
+  grafana_dashboard_10:
     file: internal/resources/monitor/proxy_dashboard.json
 
 services:
@@ -24,6 +24,8 @@ services:
       - ./internal/resources/cert:/cert
     environment:
       - CONFIGCAT_LOG_LEVEL=debug
+      - CONFIGCAT_GRPC_KEEP_ALIVE_MAX_CONNECTION_IDLE=15
+      - CONFIGCAT_GRPC_SERVER_REFLECTION_ENABLED=true
       - CONFIGCAT_SDKS={"sdk1":"XxPbCKmzIUGORk4vsufpzw/iC_KABprDEueeQs3yovVnQ", "sdk2":"XxPbCKmzIUGORk4vsufpzw/6ft7XQudcEuIXY49grZM9w"}
       - CONFIGCAT_SDK1_BASE_URL=https://test-cdn-global.configcat.com
       - CONFIGCAT_SDK1_POLL_INTERVAL=300
@@ -71,7 +73,7 @@ services:
         target: /etc/grafana/provisioning/datasources/prometheus.yml
       - source: grafana_dashboards_2
         target: /etc/grafana/provisioning/dashboards/dashboards.yml
-      - source: grafana_dashboard_9
+      - source: grafana_dashboard_10
         target: /etc/grafana/provisioning/dashboards/proxy/proxy_dashboard.json
     depends_on:
       - configcat_proxy
