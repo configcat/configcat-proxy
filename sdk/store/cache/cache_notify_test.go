@@ -7,7 +7,6 @@ import (
 	"github.com/configcat/configcat-proxy/diag/status"
 	"github.com/configcat/configcat-proxy/internal/utils"
 	"github.com/configcat/configcat-proxy/log"
-	"github.com/configcat/configcat-proxy/sdk/store/cache/redis"
 	"github.com/configcat/go-sdk/v9/configcatcache"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -18,10 +17,12 @@ func TestRedisNotify(t *testing.T) {
 	sdkKey := "key"
 	cacheKey := configcatcache.ProduceCacheKey(sdkKey, configcatcache.ConfigJSONName, configcatcache.ConfigJSONCacheVersion)
 	s := miniredis.RunT(t)
-	r := NewCacheStore(redis.NewRedisStore(&config.RedisConfig{Addresses: []string{s.Addr()}}), status.NewNullReporter())
+	red, err := newRedis(&config.RedisConfig{Addresses: []string{s.Addr()}}, log.NewNullLogger())
+	assert.NoError(t, err)
+	r := NewCacheStore(red, status.NewNullReporter())
 	srv := NewNotifyingCacheStore("test", cacheKey, r, &config.OfflineConfig{CachePollInterval: 1}, status.NewNullReporter(), log.NewNullLogger()).(*notifyingCacheStore)
 	cacheEntry := configcatcache.CacheSegmentsToBytes(time.Now(), "etag", []byte(`{"f":{"flag":{"v":{"b":true}}},"p":null}`))
-	err := s.Set(cacheKey, string(cacheEntry))
+	err = s.Set(cacheKey, string(cacheEntry))
 	assert.NoError(t, err)
 	utils.WithTimeout(2*time.Second, func() {
 		<-srv.Modified()
@@ -43,7 +44,9 @@ func TestRedisNotify_Initial(t *testing.T) {
 	cacheEntry := configcatcache.CacheSegmentsToBytes(time.Now(), "etag", []byte(`{"f":{"flag":{"v":{"b":true}}},"p":null}`))
 	err := s.Set(cacheKey, string(cacheEntry))
 	assert.NoError(t, err)
-	r := NewCacheStore(redis.NewRedisStore(&config.RedisConfig{Addresses: []string{s.Addr()}}), status.NewNullReporter())
+	red, err := newRedis(&config.RedisConfig{Addresses: []string{s.Addr()}}, log.NewNullLogger())
+	assert.NoError(t, err)
+	r := NewCacheStore(red, status.NewNullReporter())
 	srv := NewNotifyingCacheStore("test", cacheKey, r, &config.OfflineConfig{CachePollInterval: 1}, status.NewNullReporter(), log.NewNullLogger())
 	s.CheckGet(t, cacheKey, string(cacheEntry))
 	res, err := srv.Get(context.Background(), "")
@@ -60,7 +63,9 @@ func TestRedisNotify_Notify(t *testing.T) {
 	cacheEntry := configcatcache.CacheSegmentsToBytes(time.Now(), "etag", []byte(`{"f":{"flag":{"v":{"b":false}}},"p":null}`))
 	err := s.Set(cacheKey, string(cacheEntry))
 	assert.NoError(t, err)
-	r := NewCacheStore(redis.NewRedisStore(&config.RedisConfig{Addresses: []string{s.Addr()}}), status.NewNullReporter())
+	red, err := newRedis(&config.RedisConfig{Addresses: []string{s.Addr()}}, log.NewNullLogger())
+	assert.NoError(t, err)
+	r := NewCacheStore(red, status.NewNullReporter())
 	srv := NewNotifyingCacheStore("test", cacheKey, r, &config.OfflineConfig{CachePollInterval: 1}, status.NewNullReporter(), log.NewNullLogger()).(*notifyingCacheStore)
 	s.CheckGet(t, cacheKey, string(cacheEntry))
 	res, err := srv.Get(context.Background(), "")
@@ -87,7 +92,9 @@ func TestRedisNotify_BadJson(t *testing.T) {
 	cacheKey := configcatcache.ProduceCacheKey(sdkKey, configcatcache.ConfigJSONName, configcatcache.ConfigJSONCacheVersion)
 	err := s.Set(cacheKey, `{"f":{"flag":{"v":{"b":false}}},"p":null}`)
 	assert.NoError(t, err)
-	r := NewCacheStore(redis.NewRedisStore(&config.RedisConfig{Addresses: []string{s.Addr()}}), status.NewNullReporter())
+	red, err := newRedis(&config.RedisConfig{Addresses: []string{s.Addr()}}, log.NewNullLogger())
+	assert.NoError(t, err)
+	r := NewCacheStore(red, status.NewNullReporter())
 	srv := NewNotifyingCacheStore("test", cacheKey, r, &config.OfflineConfig{CachePollInterval: 1}, status.NewNullReporter(), log.NewNullLogger())
 	res, err := srv.Get(context.Background(), "")
 	_, _, j, _ := configcatcache.CacheSegmentsFromBytes(res)
@@ -102,7 +109,9 @@ func TestRedisNotify_MalformedJson(t *testing.T) {
 	cacheKey := configcatcache.ProduceCacheKey(sdkKey, configcatcache.ConfigJSONName, configcatcache.ConfigJSONCacheVersion)
 	err := s.Set(cacheKey, `{"k":{"flag`)
 	assert.NoError(t, err)
-	r := NewCacheStore(redis.NewRedisStore(&config.RedisConfig{Addresses: []string{s.Addr()}}), status.NewNullReporter())
+	red, err := newRedis(&config.RedisConfig{Addresses: []string{s.Addr()}}, log.NewNullLogger())
+	assert.NoError(t, err)
+	r := NewCacheStore(red, status.NewNullReporter())
 	srv := NewNotifyingCacheStore("test", cacheKey, r, &config.OfflineConfig{CachePollInterval: 1}, status.NewNullReporter(), log.NewNullLogger())
 	res, err := srv.Get(context.Background(), "")
 	_, _, j, _ := configcatcache.CacheSegmentsFromBytes(res)
@@ -112,7 +121,9 @@ func TestRedisNotify_MalformedJson(t *testing.T) {
 }
 
 func TestRedisNotify_Unavailable(t *testing.T) {
-	r := NewCacheStore(redis.NewRedisStore(&config.RedisConfig{Addresses: []string{"nonexisting"}}), status.NewNullReporter())
+	red, err := newRedis(&config.RedisConfig{Addresses: []string{"nonexisting"}}, log.NewNullLogger())
+	assert.NoError(t, err)
+	r := NewCacheStore(red, status.NewNullReporter())
 	srv := NewNotifyingCacheStore("test", "", r, &config.OfflineConfig{CachePollInterval: 1}, status.NewNullReporter(), log.NewNullLogger())
 	res, err := srv.Get(context.Background(), "")
 	_, _, j, _ := configcatcache.CacheSegmentsFromBytes(res)
@@ -123,7 +134,9 @@ func TestRedisNotify_Unavailable(t *testing.T) {
 
 func TestRedisNotify_Close(t *testing.T) {
 	s := miniredis.RunT(t)
-	r := NewCacheStore(redis.NewRedisStore(&config.RedisConfig{Addresses: []string{s.Addr()}}), status.NewNullReporter())
+	red, err := newRedis(&config.RedisConfig{Addresses: []string{s.Addr()}}, log.NewNullLogger())
+	assert.NoError(t, err)
+	r := NewCacheStore(red, status.NewNullReporter())
 	srv := NewNotifyingCacheStore("test", "", r, &config.OfflineConfig{CachePollInterval: 1}, status.NewNullReporter(), log.NewNullLogger()).(*notifyingCacheStore)
 	go func() {
 		srv.Close()

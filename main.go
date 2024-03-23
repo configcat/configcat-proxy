@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/diag"
@@ -9,6 +10,7 @@ import (
 	"github.com/configcat/configcat-proxy/grpc"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/sdk"
+	"github.com/configcat/configcat-proxy/sdk/store/cache"
 	"github.com/configcat/configcat-proxy/web"
 	"os"
 	"os/signal"
@@ -66,6 +68,14 @@ func run(closeSignal chan os.Signal) int {
 		diagServer.Listen()
 	}
 
+	var externalCache cache.External
+	if conf.Cache.IsSet() {
+		externalCache, err = cache.SetupExternalCache(context.Background(), &conf.Cache, logger)
+		if err != nil {
+			return exitFailure
+		}
+	}
+
 	sdkClients := make(map[string]sdk.Client)
 	for key, sdkConf := range conf.SDKs {
 		sdkClients[key] = sdk.NewClient(&sdk.Context{
@@ -74,9 +84,9 @@ func run(closeSignal chan os.Signal) int {
 			MetricsReporter:    metricsReporter,
 			StatusReporter:     statusReporter,
 			ProxyConf:          &conf.HttpProxy,
-			CacheConf:          &conf.Cache,
 			GlobalDefaultAttrs: conf.DefaultAttrs,
 			SdkId:              key,
+			ExternalCache:      externalCache,
 		}, logger)
 	}
 
@@ -111,6 +121,9 @@ func run(closeSignal chan os.Signal) int {
 			}
 
 			shutDownCount := 0
+			if externalCache != nil {
+				shutDownCount++
+			}
 			if httpServer != nil {
 				shutDownCount++
 			}
@@ -122,6 +135,12 @@ func run(closeSignal chan os.Signal) int {
 			}
 			wg := sync.WaitGroup{}
 			wg.Add(shutDownCount)
+			if externalCache != nil {
+				go func() {
+					externalCache.Shutdown()
+					wg.Done()
+				}()
+			}
 			if httpServer != nil {
 				go func() {
 					httpServer.Shutdown()

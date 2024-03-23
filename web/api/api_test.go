@@ -323,7 +323,7 @@ func TestAPI_WrongSdkId(t *testing.T) {
 
 func TestAPI_WrongSDKState(t *testing.T) {
 	opts := config.SDKConfig{BaseUrl: "http://localhost", Key: configcattest.RandomSDKKey()}
-	ctx := testutils.NewTestSdkContext(&opts, &config.CacheConfig{})
+	ctx := testutils.NewTestSdkContext(&opts, nil)
 	client := sdk.NewClient(ctx, log.NewNullLogger())
 	defer client.Close()
 

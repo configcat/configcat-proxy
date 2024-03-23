@@ -46,11 +46,18 @@ func TestConfig_Defaults(t *testing.T) {
 	assert.Equal(t, 0, conf.Cache.Redis.DB)
 	assert.Equal(t, "localhost:6379", conf.Cache.Redis.Addresses[0])
 
+	assert.Equal(t, "configcat_proxy", conf.Cache.MongoDb.Database)
+	assert.Equal(t, "cache", conf.Cache.MongoDb.Collection)
+
+	assert.Equal(t, "configcat_proxy_cache", conf.Cache.DynamoDb.Table)
+
 	assert.Equal(t, 1.2, conf.Tls.MinVersion)
 	assert.Equal(t, 1.2, conf.Cache.Redis.Tls.MinVersion)
+	assert.Equal(t, 1.2, conf.Cache.MongoDb.Tls.MinVersion)
 
 	assert.Equal(t, uint16(tls.VersionTLS12), conf.Tls.GetVersion())
 	assert.Equal(t, uint16(tls.VersionTLS12), conf.Cache.Redis.Tls.GetVersion())
+	assert.Equal(t, uint16(tls.VersionTLS12), conf.Cache.MongoDb.Tls.GetVersion())
 
 	assert.Nil(t, conf.DefaultAttrs)
 }
@@ -289,7 +296,7 @@ sdks:
 	})
 }
 
-func TestCacheConfig_YAML(t *testing.T) {
+func TestRedisConfig_YAML(t *testing.T) {
 	utils.UseTempFile(`
 cache:
   redis:
@@ -324,6 +331,58 @@ cache:
 		assert.Equal(t, "./key1", conf.Cache.Redis.Tls.Certificates[0].Key)
 		assert.Equal(t, "./cert2", conf.Cache.Redis.Tls.Certificates[1].Cert)
 		assert.Equal(t, "./key2", conf.Cache.Redis.Tls.Certificates[1].Key)
+	})
+}
+
+func TestMongoDbConfig_YAML(t *testing.T) {
+	utils.UseTempFile(`
+cache:
+  mongodb:
+    enabled: true
+    url: "url"
+    database: "db"
+    collection: "coll"
+    tls: 
+      enabled: true
+      min_version: 1.1
+      server_name: "serv"
+      certificates:
+        - cert: "./cert1"
+          key: "./key1"
+        - cert: "./cert2"
+          key: "./key2"
+`, func(file string) {
+		conf, err := LoadConfigFromFileAndEnvironment(file)
+		require.NoError(t, err)
+
+		assert.True(t, conf.Cache.MongoDb.Enabled)
+		assert.Equal(t, "url", conf.Cache.MongoDb.Url)
+		assert.Equal(t, "db", conf.Cache.MongoDb.Database)
+		assert.Equal(t, "coll", conf.Cache.MongoDb.Collection)
+		assert.True(t, conf.Cache.MongoDb.Tls.Enabled)
+		assert.Equal(t, tls.VersionTLS11, int(conf.Cache.MongoDb.Tls.GetVersion()))
+		assert.Equal(t, "serv", conf.Cache.MongoDb.Tls.ServerName)
+		assert.Equal(t, "./cert1", conf.Cache.MongoDb.Tls.Certificates[0].Cert)
+		assert.Equal(t, "./key1", conf.Cache.MongoDb.Tls.Certificates[0].Key)
+		assert.Equal(t, "./cert2", conf.Cache.MongoDb.Tls.Certificates[1].Cert)
+		assert.Equal(t, "./key2", conf.Cache.MongoDb.Tls.Certificates[1].Key)
+	})
+}
+
+func TestDynamoDbConfig_YAML(t *testing.T) {
+	utils.UseTempFile(`
+cache:
+  dynamodb:
+    enabled: true
+    url: "url"
+    table: "db"
+`, func(file string) {
+		conf, err := LoadConfigFromFileAndEnvironment(file)
+		require.NoError(t, err)
+
+		assert.True(t, conf.Cache.DynamoDb.Enabled)
+		assert.Equal(t, "url", conf.Cache.DynamoDb.Url)
+		assert.Equal(t, "db", conf.Cache.DynamoDb.Table)
 	})
 }
 

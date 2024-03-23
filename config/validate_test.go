@@ -64,6 +64,19 @@ func TestConfig_Validate(t *testing.T) {
 		conf.setDefaults()
 		require.ErrorContains(t, conf.Validate(), "offline: global offline mode enabled, but no cache is configured")
 	})
+	t.Run("mongo enabled without uri", func(t *testing.T) {
+		conf := Config{SDKs: map[string]*SDKConfig{"env1": {Key: "Key"}}, Cache: CacheConfig{MongoDb: MongoDbConfig{Enabled: true}}, Grpc: GrpcConfig{Port: 100}, Diag: DiagConfig{Port: 90}, Http: HttpConfig{Port: 80}}
+		require.ErrorContains(t, conf.Validate(), "mongodb: invalid connection uri")
+	})
+	t.Run("mongodb invalid tls config", func(t *testing.T) {
+		conf := Config{SDKs: map[string]*SDKConfig{"env1": {Key: "Key"}}, Cache: CacheConfig{MongoDb: MongoDbConfig{Enabled: true, Url: "uri", Tls: TlsConfig{Enabled: true, Certificates: []CertConfig{{Key: "key"}}}}}}
+		conf.setDefaults()
+		require.ErrorContains(t, conf.Validate(), "tls: both TLS cert and key file required")
+
+		conf = Config{SDKs: map[string]*SDKConfig{"env1": {Key: "Key"}}, Cache: CacheConfig{Redis: RedisConfig{Enabled: true, Addresses: []string{"localhost"}, Tls: TlsConfig{Enabled: true, Certificates: []CertConfig{{Cert: "cert"}}}}}}
+		conf.setDefaults()
+		require.ErrorContains(t, conf.Validate(), "tls: both TLS cert and key file required")
+	})
 	t.Run("redis enabled without addresses", func(t *testing.T) {
 		conf := Config{SDKs: map[string]*SDKConfig{"env1": {Key: "Key"}}, Cache: CacheConfig{Redis: RedisConfig{Enabled: true}}, Grpc: GrpcConfig{Port: 100}, Diag: DiagConfig{Port: 90}, Http: HttpConfig{Port: 80}}
 		require.ErrorContains(t, conf.Validate(), "redis: at least 1 server address required")

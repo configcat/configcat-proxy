@@ -187,7 +187,13 @@ func (h *HttpProxyConfig) loadEnv(prefix string) error {
 
 func (c *CacheConfig) loadEnv(prefix string) error {
 	prefix = concatPrefix(prefix, "CACHE")
-	return c.Redis.loadEnv(prefix)
+	if err := c.Redis.loadEnv(prefix); err != nil {
+		return err
+	}
+	if err := c.MongoDb.loadEnv(prefix); err != nil {
+		return err
+	}
+	return c.DynamoDb.loadEnv(prefix)
 }
 
 func (g *GlobalOfflineConfig) loadEnv(prefix string) error {
@@ -244,6 +250,24 @@ func (r *RedisConfig) loadEnv(prefix string) error {
 		return err
 	}
 	return r.Tls.loadEnv(prefix)
+}
+
+func (m *MongoDbConfig) loadEnv(prefix string) error {
+	prefix = concatPrefix(prefix, "MONGODB")
+	readEnvString(prefix, "URL", &m.Url)
+	readEnvString(prefix, "DATABASE", &m.Database)
+	readEnvString(prefix, "COLLECTION", &m.Collection)
+	if err := readEnv(prefix, "ENABLED", &m.Enabled, toBool); err != nil {
+		return err
+	}
+	return m.Tls.loadEnv(prefix)
+}
+
+func (d *DynamoDbConfig) loadEnv(prefix string) error {
+	prefix = concatPrefix(prefix, "DYNAMODB")
+	readEnvString(prefix, "URL", &d.Url)
+	readEnvString(prefix, "TABLE", &d.Table)
+	return readEnv(prefix, "ENABLED", &d.Enabled, toBool)
 }
 
 func (s *SseConfig) loadEnv(prefix string) error {

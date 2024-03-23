@@ -80,7 +80,7 @@ func TestSDKConfig_ENV_Invalid(t *testing.T) {
 	})
 }
 
-func TestCacheConfig_ENV(t *testing.T) {
+func TestRedisConfig_ENV(t *testing.T) {
 	t.Setenv("CONFIGCAT_CACHE_REDIS_ENABLED", "true")
 	t.Setenv("CONFIGCAT_CACHE_REDIS_DB", "1")
 	t.Setenv("CONFIGCAT_CACHE_REDIS_PASSWORD", "pass")
@@ -107,6 +107,45 @@ func TestCacheConfig_ENV(t *testing.T) {
 	assert.Equal(t, "./key1", conf.Cache.Redis.Tls.Certificates[0].Key)
 	assert.Equal(t, "./cert2", conf.Cache.Redis.Tls.Certificates[1].Cert)
 	assert.Equal(t, "./key2", conf.Cache.Redis.Tls.Certificates[1].Key)
+}
+
+func TestMongoDbConfig_ENV(t *testing.T) {
+	t.Setenv("CONFIGCAT_CACHE_MONGODB_ENABLED", "true")
+	t.Setenv("CONFIGCAT_CACHE_MONGODB_URL", "url")
+	t.Setenv("CONFIGCAT_CACHE_MONGODB_DATABASE", "db")
+	t.Setenv("CONFIGCAT_CACHE_MONGODB_COLLECTION", "coll")
+	t.Setenv("CONFIGCAT_CACHE_MONGODB_TLS_ENABLED", "true")
+	t.Setenv("CONFIGCAT_CACHE_MONGODB_TLS_MIN_VERSION", "1.1")
+	t.Setenv("CONFIGCAT_CACHE_MONGODB_TLS_SERVER_NAME", "serv")
+	t.Setenv("CONFIGCAT_CACHE_MONGODB_TLS_CERTIFICATES", `[{"key":"./key1","cert":"./cert1"},{"key":"./key2","cert":"./cert2"}]`)
+
+	conf, err := LoadConfigFromFileAndEnvironment("")
+	require.NoError(t, err)
+
+	assert.True(t, conf.Cache.MongoDb.Enabled)
+	assert.Equal(t, "url", conf.Cache.MongoDb.Url)
+	assert.Equal(t, "db", conf.Cache.MongoDb.Database)
+	assert.Equal(t, "coll", conf.Cache.MongoDb.Collection)
+	assert.True(t, conf.Cache.MongoDb.Tls.Enabled)
+	assert.Equal(t, tls.VersionTLS11, int(conf.Cache.MongoDb.Tls.GetVersion()))
+	assert.Equal(t, "serv", conf.Cache.MongoDb.Tls.ServerName)
+	assert.Equal(t, "./cert1", conf.Cache.MongoDb.Tls.Certificates[0].Cert)
+	assert.Equal(t, "./key1", conf.Cache.MongoDb.Tls.Certificates[0].Key)
+	assert.Equal(t, "./cert2", conf.Cache.MongoDb.Tls.Certificates[1].Cert)
+	assert.Equal(t, "./key2", conf.Cache.MongoDb.Tls.Certificates[1].Key)
+}
+
+func TestDynamoDbConfig_ENV(t *testing.T) {
+	t.Setenv("CONFIGCAT_CACHE_DYNAMODB_ENABLED", "true")
+	t.Setenv("CONFIGCAT_CACHE_DYNAMODB_URL", "url")
+	t.Setenv("CONFIGCAT_CACHE_DYNAMODB_TABLE", "db")
+
+	conf, err := LoadConfigFromFileAndEnvironment("")
+	require.NoError(t, err)
+
+	assert.True(t, conf.Cache.DynamoDb.Enabled)
+	assert.Equal(t, "url", conf.Cache.DynamoDb.Url)
+	assert.Equal(t, "db", conf.Cache.DynamoDb.Table)
 }
 
 func TestTlsConfig_ENV(t *testing.T) {

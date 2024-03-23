@@ -36,9 +36,7 @@ type fileStore struct {
 	sdkId    string
 }
 
-var _ store.NotifyingStore = &fileStore{}
-
-func NewFileStore(sdkId string, conf *config.LocalConfig, reporter status.Reporter, log log.Logger) configcat.ConfigCache {
+func NewFileStore(sdkId string, conf *config.LocalConfig, reporter status.Reporter, log log.Logger) store.NotifyingStore {
 	fileLogger := log.WithPrefix("file-store")
 	var watch watcher
 	var err error

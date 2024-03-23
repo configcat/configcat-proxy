@@ -30,6 +30,9 @@ func (c *Config) Validate() error {
 	if err := c.Cache.Redis.validate(); err != nil {
 		return err
 	}
+	if err := c.Cache.MongoDb.validate(); err != nil {
+		return err
+	}
 	if err := c.GlobalOfflineConfig.validate(&c.Cache); err != nil {
 		return err
 	}
@@ -65,6 +68,19 @@ func (r *RedisConfig) validate() error {
 	return nil
 }
 
+func (m *MongoDbConfig) validate() error {
+	if !m.Enabled {
+		return nil
+	}
+	if len(m.Url) == 0 {
+		return fmt.Errorf("mongodb: invalid connection uri")
+	}
+	if err := m.Tls.validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (o *OfflineConfig) validate(c *CacheConfig, sdkId string) error {
 	if !o.Enabled {
 		return nil
@@ -80,7 +96,7 @@ func (o *OfflineConfig) validate(c *CacheConfig, sdkId string) error {
 			return err
 		}
 	}
-	if o.UseCache && !c.Redis.Enabled {
+	if o.UseCache && !c.IsSet() {
 		return fmt.Errorf("sdk-" + sdkId + ": offline mode enabled with cache, but no cache is configured")
 	}
 	if o.UseCache && o.CachePollInterval < 1 {

@@ -1,7 +1,6 @@
 package grpc
 
 import (
-	"crypto/tls"
 	"fmt"
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/diag/metrics"
@@ -37,16 +36,10 @@ func NewServer(sdkClients map[string]sdk.Client, metricsReporter metrics.Reporte
 	grpcLog := logger.WithLevel(conf.Grpc.Log.GetLevel()).WithPrefix("grpc")
 	opts := make([]grpc.ServerOption, 0)
 	if conf.Tls.Enabled {
-		t := &tls.Config{
-			MinVersion: conf.Tls.GetVersion(),
-		}
-		for _, c := range conf.Tls.Certificates {
-			if cert, err := tls.LoadX509KeyPair(c.Cert, c.Key); err == nil {
-				t.Certificates = append(t.Certificates, cert)
-			} else {
-				grpcLog.Errorf("failed to load the certificate and key pair: %s", err)
-				return nil, err
-			}
+		t, err := conf.Tls.LoadTlsOptions()
+		if err != nil {
+			grpcLog.Errorf("failed to configure TLS for the gRPC server: %s", err)
+			return nil, err
 		}
 		opts = append(opts, grpc.Creds(credentials.NewTLS(t)))
 		grpcLog.Reportf("using TLS version: %.1f", conf.Tls.MinVersion)

@@ -81,7 +81,7 @@ func TestSSE_NonExisting_Flag(t *testing.T) {
 
 func TestSSE_SDK_InvalidState(t *testing.T) {
 	opts := config.SDKConfig{BaseUrl: "http://localhost", Key: configcattest.RandomSDKKey()}
-	sdkCtx := testutils.NewTestSdkContext(&opts, &config.CacheConfig{})
+	sdkCtx := testutils.NewTestSdkContext(&opts, nil)
 	client := sdk.NewClient(sdkCtx, log.NewNullLogger())
 	defer client.Close()
 

@@ -112,7 +112,7 @@ func NewReporter(conf *config.Config) Reporter {
 				status.Source.Type = CacheSrc
 			}
 		}
-		if !conf.Cache.Redis.Enabled {
+		if !conf.Cache.IsSet() {
 			r.status.Cache.Status = NA
 			if status.Source.Type == CacheSrc {
 				r.ReportError(key, "cache offline source enabled without a configured cache")

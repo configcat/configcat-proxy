@@ -160,7 +160,9 @@ type GlobalOfflineConfig struct {
 }
 
 type CacheConfig struct {
-	Redis RedisConfig
+	Redis    RedisConfig
+	MongoDb  MongoDbConfig  `yaml:"mongodb"`
+	DynamoDb DynamoDbConfig `yaml:"dynamodb"`
 }
 
 type RedisConfig struct {
@@ -170,6 +172,20 @@ type RedisConfig struct {
 	User      string   `yaml:"user"`
 	Password  string   `yaml:"password"`
 	Tls       TlsConfig
+}
+
+type MongoDbConfig struct {
+	Enabled    bool   `yaml:"enabled"`
+	Url        string `yaml:"url"`
+	Database   string `yaml:"database"`
+	Collection string `yaml:"collection"`
+	Tls        TlsConfig
+}
+
+type DynamoDbConfig struct {
+	Enabled bool   `yaml:"enabled"`
+	Url     string `yaml:"url"`
+	Table   string `yaml:"table"`
 }
 
 type LocalConfig struct {
@@ -291,6 +307,11 @@ func (c *Config) setDefaults() {
 
 	c.Cache.Redis.DB = 0
 	c.Cache.Redis.Addresses = []string{"localhost:6379"}
+
+	c.Cache.MongoDb.Database = "configcat_proxy"
+	c.Cache.MongoDb.Collection = "cache"
+
+	c.Cache.DynamoDb.Table = "configcat_proxy_cache"
 }
 
 func (c *Config) fixupDefaults() {
@@ -366,6 +387,9 @@ func (c *Config) fixupTlsMinVersions(defVersion float64) {
 	if _, ok := allowedTlsVersions[c.Cache.Redis.Tls.MinVersion]; !ok {
 		c.Cache.Redis.Tls.MinVersion = defVersion
 	}
+	if _, ok := allowedTlsVersions[c.Cache.MongoDb.Tls.MinVersion]; !ok {
+		c.Cache.MongoDb.Tls.MinVersion = defVersion
+	}
 }
 
 func (c *Config) compileOriginRegexes() error {
@@ -419,6 +443,25 @@ func (k *KeepAliveConfig) ToParams() (keepalive.ServerParameters, bool) {
 		param.Timeout = time.Duration(k.Timeout) * time.Second
 	}
 	return param, true
+}
+
+func (c *CacheConfig) IsSet() bool {
+	return c.Redis.Enabled || c.MongoDb.Enabled || c.DynamoDb.Enabled
+}
+
+func (t *TlsConfig) LoadTlsOptions() (*tls.Config, error) {
+	conf := &tls.Config{
+		MinVersion: t.GetVersion(),
+		ServerName: t.ServerName,
+	}
+	for _, c := range t.Certificates {
+		if cert, err := tls.LoadX509KeyPair(c.Cert, c.Key); err == nil {
+			conf.Certificates = append(conf.Certificates, cert)
+		} else {
+			return nil, fmt.Errorf("failed to load the certificate and key pair: %s", err)
+		}
+	}
+	return conf, nil
 }
 
 func defaultConfigPath() (string, bool) {

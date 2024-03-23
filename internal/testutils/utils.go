@@ -32,7 +32,7 @@ func NewTestSdkClient(t *testing.T) (map[string]sdk.Client, *configcattest.Handl
 	})
 	srv := httptest.NewServer(&h)
 	opts := config.SDKConfig{BaseUrl: srv.URL, Key: key}
-	ctx := NewTestSdkContext(&opts, &config.CacheConfig{})
+	ctx := NewTestSdkContext(&opts, nil)
 	client := sdk.NewClient(ctx, log.NewNullLogger())
 	t.Cleanup(func() {
 		srv.Close()
@@ -41,18 +41,15 @@ func NewTestSdkClient(t *testing.T) (map[string]sdk.Client, *configcattest.Handl
 	return map[string]sdk.Client{"test": client}, &h, key
 }
 
-func NewTestSdkContext(conf *config.SDKConfig, cacheConf *config.CacheConfig) *sdk.Context {
-	if cacheConf == nil {
-		cacheConf = &config.CacheConfig{}
-	}
+func NewTestSdkContext(conf *config.SDKConfig, cache configcat.ConfigCache) *sdk.Context {
 	return &sdk.Context{
 		SDKConf:         conf,
 		ProxyConf:       &config.HttpProxyConfig{},
-		CacheConf:       cacheConf,
 		StatusReporter:  status.NewNullReporter(),
 		MetricsReporter: nil,
 		EvalReporter:    nil,
 		SdkId:           "test",
+		ExternalCache:   cache,
 	}
 }
 

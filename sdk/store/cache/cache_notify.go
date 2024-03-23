@@ -25,9 +25,7 @@ type notifyingCacheStore struct {
 	cacheKey  string
 }
 
-var _ store.NotifyingStore = &notifyingCacheStore{}
-
-func NewNotifyingCacheStore(sdkId string, cacheKey string, cache store.CacheEntryStore, conf *config.OfflineConfig, reporter status.Reporter, log log.Logger) configcat.ConfigCache {
+func NewNotifyingCacheStore(sdkId string, cacheKey string, cache store.CacheEntryStore, conf *config.OfflineConfig, reporter status.Reporter, log log.Logger) store.NotifyingStore {
 	nrLogger := log.WithPrefix("cache-poll")
 	n := &notifyingCacheStore{
 		CacheEntryStore: cache,
@@ -60,8 +58,8 @@ func (n *notifyingCacheStore) run() {
 func (n *notifyingCacheStore) reload() bool {
 	data, err := n.CacheEntryStore.Get(n.ctx, n.cacheKey)
 	if err != nil {
-		n.log.Errorf("failed to read from redis: %s", err)
-		n.reporter.ReportError(n.sdkId, "failed to read from redis")
+		n.log.Errorf("failed to read from cache: %s", err)
+		n.reporter.ReportError(n.sdkId, "failed to read from cache")
 		return false
 	}
 	fetchTime, eTag, configJson, err := configcatcache.CacheSegmentsFromBytes(data)
@@ -74,12 +72,12 @@ func (n *notifyingCacheStore) reload() bool {
 		n.reporter.ReportOk(n.sdkId, "config from cache not modified")
 		return false
 	}
-	n.log.Debugf("new JSON received from redis, reloading")
+	n.log.Debugf("new JSON received from cache, reloading")
 
 	var root configcat.ConfigJson
 	if err = json.Unmarshal(configJson, &root); err != nil {
-		n.log.Errorf("failed to parse JSON from redis: %s", err)
-		n.reporter.ReportError(n.sdkId, "failed to parse JSON from redis")
+		n.log.Errorf("failed to parse JSON from cache: %s", err)
+		n.reporter.ReportError(n.sdkId, "failed to parse JSON from cache")
 		return false
 	}
 	ser, _ := json.Marshal(root) // Re-serialize to enforce the JSON schema
@@ -100,8 +98,5 @@ func (n *notifyingCacheStore) Close() {
 	n.Notifier.Close()
 	n.ctxCancel()
 	n.poller.Stop()
-	if closable, ok := n.CacheEntryStore.(store.ClosableStore); ok {
-		closable.Close()
-	}
 	n.log.Reportf("shutdown complete")
 }

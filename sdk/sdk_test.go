@@ -1,6 +1,7 @@
 package sdk
 
 import (
+	"context"
 	"crypto/sha1"
 	"fmt"
 	"github.com/alicebob/miniredis/v2"
@@ -10,6 +11,8 @@ import (
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/model"
 	"github.com/configcat/configcat-proxy/sdk/statistics"
+	"github.com/configcat/configcat-proxy/sdk/store/cache"
+	configcat "github.com/configcat/go-sdk/v9"
 	"github.com/configcat/go-sdk/v9/configcatcache"
 	"github.com/configcat/go-sdk/v9/configcattest"
 	"github.com/stretchr/testify/assert"
@@ -159,7 +162,7 @@ func TestSdk_BadConfig_WithCache(t *testing.T) {
 	cacheEntry := configcatcache.CacheSegmentsToBytes(time.Now(), "etag", []byte(`{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true},"t":0}}}`))
 	err := s.Set(cacheKey, string(cacheEntry))
 
-	ctx := newTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key, Log: config.LogConfig{Level: "debug"}}, &config.CacheConfig{Redis: config.RedisConfig{Enabled: true, Addresses: []string{s.Addr()}}})
+	ctx := newTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key, Log: config.LogConfig{Level: "debug"}}, newRedisCache(s.Addr()))
 	client := NewClient(ctx, log.NewDebugLogger())
 	defer client.Close()
 	data, err := client.Eval("flag", nil)
@@ -232,7 +235,7 @@ func TestSdk_Signal_Offline_Redis_Watch(t *testing.T) {
 	ctx := newTestSdkContext(&config.SDKConfig{
 		Key:     sdkKey,
 		Offline: config.OfflineConfig{Enabled: true, UseCache: true, CachePollInterval: 1},
-	}, &config.CacheConfig{Redis: config.RedisConfig{Enabled: true, Addresses: []string{s.Addr()}}})
+	}, newRedisCache(s.Addr()))
 	client := NewClient(ctx, log.NewNullLogger())
 	defer client.Close()
 	sub := client.SubConfigChanged("id")
@@ -417,26 +420,28 @@ func TestSdk_IsInValidState_False(t *testing.T) {
 
 func TestSdk_IsInValidState_EmptyCache_False(t *testing.T) {
 	r := miniredis.RunT(t)
-	ctx := newTestSdkContext(&config.SDKConfig{BaseUrl: "https://localhost", Key: configcattest.RandomSDKKey()}, &config.CacheConfig{Redis: config.RedisConfig{Enabled: true, Addresses: []string{r.Addr()}}})
+	ctx := newTestSdkContext(&config.SDKConfig{BaseUrl: "https://localhost", Key: configcattest.RandomSDKKey()}, newRedisCache(r.Addr()))
 	client := NewClient(ctx, log.NewDebugLogger())
 	defer client.Close()
 
 	assert.False(t, client.IsInValidState())
 }
 
-func newTestSdkContext(conf *config.SDKConfig, cacheConf *config.CacheConfig) *Context {
-	if cacheConf == nil {
-		cacheConf = &config.CacheConfig{}
-	}
+func newTestSdkContext(conf *config.SDKConfig, externalCache configcat.ConfigCache) *Context {
 	return &Context{
 		SDKConf:         conf,
 		ProxyConf:       &config.HttpProxyConfig{},
-		CacheConf:       cacheConf,
 		StatusReporter:  status.NewNullReporter(),
 		MetricsReporter: nil,
 		EvalReporter:    nil,
 		SdkId:           "test",
+		ExternalCache:   externalCache,
 	}
+}
+
+func newRedisCache(addr string) configcat.ConfigCache {
+	c, _ := cache.SetupExternalCache(context.Background(), &config.CacheConfig{Redis: config.RedisConfig{Enabled: true, Addresses: []string{addr}}}, log.NewNullLogger())
+	return c
 }
 
 type TestReporter struct {
