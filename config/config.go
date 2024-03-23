@@ -458,7 +458,7 @@ func (t *TlsConfig) LoadTlsOptions() (*tls.Config, error) {
 		if cert, err := tls.LoadX509KeyPair(c.Cert, c.Key); err == nil {
 			conf.Certificates = append(conf.Certificates, cert)
 		} else {
-			return nil, fmt.Errorf("failed to load the certificate and key pair: %s", err)
+			return nil, fmt.Errorf("failed to load the certificate and key files: %s", err)
 		}
 	}
 	return conf, nil

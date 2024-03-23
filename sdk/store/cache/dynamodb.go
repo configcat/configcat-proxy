@@ -70,4 +70,6 @@ func (d *dynamoDbStore) Set(ctx context.Context, key string, value []byte) error
 	return err
 }
 
-func (d *dynamoDbStore) Shutdown() {}
+func (d *dynamoDbStore) Shutdown() {
+	// nothing to do
+}

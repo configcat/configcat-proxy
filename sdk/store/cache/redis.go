@@ -47,7 +47,7 @@ func (r *redisStore) Set(ctx context.Context, key string, value []byte) error {
 func (r *redisStore) Shutdown() {
 	err := r.redisDb.Close()
 	if err != nil {
-		r.log.Errorf("shutdown error: %v", err)
+		r.log.Errorf("shutdown error: %s", err)
 	}
 	r.log.Reportf("shutdown complete")
 }
