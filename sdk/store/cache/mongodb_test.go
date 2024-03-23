@@ -61,3 +61,35 @@ func TestMongoDbStore_Invalid(t *testing.T) {
 
 	assert.Error(t, err)
 }
+
+func TestMongoDbStore_TLS_Invalid(t *testing.T) {
+	store, err := newMongoDb(context.Background(), &config.MongoDbConfig{
+		Enabled:    true,
+		Url:        "mongodb://localhost:27017",
+		Database:   "test_db",
+		Collection: "coll",
+		Tls: config.TlsConfig{
+			Enabled:    true,
+			MinVersion: 1.1,
+			Certificates: []config.CertConfig{
+				{Key: "nonexisting", Cert: "nonexisting"},
+			},
+		},
+	}, log.NewNullLogger())
+	assert.ErrorContains(t, err, "failed to load certificate and key files")
+	assert.Nil(t, store)
+}
+
+func TestMongoDbStore_Connect_Fails(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+
+	store, err := newMongoDb(ctx, &config.MongoDbConfig{
+		Enabled:    true,
+		Url:        "mongodb://localhost:27016",
+		Database:   "test_db",
+		Collection: "coll",
+	}, log.NewNullLogger())
+	assert.ErrorContains(t, err, "context deadline exceeded")
+	assert.Nil(t, store)
+}

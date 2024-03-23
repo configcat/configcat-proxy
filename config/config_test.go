@@ -774,7 +774,7 @@ MK4Li/LGWcksyoF+hbPNXMFCIA==
 			},
 		}
 		tlsConf, err := conf.LoadTlsOptions()
-		assert.ErrorContains(t, err, "failed to load the certificate and key files")
+		assert.ErrorContains(t, err, "failed to load certificate and key files")
 		assert.Nil(t, tlsConf)
 	})
 }

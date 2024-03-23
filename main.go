@@ -16,6 +16,7 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
 )
 
 const (
@@ -70,7 +71,10 @@ func run(closeSignal chan os.Signal) int {
 
 	var externalCache cache.External
 	if conf.Cache.IsSet() {
-		externalCache, err = cache.SetupExternalCache(context.Background(), &conf.Cache, logger)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second) // give 5 sec to spin up the cache connection
+		defer cancel()
+
+		externalCache, err = cache.SetupExternalCache(ctx, &conf.Cache, logger)
 		if err != nil {
 			return exitFailure
 		}
