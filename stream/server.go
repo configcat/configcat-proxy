@@ -16,10 +16,10 @@ type server struct {
 	log     log.Logger
 }
 
-func NewServer(sdkClients map[string]sdk.Client, metrics metrics.Reporter, log log.Logger, serverType string) Server {
+func NewServer(sdkRegistrar sdk.Registrar, metrics metrics.Reporter, log log.Logger, serverType string) Server {
 	strLog := log.WithPrefix("stream-server")
 	streams := make(map[string]Stream)
-	for id, sdkClient := range sdkClients {
+	for id, sdkClient := range sdkRegistrar.GetAll() {
 		streams[id] = NewStream(id, sdkClient, metrics, strLog, serverType)
 	}
 	return &server{

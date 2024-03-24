@@ -132,6 +132,6 @@ func TestCDNProxy_Get_Body_GZip(t *testing.T) {
 }
 
 func newCDNProxyRouter(t *testing.T, conf config.CdnProxyConfig) *HttpRouter {
-	client, _, _ := testutils.NewTestSdkClient(t)
-	return NewRouter(client, nil, status.NewNullReporter(), &config.HttpConfig{CdnProxy: conf}, log.NewNullLogger())
+	reg, _, _ := testutils.NewTestRegistrarT(t)
+	return NewRouter(reg, nil, status.NewEmptyReporter(), &config.HttpConfig{CdnProxy: conf}, log.NewNullLogger())
 }

@@ -19,7 +19,10 @@ func TestNewServer(t *testing.T) {
 		Status:  config.StatusConfig{Enabled: true},
 		Metrics: config.MetricsConfig{Enabled: true},
 	}
-	srv := NewServer(&conf, status.NewReporter(&config.Config{SDKs: map[string]*config.SDKConfig{"sdk": {Key: "key"}}}), metrics.NewReporter(), log.NewNullLogger(), errChan)
+
+	reporter := status.NewEmptyReporter()
+	reporter.RegisterSdk("test", &config.SDKConfig{Key: "key"})
+	srv := NewServer(&conf, reporter, metrics.NewReporter(), log.NewNullLogger(), errChan)
 	srv.Listen()
 	time.Sleep(500 * time.Millisecond)
 
@@ -47,7 +50,9 @@ func TestNewServer_NotEnabled(t *testing.T) {
 		Metrics: config.MetricsConfig{Enabled: false},
 	}
 
-	srv := NewServer(&conf, status.NewReporter(&config.Config{SDKs: map[string]*config.SDKConfig{"sdk": {Key: "key"}}}), metrics.NewReporter(), log.NewNullLogger(), errChan)
+	reporter := status.NewEmptyReporter()
+	reporter.RegisterSdk("test", &config.SDKConfig{Key: "key"})
+	srv := NewServer(&conf, reporter, metrics.NewReporter(), log.NewNullLogger(), errChan)
 	srv.Listen()
 	time.Sleep(500 * time.Millisecond)
 

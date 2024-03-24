@@ -14,7 +14,7 @@ import (
 
 func DebugLogUnaryInterceptor(log log.Logger) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
-		if isHealthCheck(info.FullMethod) {
+		if shouldIgnore(info.FullMethod) {
 			return handler(ctx, req)
 		}
 
@@ -44,7 +44,7 @@ func DebugLogUnaryInterceptor(log log.Logger) grpc.UnaryServerInterceptor {
 
 func DebugLogStreamInterceptor(log log.Logger) grpc.StreamServerInterceptor {
 	return func(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
-		if isHealthCheck(info.FullMethod) {
+		if shouldIgnore(info.FullMethod) {
 			return handler(srv, ss)
 		}
 
@@ -72,8 +72,8 @@ func DebugLogStreamInterceptor(log log.Logger) grpc.StreamServerInterceptor {
 	}
 }
 
-func isHealthCheck(method string) bool {
-	if strings.Contains(method, "grpc.health") {
+func shouldIgnore(method string) bool {
+	if strings.Contains(method, "grpc.health") || strings.Contains(method, "grpc.reflection") {
 		return true
 	}
 	return false

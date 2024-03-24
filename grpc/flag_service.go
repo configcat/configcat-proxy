@@ -19,15 +19,15 @@ type flagService struct {
 	proto.UnimplementedFlagServiceServer
 	streamServer stream.Server
 	log          log.Logger
-	sdkClients   map[string]sdk.Client
+	sdkRegistrar sdk.Registrar
 	closed       chan struct{}
 }
 
-func newFlagService(sdkClients map[string]sdk.Client, metrics metrics.Reporter, log log.Logger) *flagService {
+func newFlagService(sdkRegistrar sdk.Registrar, metrics metrics.Reporter, log log.Logger) *flagService {
 	return &flagService{
-		streamServer: stream.NewServer(sdkClients, metrics, log, "grpc"),
+		streamServer: stream.NewServer(sdkRegistrar, metrics, log, "grpc"),
 		log:          log,
-		sdkClients:   sdkClients,
+		sdkRegistrar: sdkRegistrar,
 		closed:       make(chan struct{}),
 	}
 }
@@ -132,8 +132,8 @@ func (s *flagService) GetKeys(_ context.Context, req *proto.KeysRequest) (*proto
 		return nil, status.Error(codes.InvalidArgument, "sdk id parameter missing")
 	}
 
-	sdkClient, ok := s.sdkClients[req.GetSdkId()]
-	if !ok {
+	sdkClient := s.sdkRegistrar.GetSdkOrNil(req.GetSdkId())
+	if sdkClient == nil {
 		return nil, status.Error(codes.InvalidArgument, "sdk not found for identifier: '"+req.GetSdkId()+"'")
 	}
 	if !sdkClient.IsInValidState() {
@@ -149,8 +149,8 @@ func (s *flagService) Refresh(_ context.Context, req *proto.RefreshRequest) (*em
 		return nil, status.Error(codes.InvalidArgument, "sdk id parameter missing")
 	}
 
-	sdkClient, ok := s.sdkClients[req.GetSdkId()]
-	if !ok {
+	sdkClient := s.sdkRegistrar.GetSdkOrNil(req.GetSdkId())
+	if sdkClient == nil {
 		return nil, status.Error(codes.InvalidArgument, "sdk not found for identifier: '"+req.GetSdkId()+"'")
 	}
 
@@ -219,8 +219,8 @@ func (s *flagService) parseEvalRequest(req *proto.EvalRequest, user *model.UserA
 		*user = getUserAttrs(req.GetUser())
 	}
 
-	sdkClient, ok := s.sdkClients[req.GetSdkId()]
-	if !ok {
+	sdkClient := s.sdkRegistrar.GetSdkOrNil(req.GetSdkId())
+	if sdkClient == nil {
 		return nil, status.Error(codes.InvalidArgument, "sdk not found for identifier: '"+req.GetSdkId()+"'")
 	}
 	if !sdkClient.IsInValidState() {

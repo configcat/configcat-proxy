@@ -56,7 +56,7 @@ func run(closeSignal chan os.Signal) int {
 	// in the future we might implement an evaluation statistics reporter
 	// var evalReporter statistics.Reporter
 
-	statusReporter := status.NewReporter(&conf)
+	statusReporter := status.NewReporter(&conf.Cache)
 
 	var metricsReporter metrics.Reporter
 	if conf.Diag.Metrics.Enabled {
@@ -80,24 +80,12 @@ func run(closeSignal chan os.Signal) int {
 		}
 	}
 
-	sdkClients := make(map[string]sdk.Client)
-	for key, sdkConf := range conf.SDKs {
-		sdkClients[key] = sdk.NewClient(&sdk.Context{
-			SDKConf:            sdkConf,
-			EvalReporter:       nil,
-			MetricsReporter:    metricsReporter,
-			StatusReporter:     statusReporter,
-			ProxyConf:          &conf.HttpProxy,
-			GlobalDefaultAttrs: conf.DefaultAttrs,
-			SdkId:              key,
-			ExternalCache:      externalCache,
-		}, logger)
-	}
+	sdkRegistrar := sdk.NewRegistrar(&conf, metricsReporter, statusReporter, externalCache, logger)
 
 	var httpServer *web.Server
 	var router *web.HttpRouter
 	if conf.Http.Enabled {
-		router = web.NewRouter(sdkClients, metricsReporter, statusReporter, &conf.Http, logger)
+		router = web.NewRouter(sdkRegistrar, metricsReporter, statusReporter, &conf.Http, logger)
 		httpServer, err = web.NewServer(router.Handler(), logger, &conf, errorChan)
 		if err != nil {
 			return exitFailure
@@ -107,7 +95,7 @@ func run(closeSignal chan os.Signal) int {
 
 	var grpcServer *grpc.Server
 	if conf.Grpc.Enabled {
-		grpcServer, err = grpc.NewServer(sdkClients, metricsReporter, statusReporter, &conf, logger, errorChan)
+		grpcServer, err = grpc.NewServer(sdkRegistrar, metricsReporter, statusReporter, &conf, logger, errorChan)
 		if err != nil {
 			return exitFailure
 		}
@@ -117,9 +105,8 @@ func run(closeSignal chan os.Signal) int {
 	for {
 		select {
 		case <-closeSignal:
-			for _, sdkClient := range sdkClients {
-				sdkClient.Close()
-			}
+			sdkRegistrar.Close()
+
 			if router != nil {
 				router.Close()
 			}

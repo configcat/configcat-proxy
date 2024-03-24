@@ -32,7 +32,7 @@ type Server struct {
 	errorChannel      chan error
 }
 
-func NewServer(sdkClients map[string]sdk.Client, metricsReporter metrics.Reporter, statusReporter status.Reporter, conf *config.Config, logger log.Logger, errorChan chan error) (*Server, error) {
+func NewServer(sdkRegistrar sdk.Registrar, metricsReporter metrics.Reporter, statusReporter status.Reporter, conf *config.Config, logger log.Logger, errorChan chan error) (*Server, error) {
 	grpcLog := logger.WithLevel(conf.Grpc.Log.GetLevel()).WithPrefix("grpc")
 	opts := make([]grpc.ServerOption, 0)
 	if conf.Tls.Enabled {
@@ -64,7 +64,7 @@ func NewServer(sdkClients map[string]sdk.Client, metricsReporter metrics.Reporte
 		opts = append(opts, grpc.KeepaliveParams(params))
 	}
 
-	flagService := newFlagService(sdkClients, metricsReporter, grpcLog)
+	flagService := newFlagService(sdkRegistrar, metricsReporter, grpcLog)
 
 	grpcServer := grpc.NewServer(opts...)
 	proto.RegisterFlagServiceServer(grpcServer, flagService)

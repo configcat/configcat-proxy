@@ -14,7 +14,7 @@ import (
 
 func TestFileStore_Existing(t *testing.T) {
 	utils.UseTempFile("", func(path string) {
-		str := NewFileStore("test", &config.LocalConfig{FilePath: path}, status.NewNullReporter(), log.NewNullLogger()).(*fileStore)
+		str := NewFileStore("test", &config.LocalConfig{FilePath: path}, status.NewEmptyReporter(), log.NewNullLogger()).(*fileStore)
 		utils.WriteIntoFile(path, `{"f":{"flag":{"v":{"b":true}}},"p":null}`)
 		utils.WithTimeout(2*time.Second, func() {
 			<-str.Modified()
@@ -31,7 +31,7 @@ func TestFileStore_Existing(t *testing.T) {
 
 func TestFileStore_Existing_Initial(t *testing.T) {
 	utils.UseTempFile(`{"f":{"flag":{"v":{"b":false}}},"p":null}`, func(path string) {
-		str := NewFileStore("test", &config.LocalConfig{FilePath: path}, status.NewNullReporter(), log.NewNullLogger()).(*fileStore)
+		str := NewFileStore("test", &config.LocalConfig{FilePath: path}, status.NewEmptyReporter(), log.NewNullLogger()).(*fileStore)
 		res, err := str.Get(context.Background(), "")
 		assert.NoError(t, err)
 		_, _, j, _ := configcatcache.CacheSegmentsFromBytes(res)
@@ -42,7 +42,7 @@ func TestFileStore_Existing_Initial(t *testing.T) {
 
 func TestFileStore_Existing_Initial_Gets_MalformedJson(t *testing.T) {
 	utils.UseTempFile(`{"f":{"flag":{"v":{"b":false}}},"p":null}`, func(path string) {
-		str := NewFileStore("test", &config.LocalConfig{FilePath: path}, status.NewNullReporter(), log.NewNullLogger()).(*fileStore)
+		str := NewFileStore("test", &config.LocalConfig{FilePath: path}, status.NewEmptyReporter(), log.NewNullLogger()).(*fileStore)
 		res, err := str.Get(context.Background(), "")
 		assert.NoError(t, err)
 		_, _, j, _ := configcatcache.CacheSegmentsFromBytes(res)
@@ -60,7 +60,7 @@ func TestFileStore_Existing_Initial_Gets_MalformedJson(t *testing.T) {
 
 func TestFileStore_Existing_Initial_Notify(t *testing.T) {
 	utils.UseTempFile(`{"f":{"flag":{"v":{"b":false}}},"p":null}`, func(path string) {
-		str := NewFileStore("test", &config.LocalConfig{FilePath: path}, status.NewNullReporter(), log.NewNullLogger()).(*fileStore)
+		str := NewFileStore("test", &config.LocalConfig{FilePath: path}, status.NewEmptyReporter(), log.NewNullLogger()).(*fileStore)
 		res, err := str.Get(context.Background(), "")
 		assert.NoError(t, err)
 		_, _, j, _ := configcatcache.CacheSegmentsFromBytes(res)
@@ -80,7 +80,7 @@ func TestFileStore_Existing_Initial_Notify(t *testing.T) {
 
 func TestFileStore_Existing_Initial_Gets_BadJson(t *testing.T) {
 	utils.UseTempFile(`{"f":{"flag":{"v":{"b":false}}},"p":null}`, func(path string) {
-		str := NewFileStore("test", &config.LocalConfig{FilePath: path}, status.NewNullReporter(), log.NewNullLogger()).(*fileStore)
+		str := NewFileStore("test", &config.LocalConfig{FilePath: path}, status.NewEmptyReporter(), log.NewNullLogger()).(*fileStore)
 		res, err := str.Get(context.Background(), "")
 		assert.NoError(t, err)
 		_, _, j, _ := configcatcache.CacheSegmentsFromBytes(res)
@@ -98,7 +98,7 @@ func TestFileStore_Existing_Initial_Gets_BadJson(t *testing.T) {
 
 func TestFileStore_Existing_Initial_BadJson(t *testing.T) {
 	utils.UseTempFile(`{"k":{"flag":{"v":{"b":false}}},"p":null}`, func(path string) {
-		str := NewFileStore("test", &config.LocalConfig{FilePath: path}, status.NewNullReporter(), log.NewNullLogger()).(*fileStore)
+		str := NewFileStore("test", &config.LocalConfig{FilePath: path}, status.NewEmptyReporter(), log.NewNullLogger()).(*fileStore)
 		res, err := str.Get(context.Background(), "")
 		assert.NoError(t, err)
 		_, _, j, _ := configcatcache.CacheSegmentsFromBytes(res)
@@ -109,7 +109,7 @@ func TestFileStore_Existing_Initial_BadJson(t *testing.T) {
 
 func TestFileStore_Existing_Initial_MalformedJson(t *testing.T) {
 	utils.UseTempFile(`{"k":{"flag`, func(path string) {
-		str := NewFileStore("test", &config.LocalConfig{FilePath: path}, status.NewNullReporter(), log.NewNullLogger()).(*fileStore)
+		str := NewFileStore("test", &config.LocalConfig{FilePath: path}, status.NewEmptyReporter(), log.NewNullLogger()).(*fileStore)
 		res, err := str.Get(context.Background(), "")
 		assert.NoError(t, err)
 		_, _, j, _ := configcatcache.CacheSegmentsFromBytes(res)
@@ -120,7 +120,7 @@ func TestFileStore_Existing_Initial_MalformedJson(t *testing.T) {
 
 func TestFileStore_Stop(t *testing.T) {
 	utils.UseTempFile("", func(path string) {
-		str := NewFileStore("test", &config.LocalConfig{FilePath: path}, status.NewNullReporter(), log.NewNullLogger()).(*fileStore)
+		str := NewFileStore("test", &config.LocalConfig{FilePath: path}, status.NewEmptyReporter(), log.NewNullLogger()).(*fileStore)
 		go func() {
 			str.Close()
 		}()
@@ -139,7 +139,7 @@ func TestFileStore_Stop(t *testing.T) {
 }
 
 func TestFileStore_NonExisting(t *testing.T) {
-	str := NewFileStore("test", &config.LocalConfig{FilePath: "nonexisting"}, status.NewNullReporter(), log.NewNullLogger()).(*fileStore)
+	str := NewFileStore("test", &config.LocalConfig{FilePath: "nonexisting"}, status.NewEmptyReporter(), log.NewNullLogger()).(*fileStore)
 	defer str.Close()
 
 	res, err := str.Get(context.Background(), "")

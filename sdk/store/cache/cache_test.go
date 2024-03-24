@@ -13,7 +13,7 @@ import (
 )
 
 func TestCacheStore(t *testing.T) {
-	store := NewCacheStore(&testCache{}, status.NewNullReporter()).(*cacheStore)
+	store := NewCacheStore(&testCache{}, status.NewEmptyReporter()).(*cacheStore)
 
 	err := store.Set(context.Background(), "key", configcatcache.CacheSegmentsToBytes(time.Now(), "etag", []byte(`test`)))
 	assert.NoError(t, err)

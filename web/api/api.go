@@ -20,17 +20,17 @@ type keysResponse struct {
 }
 
 type Server struct {
-	sdkClients map[string]sdk.Client
-	config     *config.ApiConfig
-	logger     log.Logger
+	sdkRegistrar sdk.Registrar
+	config       *config.ApiConfig
+	logger       log.Logger
 }
 
-func NewServer(sdkClients map[string]sdk.Client, config *config.ApiConfig, log log.Logger) *Server {
+func NewServer(sdkRegistrar sdk.Registrar, config *config.ApiConfig, log log.Logger) *Server {
 	cdnLogger := log.WithPrefix("api")
 	return &Server{
-		sdkClients: sdkClients,
-		config:     config,
-		logger:     cdnLogger,
+		sdkRegistrar: sdkRegistrar,
+		config:       config,
+		logger:       cdnLogger,
 	}
 }
 
@@ -137,8 +137,8 @@ func (s *Server) getSDKClient(ctx context.Context) (sdk.Client, error, int) {
 	if sdkId == "" {
 		return nil, fmt.Errorf("'sdkId' path parameter must be set"), http.StatusNotFound
 	}
-	sdkClient, ok := s.sdkClients[sdkId]
-	if !ok {
+	sdkClient := s.sdkRegistrar.GetSdkOrNil(sdkId)
+	if sdkClient == nil {
 		return nil, fmt.Errorf("invalid SDK identifier: '%s'", sdkId), http.StatusNotFound
 	}
 	if !sdkClient.IsInValidState() {

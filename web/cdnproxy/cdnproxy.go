@@ -11,17 +11,17 @@ import (
 )
 
 type Server struct {
-	sdkClients map[string]sdk.Client
-	config     *config.CdnProxyConfig
-	logger     log.Logger
+	sdkRegistrar sdk.Registrar
+	config       *config.CdnProxyConfig
+	logger       log.Logger
 }
 
-func NewServer(sdkClients map[string]sdk.Client, config *config.CdnProxyConfig, log log.Logger) *Server {
+func NewServer(sdkRegistrar sdk.Registrar, config *config.CdnProxyConfig, log log.Logger) *Server {
 	cdnLogger := log.WithPrefix("cdn-proxy")
 	return &Server{
-		sdkClients: sdkClients,
-		config:     config,
-		logger:     cdnLogger,
+		sdkRegistrar: sdkRegistrar,
+		config:       config,
+		logger:       cdnLogger,
 	}
 }
 
@@ -51,8 +51,8 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (s *Server) getSDKClient(ctx context.Context) (sdk.Client, error, int) {
 	vars := httprouter.ParamsFromContext(ctx)
 	sdkId := vars.ByName("sdkId")
-	sdkClient, ok := s.sdkClients[sdkId]
-	if !ok {
+	sdkClient := s.sdkRegistrar.GetSdkOrNil(sdkId)
+	if sdkClient == nil {
 		return nil, fmt.Errorf("invalid SDK identifier: '%s'", sdkId), http.StatusNotFound
 	}
 	if !sdkClient.IsInValidState() {

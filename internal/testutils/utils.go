@@ -14,7 +14,23 @@ import (
 	"testing"
 )
 
-func NewTestSdkClient(t *testing.T) (map[string]sdk.Client, *configcattest.Handler, string) {
+func NewTestRegistrar(conf *config.SDKConfig, cache configcat.ConfigCache) sdk.Registrar {
+	return NewTestRegistrarWithStatusReporter(conf, cache, status.NewEmptyReporter())
+}
+
+func NewTestRegistrarWithStatusReporter(conf *config.SDKConfig, cache configcat.ConfigCache, reporter status.Reporter) sdk.Registrar {
+	ctx := NewTestSdkContext(conf, cache)
+	reg := sdk.NewRegistrar(&config.Config{
+		SDKs: map[string]*config.SDKConfig{"test": conf},
+	}, ctx.MetricsReporter, reporter, cache, log.NewNullLogger())
+	return reg
+}
+
+func NewTestRegistrarT(t *testing.T) (sdk.Registrar, *configcattest.Handler, string) {
+	return NewTestRegistrarTWithStatusReporter(t, status.NewEmptyReporter())
+}
+
+func NewTestRegistrarTWithStatusReporter(t *testing.T, reporter status.Reporter) (sdk.Registrar, *configcattest.Handler, string) {
 	key := configcattest.RandomSDKKey()
 	var h configcattest.Handler
 	_ = h.SetFlags(key, map[string]*configcattest.Flag{
@@ -31,25 +47,38 @@ func NewTestSdkClient(t *testing.T) (map[string]sdk.Client, *configcattest.Handl
 		},
 	})
 	srv := httptest.NewServer(&h)
-	opts := config.SDKConfig{BaseUrl: srv.URL, Key: key}
-	ctx := NewTestSdkContext(&opts, nil)
-	client := sdk.NewClient(ctx, log.NewNullLogger())
+	reg := NewTestRegistrarWithStatusReporter(&config.SDKConfig{BaseUrl: srv.URL, Key: key}, nil, reporter)
 	t.Cleanup(func() {
 		srv.Close()
-		client.Close()
+		reg.Close()
 	})
-	return map[string]sdk.Client{"test": client}, &h, key
+	return reg, &h, key
+}
+
+func NewTestRegistrarTWithErrorServer(t *testing.T) sdk.Registrar {
+	key := configcattest.RandomSDKKey()
+	var h configcattest.Handler
+	srv := httptest.NewServer(&h)
+	reg := NewTestRegistrarWithStatusReporter(&config.SDKConfig{BaseUrl: srv.URL, Key: key}, nil, status.NewEmptyReporter())
+	t.Cleanup(func() {
+		srv.Close()
+		reg.Close()
+	})
+	return reg
+}
+
+func NewTestSdkClient(t *testing.T) (map[string]sdk.Client, *configcattest.Handler, string) {
+	reg, h, k := NewTestRegistrarT(t)
+	return reg.GetAll(), h, k
 }
 
 func NewTestSdkContext(conf *config.SDKConfig, cache configcat.ConfigCache) *sdk.Context {
 	return &sdk.Context{
-		SDKConf:         conf,
-		ProxyConf:       &config.HttpProxyConfig{},
-		StatusReporter:  status.NewNullReporter(),
-		MetricsReporter: nil,
-		EvalReporter:    nil,
-		SdkId:           "test",
-		ExternalCache:   cache,
+		SDKConf:        conf,
+		ProxyConf:      &config.HttpProxyConfig{},
+		StatusReporter: status.NewEmptyReporter(),
+		SdkId:          "test",
+		ExternalCache:  cache,
 	}
 }
 

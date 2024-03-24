@@ -25,7 +25,7 @@ type HttpRouter struct {
 	metrics        metrics.Reporter
 }
 
-func NewRouter(sdkClients map[string]sdk.Client, metrics metrics.Reporter, reporter status.Reporter, conf *config.HttpConfig, log log.Logger) *HttpRouter {
+func NewRouter(sdkRegistrar sdk.Registrar, metrics metrics.Reporter, reporter status.Reporter, conf *config.HttpConfig, log log.Logger) *HttpRouter {
 	httpLog := log.WithLevel(conf.Log.GetLevel()).WithPrefix("http")
 
 	r := &HttpRouter{
@@ -37,16 +37,16 @@ func NewRouter(sdkClients map[string]sdk.Client, metrics metrics.Reporter, repor
 		metrics: metrics,
 	}
 	if conf.Sse.Enabled {
-		r.setupSSERoutes(&conf.Sse, sdkClients, httpLog)
+		r.setupSSERoutes(&conf.Sse, sdkRegistrar, httpLog)
 	}
 	if conf.Webhook.Enabled {
-		r.setupWebhookRoutes(&conf.Webhook, sdkClients, httpLog)
+		r.setupWebhookRoutes(&conf.Webhook, sdkRegistrar, httpLog)
 	}
 	if conf.CdnProxy.Enabled {
-		r.setupCDNProxyRoutes(&conf.CdnProxy, sdkClients, httpLog)
+		r.setupCDNProxyRoutes(&conf.CdnProxy, sdkRegistrar, httpLog)
 	}
 	if conf.Api.Enabled {
-		r.setupAPIRoutes(&conf.Api, sdkClients, httpLog)
+		r.setupAPIRoutes(&conf.Api, sdkRegistrar, httpLog)
 	}
 	if conf.Status.Enabled {
 		r.setupStatusRoutes(reporter, httpLog)
@@ -64,8 +64,8 @@ func (s *HttpRouter) Close() {
 	}
 }
 
-func (s *HttpRouter) setupSSERoutes(conf *config.SseConfig, sdkClients map[string]sdk.Client, l log.Logger) {
-	s.sseServer = sse.NewServer(sdkClients, s.metrics, conf, l)
+func (s *HttpRouter) setupSSERoutes(conf *config.SseConfig, sdkRegistrar sdk.Registrar, l log.Logger) {
+	s.sseServer = sse.NewServer(sdkRegistrar, s.metrics, conf, l)
 	endpoints := []endpoint{
 		{path: "/sse/:sdkId/eval/:data", handler: http.HandlerFunc(s.sseServer.SingleFlag), method: http.MethodGet},
 		{path: "/sse/:sdkId/eval-all/:data", handler: http.HandlerFunc(s.sseServer.AllFlags), method: http.MethodGet},
@@ -88,8 +88,8 @@ func (s *HttpRouter) setupSSERoutes(conf *config.SseConfig, sdkClients map[strin
 	l.Reportf("SSE enabled, accepting requests on path: /sse/:sdkId/*")
 }
 
-func (s *HttpRouter) setupWebhookRoutes(conf *config.WebhookConfig, sdkClients map[string]sdk.Client, l log.Logger) {
-	s.webhookServer = webhook.NewServer(sdkClients, l)
+func (s *HttpRouter) setupWebhookRoutes(conf *config.WebhookConfig, sdkRegistrar sdk.Registrar, l log.Logger) {
+	s.webhookServer = webhook.NewServer(sdkRegistrar, l)
 	path := "/hook/:sdkId"
 	handler := http.HandlerFunc(s.webhookServer.ServeHTTP)
 	if conf.Auth.User != "" && conf.Auth.Password != "" {
@@ -109,8 +109,8 @@ func (s *HttpRouter) setupWebhookRoutes(conf *config.WebhookConfig, sdkClients m
 	l.Reportf("webhook enabled, accepting requests on path: %s", path)
 }
 
-func (s *HttpRouter) setupCDNProxyRoutes(conf *config.CdnProxyConfig, sdkClients map[string]sdk.Client, l log.Logger) {
-	s.cdnProxyServer = cdnproxy.NewServer(sdkClients, conf, l)
+func (s *HttpRouter) setupCDNProxyRoutes(conf *config.CdnProxyConfig, sdkRegistrar sdk.Registrar, l log.Logger) {
+	s.cdnProxyServer = cdnproxy.NewServer(sdkRegistrar, conf, l)
 	path := "/configuration-files/configcat-proxy/:sdkId/config_v6.json"
 	handler := mware.AutoOptions(mware.GZip(s.cdnProxyServer.ServeHTTP))
 	if len(conf.Headers) > 0 {
@@ -147,8 +147,8 @@ type endpoint struct {
 	path    string
 }
 
-func (s *HttpRouter) setupAPIRoutes(conf *config.ApiConfig, sdkClients map[string]sdk.Client, l log.Logger) {
-	s.apiServer = api.NewServer(sdkClients, conf, l)
+func (s *HttpRouter) setupAPIRoutes(conf *config.ApiConfig, sdkRegistrar sdk.Registrar, l log.Logger) {
+	s.apiServer = api.NewServer(sdkRegistrar, conf, l)
 	endpoints := []endpoint{
 		{path: "/api/:sdkId/eval", handler: mware.GZip(s.apiServer.Eval), method: http.MethodPost},
 		{path: "/api/:sdkId/eval-all", handler: mware.GZip(s.apiServer.EvalAll), method: http.MethodPost},

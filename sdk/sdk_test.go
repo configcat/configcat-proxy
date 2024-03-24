@@ -431,7 +431,7 @@ func newTestSdkContext(conf *config.SDKConfig, externalCache configcat.ConfigCac
 	return &Context{
 		SDKConf:         conf,
 		ProxyConf:       &config.HttpProxyConfig{},
-		StatusReporter:  status.NewNullReporter(),
+		StatusReporter:  status.NewEmptyReporter(),
 		MetricsReporter: nil,
 		EvalReporter:    nil,
 		SdkId:           "test",
