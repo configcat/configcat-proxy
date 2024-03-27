@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/diag"
@@ -9,11 +10,13 @@ import (
 	"github.com/configcat/configcat-proxy/grpc"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/sdk"
+	"github.com/configcat/configcat-proxy/sdk/store/cache"
 	"github.com/configcat/configcat-proxy/web"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
 )
 
 const (
@@ -53,7 +56,7 @@ func run(closeSignal chan os.Signal) int {
 	// in the future we might implement an evaluation statistics reporter
 	// var evalReporter statistics.Reporter
 
-	statusReporter := status.NewReporter(&conf)
+	statusReporter := status.NewReporter(&conf.Cache)
 
 	var metricsReporter metrics.Reporter
 	if conf.Diag.Metrics.Enabled {
@@ -66,24 +69,23 @@ func run(closeSignal chan os.Signal) int {
 		diagServer.Listen()
 	}
 
-	sdkClients := make(map[string]sdk.Client)
-	for key, sdkConf := range conf.SDKs {
-		sdkClients[key] = sdk.NewClient(&sdk.Context{
-			SDKConf:            sdkConf,
-			EvalReporter:       nil,
-			MetricsReporter:    metricsReporter,
-			StatusReporter:     statusReporter,
-			ProxyConf:          &conf.HttpProxy,
-			CacheConf:          &conf.Cache,
-			GlobalDefaultAttrs: conf.DefaultAttrs,
-			SdkId:              key,
-		}, logger)
+	var externalCache cache.External
+	if conf.Cache.IsSet() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second) // give 5 sec to spin up the cache connection
+		defer cancel()
+
+		externalCache, err = cache.SetupExternalCache(ctx, &conf.Cache, logger)
+		if err != nil {
+			return exitFailure
+		}
 	}
+
+	sdkRegistrar := sdk.NewRegistrar(&conf, metricsReporter, statusReporter, externalCache, logger)
 
 	var httpServer *web.Server
 	var router *web.HttpRouter
 	if conf.Http.Enabled {
-		router = web.NewRouter(sdkClients, metricsReporter, statusReporter, &conf.Http, logger)
+		router = web.NewRouter(sdkRegistrar, metricsReporter, statusReporter, &conf.Http, logger)
 		httpServer, err = web.NewServer(router.Handler(), logger, &conf, errorChan)
 		if err != nil {
 			return exitFailure
@@ -93,7 +95,7 @@ func run(closeSignal chan os.Signal) int {
 
 	var grpcServer *grpc.Server
 	if conf.Grpc.Enabled {
-		grpcServer, err = grpc.NewServer(sdkClients, metricsReporter, statusReporter, &conf, logger, errorChan)
+		grpcServer, err = grpc.NewServer(sdkRegistrar, metricsReporter, statusReporter, &conf, logger, errorChan)
 		if err != nil {
 			return exitFailure
 		}
@@ -103,14 +105,16 @@ func run(closeSignal chan os.Signal) int {
 	for {
 		select {
 		case <-closeSignal:
-			for _, sdkClient := range sdkClients {
-				sdkClient.Close()
-			}
+			sdkRegistrar.Close()
+
 			if router != nil {
 				router.Close()
 			}
 
 			shutDownCount := 0
+			if externalCache != nil {
+				shutDownCount++
+			}
 			if httpServer != nil {
 				shutDownCount++
 			}
@@ -122,6 +126,12 @@ func run(closeSignal chan os.Signal) int {
 			}
 			wg := sync.WaitGroup{}
 			wg.Add(shutDownCount)
+			if externalCache != nil {
+				go func() {
+					externalCache.Shutdown()
+					wg.Done()
+				}()
+			}
 			if httpServer != nil {
 				go func() {
 					httpServer.Shutdown()

@@ -21,11 +21,8 @@ import (
 )
 
 func TestWebhook_Signature_Bad(t *testing.T) {
-	key := configcattest.RandomSDKKey()
-	var h = &configcattest.Handler{}
-	_ = h.SetFlags(key, map[string]*configcattest.Flag{"flag": {Default: true}})
-	clients := newClient(t, h, key, "test-key", 300)
-	srv := NewServer(clients, log.NewNullLogger())
+	reg, _, _ := newRegistrar(t, "test-key", 300)
+	srv := NewServer(reg, log.NewNullLogger())
 
 	t.Run("headers missing", func(t *testing.T) {
 		res := httptest.NewRecorder()
@@ -58,11 +55,8 @@ func TestWebhook_Signature_Bad(t *testing.T) {
 
 func TestWebhook_Signature_Ok(t *testing.T) {
 	t.Run("signature OK GET", func(t *testing.T) {
-		key := configcattest.RandomSDKKey()
-		var h = &configcattest.Handler{}
-		_ = h.SetFlags(key, map[string]*configcattest.Flag{"flag": {Default: true}})
-		clients := newClient(t, h, key, "test-key", 300)
-		srv := NewServer(clients, log.NewNullLogger())
+		reg, h, key := newRegistrar(t, "test-key", 300)
+		srv := NewServer(reg, log.NewNullLogger())
 
 		res := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -76,9 +70,9 @@ func TestWebhook_Signature_Ok(t *testing.T) {
 		req.Header.Set("X-ConfigCat-Webhook-ID", id)
 		req.Header.Set("X-ConfigCat-Webhook-Timestamp", timestamp)
 		testutils.AddSdkIdContextParam(req)
-		sub := clients["test"].SubConfigChanged("hook1")
+		sub := reg.GetSdkOrNil("test").SubConfigChanged("hook1")
 		utils.WithTimeout(2*time.Second, func() {
-			<-clients["test"].Ready()
+			<-reg.GetSdkOrNil("test").Ready()
 		}) // wait for the SDK to do the initialization
 		_ = h.SetFlags(key, map[string]*configcattest.Flag{"flag": {Default: false}})
 		srv.ServeHTTP(res, req)
@@ -88,11 +82,8 @@ func TestWebhook_Signature_Ok(t *testing.T) {
 		assert.Equal(t, http.StatusOK, res.Code)
 	})
 	t.Run("signature OK POST", func(t *testing.T) {
-		key := configcattest.RandomSDKKey()
-		var h = &configcattest.Handler{}
-		_ = h.SetFlags(key, map[string]*configcattest.Flag{"flag": {Default: true}})
-		clients := newClient(t, h, key, "test-key", 300)
-		srv := NewServer(clients, log.NewNullLogger())
+		reg, h, key := newRegistrar(t, "test-key", 300)
+		srv := NewServer(reg, log.NewNullLogger())
 
 		id := "1"
 		timestamp := strconv.FormatInt(time.Now().Unix(), 10)
@@ -107,9 +98,9 @@ func TestWebhook_Signature_Ok(t *testing.T) {
 		req.Header.Set("X-ConfigCat-Webhook-ID", id)
 		req.Header.Set("X-ConfigCat-Webhook-Timestamp", timestamp)
 		testutils.AddSdkIdContextParam(req)
-		sub := clients["test"].SubConfigChanged("hook1")
+		sub := reg.GetSdkOrNil("test").SubConfigChanged("hook1")
 		utils.WithTimeout(2*time.Second, func() {
-			<-clients["test"].Ready()
+			<-reg.GetSdkOrNil("test").Ready()
 		}) // wait for the SDK to do the initialization
 		_ = h.SetFlags(key, map[string]*configcattest.Flag{"flag": {Default: false}})
 		srv.ServeHTTP(res, req)
@@ -121,11 +112,8 @@ func TestWebhook_Signature_Ok(t *testing.T) {
 }
 
 func TestWebhook_Signature_Replay_Reject(t *testing.T) {
-	key := configcattest.RandomSDKKey()
-	var h = &configcattest.Handler{}
-	_ = h.SetFlags(key, map[string]*configcattest.Flag{"flag": {Default: true}})
-	clients := newClient(t, h, key, "test-key", 1)
-	srv := NewServer(clients, log.NewNullLogger())
+	reg, _, _ := newRegistrar(t, "test-key", 1)
+	srv := NewServer(reg, log.NewNullLogger())
 
 	id := "1"
 	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
@@ -145,14 +133,15 @@ func TestWebhook_Signature_Replay_Reject(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, res.Code)
 }
 
-func newClient(t *testing.T, h *configcattest.Handler, key string, signingKey string, validFor int) map[string]sdk.Client {
+func newRegistrar(t *testing.T, signingKey string, validFor int) (sdk.Registrar, *configcattest.Handler, string) {
+	key := configcattest.RandomSDKKey()
+	var h = &configcattest.Handler{}
+	_ = h.SetFlags(key, map[string]*configcattest.Flag{"flag": {Default: true}})
 	srv := httptest.NewServer(h)
-	sdkConf := &config.SDKConfig{BaseUrl: srv.URL, Key: key, WebhookSigningKey: signingKey, WebhookSignatureValidFor: validFor}
-	ctx := testutils.NewTestSdkContext(sdkConf, nil)
-	client := sdk.NewClient(ctx, log.NewNullLogger())
+	reg := testutils.NewTestRegistrar(&config.SDKConfig{BaseUrl: srv.URL, Key: key, WebhookSigningKey: signingKey, WebhookSignatureValidFor: validFor}, nil)
 	t.Cleanup(func() {
 		srv.Close()
-		client.Close()
+		reg.Close()
 	})
-	return map[string]sdk.Client{"test": client}
+	return reg, h, key
 }

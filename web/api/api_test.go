@@ -5,7 +5,6 @@ import (
 	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/internal/utils"
 	"github.com/configcat/configcat-proxy/log"
-	"github.com/configcat/configcat-proxy/sdk"
 	"github.com/configcat/go-sdk/v9/configcattest"
 	"github.com/stretchr/testify/assert"
 	"net/http"
@@ -237,15 +236,7 @@ func TestAPI_Keys(t *testing.T) {
 }
 
 func TestAPI_Refresh(t *testing.T) {
-	key := configcattest.RandomSDKKey()
-	var h configcattest.Handler
-	_ = h.SetFlags(key, map[string]*configcattest.Flag{
-		"flag": {
-			Default: true,
-		},
-	})
-
-	srv := newServerWithHandler(t, &h, key, config.ApiConfig{Enabled: true})
+	srv, h, key := newServerWithHandler(t, config.ApiConfig{Enabled: true})
 
 	res := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"key":"flag"}`))
@@ -322,16 +313,14 @@ func TestAPI_WrongSdkId(t *testing.T) {
 }
 
 func TestAPI_WrongSDKState(t *testing.T) {
-	opts := config.SDKConfig{BaseUrl: "http://localhost", Key: configcattest.RandomSDKKey()}
-	ctx := testutils.NewTestSdkContext(&opts, &config.CacheConfig{})
-	client := sdk.NewClient(ctx, log.NewNullLogger())
-	defer client.Close()
+	reg := testutils.NewTestRegistrar(&config.SDKConfig{BaseUrl: "http://localhost", Key: configcattest.RandomSDKKey()}, nil)
+	defer reg.Close()
 
 	t.Run("Eval", func(t *testing.T) {
 		res := httptest.NewRecorder()
 		req, _ := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"key":"flag"}`))
 
-		srv := NewServer(map[string]sdk.Client{"test": client}, &config.ApiConfig{Enabled: true}, log.NewNullLogger())
+		srv := NewServer(reg, &config.ApiConfig{Enabled: true}, log.NewNullLogger())
 		testutils.AddSdkIdContextParam(req)
 		srv.Eval(res, req)
 
@@ -342,7 +331,7 @@ func TestAPI_WrongSDKState(t *testing.T) {
 		res := httptest.NewRecorder()
 		req, _ := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"key":"flag"}`))
 
-		srv := NewServer(map[string]sdk.Client{"test": client}, &config.ApiConfig{Enabled: true}, log.NewNullLogger())
+		srv := NewServer(reg, &config.ApiConfig{Enabled: true}, log.NewNullLogger())
 		testutils.AddSdkIdContextParam(req)
 		srv.EvalAll(res, req)
 
@@ -353,7 +342,7 @@ func TestAPI_WrongSDKState(t *testing.T) {
 		res := httptest.NewRecorder()
 		req, _ := http.NewRequest(http.MethodGet, "/", http.NoBody)
 
-		srv := NewServer(map[string]sdk.Client{"test": client}, &config.ApiConfig{Enabled: true}, log.NewNullLogger())
+		srv := NewServer(reg, &config.ApiConfig{Enabled: true}, log.NewNullLogger())
 		testutils.AddSdkIdContextParam(req)
 		srv.Keys(res, req)
 
@@ -363,44 +352,24 @@ func TestAPI_WrongSDKState(t *testing.T) {
 }
 
 func newServer(t *testing.T, conf config.ApiConfig) *Server {
-	client, _, _ := testutils.NewTestSdkClient(t)
-	return NewServer(client, &conf, log.NewNullLogger())
+	reg, _, _ := testutils.NewTestRegistrarT(t)
+	return NewServer(reg, &conf, log.NewNullLogger())
 }
 
-func newServerWithHandler(t *testing.T, h *configcattest.Handler, key string, conf config.ApiConfig) *Server {
-	_ = h.SetFlags(key, map[string]*configcattest.Flag{
-		"flag": {
-			Default: true,
-		},
-	})
-	srv := httptest.NewServer(h)
-	ctx := testutils.NewTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key}, nil)
-	client := sdk.NewClient(ctx, log.NewNullLogger())
-	t.Cleanup(func() {
-		srv.Close()
-		client.Close()
-	})
-	return NewServer(map[string]sdk.Client{"test": client}, &conf, log.NewNullLogger())
+func newServerWithHandler(t *testing.T, conf config.ApiConfig) (*Server, *configcattest.Handler, string) {
+	reg, h, k := testutils.NewTestRegistrarT(t)
+	return NewServer(reg, &conf, log.NewNullLogger()), h, k
 }
 
 func newErrorServer(t *testing.T, conf config.ApiConfig) *Server {
-	key := configcattest.RandomSDKKey()
-	var h configcattest.Handler
-	srv := httptest.NewServer(&h)
-	ctx := testutils.NewTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key}, nil)
-	client := sdk.NewClient(ctx, log.NewNullLogger())
-	t.Cleanup(func() {
-		srv.Close()
-		client.Close()
-	})
-	return NewServer(map[string]sdk.Client{"test": client}, &conf, log.NewNullLogger())
+	reg := testutils.NewTestRegistrarTWithErrorServer(t)
+	return NewServer(reg, &conf, log.NewNullLogger())
 }
 
 func newOfflineServer(t *testing.T, path string, conf config.ApiConfig) *Server {
-	ctx := testutils.NewTestSdkContext(&config.SDKConfig{Key: "local", Offline: config.OfflineConfig{Enabled: true, Local: config.LocalConfig{FilePath: path, Polling: true, PollInterval: 30}}}, nil)
-	client := sdk.NewClient(ctx, log.NewNullLogger())
+	reg := testutils.NewTestRegistrar(&config.SDKConfig{Key: "local", Offline: config.OfflineConfig{Enabled: true, Local: config.LocalConfig{FilePath: path, Polling: true, PollInterval: 30}}}, nil)
 	t.Cleanup(func() {
-		client.Close()
+		reg.Close()
 	})
-	return NewServer(map[string]sdk.Client{"test": client}, &conf, log.NewNullLogger())
+	return NewServer(reg, &conf, log.NewNullLogger())
 }

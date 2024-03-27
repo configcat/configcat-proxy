@@ -2,7 +2,6 @@ package web
 
 import (
 	"context"
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"github.com/configcat/configcat-proxy/config"
@@ -26,16 +25,10 @@ func NewServer(handler http.Handler, log log.Logger, conf *config.Config, errorC
 		Handler: handler,
 	}
 	if conf.Tls.Enabled {
-		t := &tls.Config{
-			MinVersion: conf.Tls.GetVersion(),
-		}
-		for _, c := range conf.Tls.Certificates {
-			if cert, err := tls.LoadX509KeyPair(c.Cert, c.Key); err == nil {
-				t.Certificates = append(t.Certificates, cert)
-			} else {
-				httpLog.Errorf("failed to load the certificate and key pair: %s", err)
-				return nil, err
-			}
+		t, err := conf.Tls.LoadTlsOptions()
+		if err != nil {
+			httpLog.Errorf("failed to configure TLS for the HTTP server: %s", err)
+			return nil, err
 		}
 		httpServer.TLSConfig = t
 		httpLog.Reportf("using TLS version: %.1f", conf.Tls.MinVersion)
@@ -74,7 +67,7 @@ func (s *Server) Shutdown() {
 
 	err := s.httpServer.Shutdown(ctx)
 	if err != nil {
-		s.log.Errorf("shutdown error: %v", err)
+		s.log.Errorf("shutdown error: %s", err)
 	}
 	s.log.Reportf("server shutdown complete")
 }

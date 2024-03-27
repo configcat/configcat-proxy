@@ -8,8 +8,6 @@ import (
 	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/internal/utils"
 	"github.com/configcat/configcat-proxy/log"
-	"github.com/configcat/configcat-proxy/sdk"
-	"github.com/configcat/go-sdk/v9/configcattest"
 	"github.com/stretchr/testify/assert"
 	"io"
 	"net/http"
@@ -74,26 +72,11 @@ func TestStatus_Not_Allowed_Methods(t *testing.T) {
 }
 
 func newStatusRouter(t *testing.T) *HttpRouter {
-	key := configcattest.RandomSDKKey()
-	var h configcattest.Handler
-	_ = h.SetFlags(key, map[string]*configcattest.Flag{
-		"flag": {
-			Default: true,
-		},
-	})
-	srv := httptest.NewServer(&h)
-	opts := config.SDKConfig{BaseUrl: srv.URL, Key: key}
-	ctx := testutils.NewTestSdkContext(&opts, nil)
-	conf := config.Config{SDKs: map[string]*config.SDKConfig{"test": &opts}}
-	reporter := status.NewReporter(&conf)
-	ctx.StatusReporter = reporter
-	client := sdk.NewClient(ctx, log.NewNullLogger())
+	reporter := status.NewEmptyReporter()
+	reg, _, _ := testutils.NewTestRegistrarTWithStatusReporter(t, reporter)
+	client := reg.GetSdkOrNil("test")
 	utils.WithTimeout(2*time.Second, func() {
 		<-client.Ready()
 	})
-	t.Cleanup(func() {
-		srv.Close()
-		client.Close()
-	})
-	return NewRouter(map[string]sdk.Client{"test": client}, nil, reporter, &config.HttpConfig{Status: config.StatusConfig{Enabled: true}}, log.NewNullLogger())
+	return NewRouter(reg, nil, reporter, &config.HttpConfig{Status: config.StatusConfig{Enabled: true}}, log.NewNullLogger())
 }

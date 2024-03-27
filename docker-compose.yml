@@ -34,11 +34,19 @@ services:
       - CONFIGCAT_SDK2_BASE_URL=https://test-cdn-global.configcat.com
       - CONFIGCAT_SDK2_POLL_INTERVAL=300
       - CONFIGCAT_SDK2_WEBHOOK_SIGNING_KEY=configcat_whsk_a8w2b38Ofhs0rzXbZhNCvPTeTeUxmerTBy9PzMCX6+E=
+      - CONFIGCAT_SDK2_LOG_LEVEL=error
 #      - CONFIGCAT_SDK2_OFFLINE_ENABLED=true
 #      - CONFIGCAT_SDK2_OFFLINE_USE_CACHE=true
-      - CONFIGCAT_SDK2_LOG_LEVEL=error
       - CONFIGCAT_CACHE_REDIS_ENABLED=true
       - CONFIGCAT_CACHE_REDIS_ADDRESSES=["redis:6379"]
+#      - CONFIGCAT_CACHE_MONGODB_ENABLED=true
+#      - CONFIGCAT_CACHE_MONGODB_URL=mongodb://mongodb:27017
+#      - CONFIGCAT_CACHE_DYNAMODB_ENABLED=true
+#      - CONFIGCAT_CACHE_DYNAMODB_URL=http://dynamodb:8000
+#      - AWS_ACCESS_KEY_ID=key
+#      - AWS_SECRET_ACCESS_KEY=secret
+#      - AWS_SESSION_TOKEN=session
+#      - AWS_DEFAULT_REGION=us-east-1
       - CONFIGCAT_TLS_ENABLED=true
       - CONFIGCAT_TLS_CERTIFICATES=[{"key":"./cert/localhost.key","cert":"./cert/localhost.crt"}]
       - CONFIGCAT_HTTP_PROXY_URL=http://squid:3128
@@ -83,6 +91,16 @@ services:
     image: redis:7.0.8-alpine3.17
     ports:
       - "6379:6379"
+
+  mongodb:
+    image: mongodb/mongodb-community-server
+    ports:
+      - "27017:27017"
+
+  dynamodb:
+    image: amazon/dynamodb-local
+    ports:
+      - "8000:8000"
 
   squid:
     image: ubuntu/squid

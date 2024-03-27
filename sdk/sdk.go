@@ -10,7 +10,6 @@ import (
 	"github.com/configcat/configcat-proxy/sdk/statistics"
 	"github.com/configcat/configcat-proxy/sdk/store"
 	"github.com/configcat/configcat-proxy/sdk/store/cache"
-	"github.com/configcat/configcat-proxy/sdk/store/cache/redis"
 	"github.com/configcat/configcat-proxy/sdk/store/file"
 	"github.com/configcat/go-sdk/v9"
 	"github.com/configcat/go-sdk/v9/configcatcache"
@@ -26,7 +25,7 @@ const (
 )
 
 type Client interface {
-	Eval(key string, user model.UserAttrs) (model.EvalData, error)
+	Eval(key string, user model.UserAttrs) model.EvalData
 	EvalAll(user model.UserAttrs) map[string]model.EvalData
 	Keys() []string
 	GetCachedJson() *store.EntryWithEtag
@@ -44,11 +43,11 @@ type Context struct {
 	SdkId              string
 	SDKConf            *config.SDKConfig
 	ProxyConf          *config.HttpProxyConfig
-	CacheConf          *config.CacheConfig
 	GlobalDefaultAttrs model.UserAttrs
 	MetricsReporter    metrics.Reporter
 	StatusReporter     status.Reporter
 	EvalReporter       statistics.Reporter
+	ExternalCache      configcat.ConfigCache
 }
 
 type client struct {
@@ -67,18 +66,20 @@ type client struct {
 
 func NewClient(sdkCtx *Context, log log.Logger) Client {
 	sdkLog := log.WithLevel(sdkCtx.SDKConf.Log.GetLevel()).WithPrefix("sdk-" + sdkCtx.SdkId)
+	sdkCtx.StatusReporter.RegisterSdk(sdkCtx.SdkId, sdkCtx.SDKConf)
+
 	offline := sdkCtx.SDKConf.Offline.Enabled
 	key := sdkCtx.SDKConf.Key
 	var storage configcat.ConfigCache
 	if offline && sdkCtx.SDKConf.Offline.Local.FilePath != "" {
 		key = validEmptySdkKey
 		storage = file.NewFileStore(sdkCtx.SdkId, &sdkCtx.SDKConf.Offline.Local, sdkCtx.StatusReporter, log.WithLevel(sdkCtx.SDKConf.Offline.Log.GetLevel()))
-	} else if offline && sdkCtx.SDKConf.Offline.UseCache && sdkCtx.CacheConf.Redis.Enabled {
-		cacheKey := configcatcache.ProduceCacheKey(key, configcatcache.ConfigJSONName, configcatcache.ConfigJSONCacheVersion)
-		cacheStore := cache.NewCacheStore(redis.NewRedisStore(&sdkCtx.CacheConf.Redis), sdkCtx.StatusReporter)
+	} else if offline && sdkCtx.SDKConf.Offline.UseCache && sdkCtx.ExternalCache != nil {
+		cacheKey := configcatcache.ProduceCacheKey(sdkCtx.SDKConf.Key, configcatcache.ConfigJSONName, configcatcache.ConfigJSONCacheVersion)
+		cacheStore := cache.NewCacheStore(sdkCtx.ExternalCache, sdkCtx.StatusReporter)
 		storage = cache.NewNotifyingCacheStore(sdkCtx.SdkId, cacheKey, cacheStore, &sdkCtx.SDKConf.Offline, sdkCtx.StatusReporter, log.WithLevel(sdkCtx.SDKConf.Offline.Log.GetLevel()))
-	} else if !offline && sdkCtx.CacheConf.Redis.Enabled {
-		storage = cache.NewCacheStore(redis.NewRedisStore(&sdkCtx.CacheConf.Redis), sdkCtx.StatusReporter)
+	} else if !offline && sdkCtx.ExternalCache != nil {
+		storage = cache.NewCacheStore(sdkCtx.ExternalCache, sdkCtx.StatusReporter)
 	} else {
 		storage = store.NewInMemoryStorage()
 	}
@@ -184,10 +185,10 @@ func (c *client) signal() {
 	}
 }
 
-func (c *client) Eval(key string, user model.UserAttrs) (model.EvalData, error) {
+func (c *client) Eval(key string, user model.UserAttrs) model.EvalData {
 	mergedUser := model.MergeUserAttrs(c.defaultAttrs, user)
 	details := c.configCatClient.Snapshot(mergedUser).GetValueDetails(key)
-	return model.EvalData{Value: details.Value, VariationId: details.Data.VariationID, User: details.Data.User}, details.Data.Error
+	return model.EvalData{Value: details.Value, VariationId: details.Data.VariationID, User: details.Data.User, Error: details.Data.Error}
 }
 
 func (c *client) EvalAll(user model.UserAttrs) map[string]model.EvalData {
@@ -195,7 +196,7 @@ func (c *client) EvalAll(user model.UserAttrs) map[string]model.EvalData {
 	allDetails := c.configCatClient.Snapshot(mergedUser).GetAllValueDetails()
 	result := make(map[string]model.EvalData, len(allDetails))
 	for _, details := range allDetails {
-		result[details.Data.Key] = model.EvalData{Value: details.Value, VariationId: details.Data.VariationID, User: details.Data.User}
+		result[details.Data.Key] = model.EvalData{Value: details.Value, VariationId: details.Data.VariationID, User: details.Data.User, Error: details.Data.Error}
 	}
 	return result
 }
@@ -254,10 +255,10 @@ func (c *client) IsInValidState() bool {
 }
 
 func (c *client) Close() {
-	c.ctxCancel()
-	if closable, ok := c.cache.(store.ClosableStore); ok {
-		closable.Close()
+	if notifier, ok := c.cache.(store.Notifier); ok {
+		notifier.Close()
 	}
+	c.ctxCancel()
 	c.configCatClient.Close()
 	c.log.Reportf("shutdown complete")
 }

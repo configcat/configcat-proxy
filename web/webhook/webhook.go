@@ -19,15 +19,15 @@ const idHeader = "X-ConfigCat-Webhook-ID"
 const timestampHeader = "X-ConfigCat-Webhook-Timestamp"
 
 type Server struct {
-	sdkClients map[string]sdk.Client
-	logger     log.Logger
+	sdkRegistrar sdk.Registrar
+	logger       log.Logger
 }
 
-func NewServer(sdkClients map[string]sdk.Client, log log.Logger) *Server {
+func NewServer(sdkRegistrar sdk.Registrar, log log.Logger) *Server {
 	whLogger := log.WithPrefix("webhook")
 	return &Server{
-		sdkClients: sdkClients,
-		logger:     whLogger,
+		sdkRegistrar: sdkRegistrar,
+		logger:       whLogger,
 	}
 }
 
@@ -38,8 +38,8 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "'sdkId' path parameter must be set", http.StatusBadRequest)
 		return
 	}
-	sdkClient, ok := s.sdkClients[sdkId]
-	if !ok {
+	sdkClient := s.sdkRegistrar.GetSdkOrNil(sdkId)
+	if sdkClient == nil {
 		http.Error(w, "SDK not found for identifier: '"+sdkId+"'", http.StatusNotFound)
 		return
 	}

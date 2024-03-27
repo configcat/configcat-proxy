@@ -12,21 +12,16 @@ type CacheEntryStore interface {
 	configcat.ConfigCache
 }
 
-type ClosableStore interface {
-	Close()
-}
-
 type NotifyingStore interface {
-	EntryStore
+	CacheEntryStore
 	Notifier
-	configcat.ConfigCache
 }
 
 type inMemoryStore struct {
 	EntryStore
 }
 
-func NewInMemoryStorage() configcat.ConfigCache {
+func NewInMemoryStorage() CacheEntryStore {
 	return &inMemoryStore{EntryStore: NewEntryStore()}
 }
 

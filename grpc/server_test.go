@@ -7,7 +7,6 @@ import (
 	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/internal/utils"
 	"github.com/configcat/configcat-proxy/log"
-	"github.com/configcat/configcat-proxy/sdk"
 	"github.com/configcat/go-sdk/v9/configcattest"
 	"github.com/stretchr/testify/assert"
 	"net/http/httptest"
@@ -30,12 +29,12 @@ func TestNewServer(t *testing.T) {
 	sdkSrv := httptest.NewServer(&h)
 	defer sdkSrv.Close()
 
-	ctx := testutils.NewTestSdkContext(&config.SDKConfig{BaseUrl: sdkSrv.URL, Key: key, PollInterval: 1}, nil)
-	sdkClient := sdk.NewClient(ctx, log.NewNullLogger())
-	conf := config.Config{Grpc: config.GrpcConfig{Port: 5061, HealthCheckEnabled: true, ServerReflectionEnabled: true, KeepAlive: config.KeepAliveConfig{Timeout: 10}}, SDKs: map[string]*config.SDKConfig{key: ctx.SDKConf}}
-	defer sdkClient.Close()
+	sdkConf := config.SDKConfig{BaseUrl: sdkSrv.URL, Key: key, PollInterval: 1}
+	reg := testutils.NewTestRegistrar(&sdkConf, nil)
+	conf := config.Config{Grpc: config.GrpcConfig{Port: 5061, HealthCheckEnabled: true, ServerReflectionEnabled: true, KeepAlive: config.KeepAliveConfig{Timeout: 10}}, SDKs: map[string]*config.SDKConfig{key: &sdkConf}}
+	defer reg.Close()
 
-	srv, _ := NewServer(map[string]sdk.Client{"test": sdkClient}, metrics.NewReporter(), status.NewReporter(&conf), &conf, log.NewDebugLogger(), errChan)
+	srv, _ := NewServer(reg, metrics.NewReporter(), status.NewReporter(&conf.Cache), &conf, log.NewDebugLogger(), errChan)
 
 	wg := sync.WaitGroup{}
 	wg.Add(1)
@@ -116,12 +115,12 @@ MK4Li/LGWcksyoF+hbPNXMFCIA==
 			sdkSrv := httptest.NewServer(&h)
 			defer sdkSrv.Close()
 
-			ctx := testutils.NewTestSdkContext(&config.SDKConfig{BaseUrl: sdkSrv.URL, Key: key, PollInterval: 1}, nil)
-			sdkClient := sdk.NewClient(ctx, log.NewNullLogger())
-			conf := config.Config{Grpc: config.GrpcConfig{Port: 5062}, Tls: tlsConf, SDKs: map[string]*config.SDKConfig{key: ctx.SDKConf}}
-			defer sdkClient.Close()
+			sdkConf := config.SDKConfig{BaseUrl: sdkSrv.URL, Key: key, PollInterval: 1}
+			reg := testutils.NewTestRegistrar(&sdkConf, nil)
+			conf := config.Config{Grpc: config.GrpcConfig{Port: 5062}, Tls: tlsConf, SDKs: map[string]*config.SDKConfig{key: &sdkConf}}
+			defer reg.Close()
 
-			srv, _ := NewServer(map[string]sdk.Client{"test": sdkClient}, nil, status.NewReporter(&conf), &conf, log.NewNullLogger(), errChan)
+			srv, _ := NewServer(reg, nil, status.NewReporter(&conf.Cache), &conf, log.NewNullLogger(), errChan)
 
 			wg := sync.WaitGroup{}
 			wg.Add(1)
@@ -157,12 +156,12 @@ func TestNewServer_TLS_Missing_Cert(t *testing.T) {
 	sdkSrv := httptest.NewServer(&h)
 	defer sdkSrv.Close()
 
-	ctx := testutils.NewTestSdkContext(&config.SDKConfig{BaseUrl: sdkSrv.URL, Key: key, PollInterval: 1}, nil)
-	sdkClient := sdk.NewClient(ctx, log.NewNullLogger())
-	conf := config.Config{Grpc: config.GrpcConfig{Port: 5063}, Tls: tlsConf, SDKs: map[string]*config.SDKConfig{key: ctx.SDKConf}}
-	defer sdkClient.Close()
+	sdkConf := config.SDKConfig{BaseUrl: sdkSrv.URL, Key: key, PollInterval: 1}
+	reg := testutils.NewTestRegistrar(&sdkConf, nil)
+	conf := config.Config{Grpc: config.GrpcConfig{Port: 5063}, Tls: tlsConf, SDKs: map[string]*config.SDKConfig{key: &sdkConf}}
+	defer reg.Close()
 
-	_, err := NewServer(map[string]sdk.Client{"test": sdkClient}, nil, status.NewReporter(&conf), &conf, log.NewNullLogger(), errChan)
+	_, err := NewServer(reg, nil, status.NewReporter(&conf.Cache), &conf, log.NewNullLogger(), errChan)
 	assert.Error(t, err)
 }
 

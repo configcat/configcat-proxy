@@ -34,6 +34,7 @@ const maxRecordCount = 5
 const maxLastErrorsMeaningDegraded = 2
 
 type Reporter interface {
+	RegisterSdk(sdkId string, conf *config.SDKConfig)
 	ReportOk(component string, message string)
 	ReportError(component string, message string)
 	GetStatus() Status
@@ -74,14 +75,14 @@ type reporter struct {
 	records map[string][]record
 	mu      sync.RWMutex
 	status  Status
-	conf    *config.Config
+	conf    *config.CacheConfig
 }
 
-func NewNullReporter() Reporter {
-	return &reporter{records: make(map[string][]record), conf: &config.Config{SDKs: map[string]*config.SDKConfig{}}}
+func NewEmptyReporter() Reporter {
+	return NewReporter(&config.CacheConfig{})
 }
 
-func NewReporter(conf *config.Config) Reporter {
+func NewReporter(conf *config.CacheConfig) Reporter {
 	r := &reporter{
 		conf:    conf,
 		records: make(map[string][]record),
@@ -90,44 +91,54 @@ func NewReporter(conf *config.Config) Reporter {
 			Cache: CacheStatus{
 				Status: Initializing,
 			},
+			SDKs: map[string]*SdkStatus{},
 		},
-	}
-	r.status.SDKs = make(map[string]*SdkStatus, len(conf.SDKs))
-	for key, sdk := range conf.SDKs {
-		status := &SdkStatus{
-			Mode:   Online,
-			SdkKey: utils.Obfuscate(sdk.Key, 5),
-			Source: SdkSourceStatus{
-				Type:   RemoteSrc,
-				Status: Initializing,
-			},
-		}
-		r.status.SDKs[key] = status
-		if sdk.Offline.Enabled {
-			status.Mode = Offline
-			if sdk.Offline.Local.FilePath != "" {
-				status.Source.Type = FileSrc
-				r.status.Cache.Status = NA
-			} else {
-				status.Source.Type = CacheSrc
-			}
-		}
-		if !conf.Cache.Redis.Enabled {
-			r.status.Cache.Status = NA
-			if status.Source.Type == CacheSrc {
-				r.ReportError(key, "cache offline source enabled without a configured cache")
-			}
-		}
 	}
 	return r
 }
 
+func (r *reporter) RegisterSdk(sdkId string, conf *config.SDKConfig) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	status := &SdkStatus{
+		Mode:   Online,
+		SdkKey: utils.Obfuscate(conf.Key, 5),
+		Source: SdkSourceStatus{
+			Type:   RemoteSrc,
+			Status: Initializing,
+		},
+	}
+	r.status.SDKs[sdkId] = status
+	if conf.Offline.Enabled {
+		status.Mode = Offline
+		if conf.Offline.Local.FilePath != "" {
+			status.Source.Type = FileSrc
+			r.status.Cache.Status = NA
+		} else {
+			status.Source.Type = CacheSrc
+		}
+	}
+	if !r.conf.IsSet() {
+		r.status.Cache.Status = NA
+		if status.Source.Type == CacheSrc {
+			r.appendRecord(sdkId, "cache offline source enabled without a configured cache", true)
+		}
+	}
+}
+
 func (r *reporter) ReportOk(component string, message string) {
-	r.appendRecord(component, "[ok] "+message, false)
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.appendRecord(component, message, false)
 }
 
 func (r *reporter) ReportError(component string, message string) {
-	r.appendRecord(component, "[error] "+message, true)
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.appendRecord(component, message, true)
 }
 
 func (r *reporter) HttpHandler() http.HandlerFunc {
@@ -169,8 +180,11 @@ func (r *reporter) checkStatus(records []record) ([]string, HealthStatus) {
 }
 
 func (r *reporter) appendRecord(component string, message string, isError bool) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+	if isError {
+		message = "[error] " + message
+	} else {
+		message = "[ok] " + message
+	}
 
 	recs, ok := r.records[component]
 	if !ok {
@@ -194,14 +208,12 @@ func (r *reporter) appendRecord(component string, message string, isError bool) 
 
 		allSdksDown := true
 		hasDegradedSdk := false
-		for key := range r.conf.SDKs {
-			if sdk, ok := r.status.SDKs[key]; ok {
-				if sdk.Source.Status != Down {
-					allSdksDown = false
-				}
-				if sdk.Source.Status != Healthy {
-					hasDegradedSdk = true
-				}
+		for _, sdk := range r.status.SDKs {
+			if sdk.Source.Status != Down {
+				allSdksDown = false
+			}
+			if sdk.Source.Status != Healthy {
+				hasDegradedSdk = true
 			}
 		}
 		if !hasDegradedSdk && !allSdksDown {

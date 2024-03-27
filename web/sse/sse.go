@@ -22,10 +22,10 @@ type Server struct {
 	stop         chan struct{}
 }
 
-func NewServer(sdkClients map[string]sdk.Client, metrics metrics.Reporter, conf *config.SseConfig, logger log.Logger) *Server {
+func NewServer(sdkRegistrar sdk.Registrar, metrics metrics.Reporter, conf *config.SseConfig, logger log.Logger) *Server {
 	sseLog := logger.WithLevel(conf.Log.GetLevel()).WithPrefix("sse")
 	return &Server{
-		streamServer: stream.NewServer(sdkClients, metrics, sseLog, "sse"),
+		streamServer: stream.NewServer(sdkRegistrar, metrics, sseLog, "sse"),
 		logger:       sseLog,
 		config:       conf,
 		stop:         make(chan struct{}),

@@ -7,7 +7,6 @@ import (
 	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/internal/utils"
 	"github.com/configcat/configcat-proxy/log"
-	"github.com/configcat/configcat-proxy/sdk"
 	"github.com/configcat/go-sdk/v9/configcattest"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
@@ -30,10 +29,9 @@ func TestGrpc_EvalFlagStream(t *testing.T) {
 	sdkSrv := httptest.NewServer(&h)
 	defer sdkSrv.Close()
 
-	ctx := testutils.NewTestSdkContext(&config.SDKConfig{BaseUrl: sdkSrv.URL, Key: key, PollInterval: 1}, nil)
-	sdkClient := sdk.NewClient(ctx, log.NewNullLogger())
-	defer sdkClient.Close()
-	flagSrv := newFlagService(map[string]sdk.Client{"test": sdkClient}, nil, log.NewNullLogger())
+	reg := testutils.NewTestRegistrar(&config.SDKConfig{BaseUrl: sdkSrv.URL, Key: key, PollInterval: 1}, nil)
+	defer reg.Close()
+	flagSrv := newFlagService(reg, nil, log.NewNullLogger())
 
 	lis := bufconn.Listen(1024 * 1024)
 
@@ -98,10 +96,9 @@ func TestGrpc_EvalAllFlagsStream(t *testing.T) {
 	sdkSrv := httptest.NewServer(&h)
 	defer sdkSrv.Close()
 
-	ctx := testutils.NewTestSdkContext(&config.SDKConfig{BaseUrl: sdkSrv.URL, Key: key, PollInterval: 1}, nil)
-	sdkClient := sdk.NewClient(ctx, log.NewNullLogger())
-	defer sdkClient.Close()
-	flagSrv := newFlagService(map[string]sdk.Client{"test": sdkClient}, nil, log.NewNullLogger())
+	reg := testutils.NewTestRegistrar(&config.SDKConfig{BaseUrl: sdkSrv.URL, Key: key, PollInterval: 1}, nil)
+	defer reg.Close()
+	flagSrv := newFlagService(reg, nil, log.NewNullLogger())
 
 	lis := bufconn.Listen(1024 * 1024)
 
@@ -174,10 +171,9 @@ func TestGrpc_EvalFlag(t *testing.T) {
 	sdkSrv := httptest.NewServer(&h)
 	defer sdkSrv.Close()
 
-	ctx := testutils.NewTestSdkContext(&config.SDKConfig{BaseUrl: sdkSrv.URL, Key: key, PollInterval: 1}, nil)
-	sdkClient := sdk.NewClient(ctx, log.NewNullLogger())
-	defer sdkClient.Close()
-	flagSrv := newFlagService(map[string]sdk.Client{"test": sdkClient}, nil, log.NewNullLogger())
+	reg := testutils.NewTestRegistrar(&config.SDKConfig{BaseUrl: sdkSrv.URL, Key: key, PollInterval: 1}, nil)
+	defer reg.Close()
+	flagSrv := newFlagService(reg, nil, log.NewNullLogger())
 
 	lis := bufconn.Listen(1024 * 1024)
 
@@ -226,10 +222,9 @@ func TestGrpc_EvalFlag(t *testing.T) {
 }
 
 func TestGrpc_SDK_InvalidState(t *testing.T) {
-	ctx := testutils.NewTestSdkContext(&config.SDKConfig{BaseUrl: "http://localhost", Key: configcattest.RandomSDKKey()}, nil)
-	sdkClient := sdk.NewClient(ctx, log.NewNullLogger())
-	defer sdkClient.Close()
-	flagSrv := newFlagService(map[string]sdk.Client{"test": sdkClient}, nil, log.NewNullLogger())
+	reg := testutils.NewTestRegistrar(&config.SDKConfig{BaseUrl: "http://localhost", Key: configcattest.RandomSDKKey()}, nil)
+	defer reg.Close()
+	flagSrv := newFlagService(reg, nil, log.NewNullLogger())
 
 	lis := bufconn.Listen(1024 * 1024)
 
@@ -287,10 +282,9 @@ func TestGrpc_Invalid_SdkKey(t *testing.T) {
 	})
 	sdkSrv := httptest.NewServer(&h)
 	defer sdkSrv.Close()
-	ctx := testutils.NewTestSdkContext(&config.SDKConfig{BaseUrl: sdkSrv.URL, Key: key}, nil)
-	sdkClient := sdk.NewClient(ctx, log.NewNullLogger())
-	defer sdkClient.Close()
-	flagSrv := newFlagService(map[string]sdk.Client{"test": sdkClient}, nil, log.NewNullLogger())
+	reg := testutils.NewTestRegistrar(&config.SDKConfig{BaseUrl: sdkSrv.URL, Key: key}, nil)
+	defer reg.Close()
+	flagSrv := newFlagService(reg, nil, log.NewNullLogger())
 	lis := bufconn.Listen(1024 * 1024)
 	srv := grpc.NewServer()
 	defer srv.GracefulStop()
@@ -348,10 +342,9 @@ func TestGrpc_Invalid_FlagKey(t *testing.T) {
 	})
 	sdkSrv := httptest.NewServer(&h)
 	defer sdkSrv.Close()
-	ctx := testutils.NewTestSdkContext(&config.SDKConfig{BaseUrl: sdkSrv.URL, Key: key}, nil)
-	sdkClient := sdk.NewClient(ctx, log.NewNullLogger())
-	defer sdkClient.Close()
-	flagSrv := newFlagService(map[string]sdk.Client{"test": sdkClient}, nil, log.NewNullLogger())
+	reg := testutils.NewTestRegistrar(&config.SDKConfig{BaseUrl: sdkSrv.URL, Key: key}, nil)
+	defer reg.Close()
+	flagSrv := newFlagService(reg, nil, log.NewNullLogger())
 	lis := bufconn.Listen(1024 * 1024)
 	srv := grpc.NewServer()
 	defer srv.GracefulStop()
@@ -398,10 +391,9 @@ func TestGrpc_EvalAllFlags(t *testing.T) {
 	sdkSrv := httptest.NewServer(&h)
 	defer sdkSrv.Close()
 
-	ctx := testutils.NewTestSdkContext(&config.SDKConfig{BaseUrl: sdkSrv.URL, Key: key, PollInterval: 1}, nil)
-	sdkClient := sdk.NewClient(ctx, log.NewNullLogger())
-	defer sdkClient.Close()
-	flagSrv := newFlagService(map[string]sdk.Client{"test": sdkClient}, nil, log.NewNullLogger())
+	reg := testutils.NewTestRegistrar(&config.SDKConfig{BaseUrl: sdkSrv.URL, Key: key, PollInterval: 1}, nil)
+	defer reg.Close()
+	flagSrv := newFlagService(reg, nil, log.NewNullLogger())
 
 	lis := bufconn.Listen(1024 * 1024)
 
@@ -471,10 +463,9 @@ func TestGrpc_GetKeys(t *testing.T) {
 	sdkSrv := httptest.NewServer(&h)
 	defer sdkSrv.Close()
 
-	ctx := testutils.NewTestSdkContext(&config.SDKConfig{BaseUrl: sdkSrv.URL, Key: key, PollInterval: 1}, nil)
-	sdkClient := sdk.NewClient(ctx, log.NewNullLogger())
-	defer sdkClient.Close()
-	flagSrv := newFlagService(map[string]sdk.Client{"test": sdkClient}, nil, log.NewNullLogger())
+	reg := testutils.NewTestRegistrar(&config.SDKConfig{BaseUrl: sdkSrv.URL, Key: key, PollInterval: 1}, nil)
+	defer reg.Close()
+	flagSrv := newFlagService(reg, nil, log.NewNullLogger())
 
 	lis := bufconn.Listen(1024 * 1024)
 

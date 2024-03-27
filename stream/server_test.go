@@ -8,8 +8,8 @@ import (
 )
 
 func TestServer_GetStreamOrNil(t *testing.T) {
-	clients, _, _ := testutils.NewTestSdkClient(t)
-	srv := NewServer(clients, nil, log.NewNullLogger(), "test").(*server)
+	reg, _, _ := testutils.NewTestRegistrarT(t)
+	srv := NewServer(reg, nil, log.NewNullLogger(), "test").(*server)
 
 	str := srv.GetStreamOrNil("test")
 	assert.NotNil(t, str)

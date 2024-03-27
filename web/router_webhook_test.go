@@ -99,6 +99,6 @@ func TestWebhook_NotAllowed(t *testing.T) {
 }
 
 func newWebhookRouter(t *testing.T, conf config.WebhookConfig) *HttpRouter {
-	clients, _, _ := testutils.NewTestSdkClient(t)
-	return NewRouter(clients, nil, status.NewNullReporter(), &config.HttpConfig{Webhook: conf}, log.NewNullLogger())
+	reg, _, _ := testutils.NewTestRegistrarT(t)
+	return NewRouter(reg, nil, status.NewEmptyReporter(), &config.HttpConfig{Webhook: conf}, log.NewNullLogger())
 }

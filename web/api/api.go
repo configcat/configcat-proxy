@@ -20,17 +20,17 @@ type keysResponse struct {
 }
 
 type Server struct {
-	sdkClients map[string]sdk.Client
-	config     *config.ApiConfig
-	logger     log.Logger
+	sdkRegistrar sdk.Registrar
+	config       *config.ApiConfig
+	logger       log.Logger
 }
 
-func NewServer(sdkClients map[string]sdk.Client, config *config.ApiConfig, log log.Logger) *Server {
+func NewServer(sdkRegistrar sdk.Registrar, config *config.ApiConfig, log log.Logger) *Server {
 	cdnLogger := log.WithPrefix("api")
 	return &Server{
-		sdkClients: sdkClients,
-		config:     config,
-		logger:     cdnLogger,
+		sdkRegistrar: sdkRegistrar,
+		config:       config,
+		logger:       cdnLogger,
 	}
 }
 
@@ -41,10 +41,10 @@ func (s *Server) Eval(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), code)
 		return
 	}
-	eval, err := sdkClient.Eval(evalReq.Key, evalReq.User)
-	if err != nil {
+	eval := sdkClient.Eval(evalReq.Key, evalReq.User)
+	if eval.Error != nil {
 		var errKeyNotFound configcat.ErrKeyNotFound
-		if errors.As(err, &errKeyNotFound) {
+		if errors.As(eval.Error, &errKeyNotFound) {
 			http.Error(w, "feature flag or setting with key '"+evalReq.Key+"' not found", http.StatusBadRequest)
 		} else {
 			http.Error(w, "the request failed; please check the logs for more details", http.StatusInternalServerError)
@@ -137,8 +137,8 @@ func (s *Server) getSDKClient(ctx context.Context) (sdk.Client, error, int) {
 	if sdkId == "" {
 		return nil, fmt.Errorf("'sdkId' path parameter must be set"), http.StatusNotFound
 	}
-	sdkClient, ok := s.sdkClients[sdkId]
-	if !ok {
+	sdkClient := s.sdkRegistrar.GetSdkOrNil(sdkId)
+	if sdkClient == nil {
 		return nil, fmt.Errorf("invalid SDK identifier: '%s'", sdkId), http.StatusNotFound
 	}
 	if !sdkClient.IsInValidState() {

@@ -32,7 +32,7 @@ func TestDebug_UnaryInterceptor(t *testing.T) {
 
 	outLog := out.String()
 	assert.Contains(t, outLog, "[debug] rpc starting test-method [peer: 127.0.0.1/32]")
-	assert.Contains(t, outLog, "[debug] request finished test-method [peer: 127.0.0.1/32] [test-agent] [code: OK] [duration: 0ms]")
+	assert.Contains(t, outLog, "[debug] request finished test-method [peer: 127.0.0.1/32] [test-agent] [code: OK] [duration: ")
 }
 
 func TestDebug_StreamInterceptor(t *testing.T) {
@@ -55,12 +55,13 @@ func TestDebug_StreamInterceptor(t *testing.T) {
 
 	outLog := out.String()
 	assert.Contains(t, outLog, "[debug] rpc starting test-method [peer: 127.0.0.1/32] [test-agent]")
-	assert.Contains(t, outLog, "[debug] request finished test-method [peer: 127.0.0.1/32] [test-agent] [code: OK] [duration: 0ms]")
+	assert.Contains(t, outLog, "[debug] request finished test-method [peer: 127.0.0.1/32] [test-agent] [code: OK] [duration: ")
 }
 
-func TestIsHealthCheck(t *testing.T) {
-	assert.False(t, isHealthCheck("/configcat.FlagService/EvalFlag"))
-	assert.True(t, isHealthCheck("/grpc.health.v1.Health/Check"))
+func TestIgnoreServiceNames(t *testing.T) {
+	assert.False(t, shouldIgnore("/configcat.FlagService/EvalFlag"))
+	assert.True(t, shouldIgnore("/grpc.health.v1.Health/Check"))
+	assert.True(t, shouldIgnore("/grpc.reflection.v1alpha.ServerReflection/ServerReflectionInfo"))
 }
 
 type MockStreamServer struct {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"github.com/alicebob/miniredis/v2"
 	"github.com/stretchr/testify/assert"
 	"io"
 	"os"
@@ -13,6 +14,7 @@ import (
 
 func TestAppMain(t *testing.T) {
 	resetFlags()
+	t.Setenv("CONFIGCAT_SDK1_BASE_URL", "https://test-cdn-global.configcat.com")
 	t.Setenv("CONFIGCAT_SDKS", `{"sdk1":"XxPbCKmzIUGORk4vsufpzw/iC_KABprDEueeQs3yovVnQ"}`)
 	t.Setenv("CONFIGCAT_HTTP_PORT", "5081")
 	t.Setenv("CONFIGCAT_GRPC_PORT", "5082")
@@ -35,6 +37,7 @@ func TestAppMain(t *testing.T) {
 
 func TestAppMain_Disabled_Everything(t *testing.T) {
 	resetFlags()
+	t.Setenv("CONFIGCAT_SDK1_BASE_URL", "https://test-cdn-global.configcat.com")
 	t.Setenv("CONFIGCAT_SDKS", `{"sdk1":"XxPbCKmzIUGORk4vsufpzw/iC_KABprDEueeQs3yovVnQ"}`)
 	t.Setenv("CONFIGCAT_HTTP_ENABLED", "false")
 	t.Setenv("CONFIGCAT_GRPC_ENABLED", "false")
@@ -57,10 +60,37 @@ func TestAppMain_Disabled_Everything(t *testing.T) {
 
 func TestAppMain_GRPCOnly(t *testing.T) {
 	resetFlags()
+	t.Setenv("CONFIGCAT_SDK1_BASE_URL", "https://test-cdn-global.configcat.com")
 	t.Setenv("CONFIGCAT_SDKS", `{"sdk1":"XxPbCKmzIUGORk4vsufpzw/iC_KABprDEueeQs3yovVnQ"}`)
 	t.Setenv("CONFIGCAT_GRPC_PORT", "5092")
 	t.Setenv("CONFIGCAT_HTTP_ENABLED", "false")
 	t.Setenv("CONFIGCAT_DIAG_ENABLED", "false")
+
+	var exitCode int
+	closeSignal := make(chan os.Signal, 1)
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		exitCode = run(closeSignal)
+		wg.Done()
+	}()
+	time.Sleep(2 * time.Second)
+	closeSignal <- syscall.SIGTERM
+	wg.Wait()
+
+	assert.Equal(t, 0, exitCode)
+}
+
+func TestAppMain_Cache(t *testing.T) {
+	resetFlags()
+	s := miniredis.RunT(t)
+	t.Setenv("CONFIGCAT_SDK1_BASE_URL", "https://test-cdn-global.configcat.com")
+	t.Setenv("CONFIGCAT_SDKS", `{"sdk1":"XxPbCKmzIUGORk4vsufpzw/iC_KABprDEueeQs3yovVnQ"}`)
+	t.Setenv("CONFIGCAT_HTTP_PORT", "5101")
+	t.Setenv("CONFIGCAT_GRPC_PORT", "5102")
+	t.Setenv("CONFIGCAT_DIAG_PORT", "5103")
+	t.Setenv("CONFIGCAT_CACHE_REDIS_ENABLED", "true")
+	t.Setenv("CONFIGCAT_CACHE_REDIS_ADDRESSES", "[\""+s.Addr()+"\"]")
 
 	var exitCode int
 	closeSignal := make(chan os.Signal, 1)

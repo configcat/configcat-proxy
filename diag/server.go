@@ -79,7 +79,7 @@ func (s *Server) Shutdown() {
 
 	err := s.httpServer.Shutdown(ctx)
 	if err != nil {
-		s.log.Errorf("shutdown error: %v", err)
+		s.log.Errorf("shutdown error: %s", err)
 	}
 	s.log.Reportf("server shutdown complete")
 }

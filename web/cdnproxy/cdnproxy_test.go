@@ -5,7 +5,6 @@ import (
 	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/internal/utils"
 	"github.com/configcat/configcat-proxy/log"
-	"github.com/configcat/configcat-proxy/sdk"
 	"github.com/configcat/go-sdk/v9/configcattest"
 	"github.com/stretchr/testify/assert"
 	"net/http"
@@ -133,7 +132,7 @@ func TestProxy_Get(t *testing.T) {
 				Default: false,
 			},
 		})
-		_ = srv.sdkClients["test"].Refresh()
+		_ = srv.sdkRegistrar.GetSdkOrNil("test").Refresh()
 
 		res = httptest.NewRecorder()
 		req = &http.Request{Method: http.MethodGet, Header: map[string][]string{}}
@@ -166,15 +165,13 @@ func TestProxy_Get(t *testing.T) {
 		assert.Equal(t, http.StatusNotFound, res.Code)
 	})
 	t.Run("SDK invalid state", func(t *testing.T) {
-		opts := config.SDKConfig{BaseUrl: "http://localhost", Key: configcattest.RandomSDKKey()}
-		ctx := testutils.NewTestSdkContext(&opts, &config.CacheConfig{})
-		client := sdk.NewClient(ctx, log.NewNullLogger())
-		defer client.Close()
+		reg := testutils.NewTestRegistrar(&config.SDKConfig{BaseUrl: "http://localhost", Key: configcattest.RandomSDKKey()}, nil)
+		defer reg.Close()
 
 		res := httptest.NewRecorder()
 		req := &http.Request{Method: http.MethodGet}
 
-		srv := NewServer(map[string]sdk.Client{"test": client}, &config.CdnProxyConfig{Enabled: true}, log.NewNullLogger())
+		srv := NewServer(reg, &config.CdnProxyConfig{Enabled: true}, log.NewNullLogger())
 		testutils.AddSdkIdContextParam(req)
 		srv.ServeHTTP(res, req)
 
@@ -184,33 +181,24 @@ func TestProxy_Get(t *testing.T) {
 }
 
 func newServer(t *testing.T, proxyConfig config.CdnProxyConfig) *Server {
-	client, _, _ := testutils.NewTestSdkClient(t)
-	return NewServer(client, &proxyConfig, log.NewNullLogger())
+	reg, _, _ := testutils.NewTestRegistrarT(t)
+	return NewServer(reg, &proxyConfig, log.NewNullLogger())
 }
 
 func newServerWithHandler(t *testing.T, proxyConfig config.CdnProxyConfig) (*Server, *configcattest.Handler, string) {
-	client, h, k := testutils.NewTestSdkClient(t)
-	return NewServer(client, &proxyConfig, log.NewNullLogger()), h, k
+	reg, h, k := testutils.NewTestRegistrarT(t)
+	return NewServer(reg, &proxyConfig, log.NewNullLogger()), h, k
 }
 
 func newErrorServer(t *testing.T, proxyConfig config.CdnProxyConfig) *Server {
-	key := configcattest.RandomSDKKey()
-	var h configcattest.Handler
-	srv := httptest.NewServer(&h)
-	ctx := testutils.NewTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key}, nil)
-	client := sdk.NewClient(ctx, log.NewNullLogger())
-	t.Cleanup(func() {
-		srv.Close()
-		client.Close()
-	})
-	return NewServer(map[string]sdk.Client{"test": client}, &proxyConfig, log.NewNullLogger())
+	reg := testutils.NewTestRegistrarTWithErrorServer(t)
+	return NewServer(reg, &proxyConfig, log.NewNullLogger())
 }
 
 func newOfflineServer(t *testing.T, path string, proxyConfig config.CdnProxyConfig) *Server {
-	ctx := testutils.NewTestSdkContext(&config.SDKConfig{Key: "local", Offline: config.OfflineConfig{Enabled: true, Local: config.LocalConfig{FilePath: path}}}, nil)
-	client := sdk.NewClient(ctx, log.NewNullLogger())
+	reg := testutils.NewTestRegistrar(&config.SDKConfig{Key: "local", Offline: config.OfflineConfig{Enabled: true, Local: config.LocalConfig{FilePath: path}}}, nil)
 	t.Cleanup(func() {
-		client.Close()
+		reg.Close()
 	})
-	return NewServer(map[string]sdk.Client{"test": client}, &proxyConfig, log.NewNullLogger())
+	return NewServer(reg, &proxyConfig, log.NewNullLogger())
 }

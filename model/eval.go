@@ -7,6 +7,7 @@ import (
 type EvalData struct {
 	Value       interface{}
 	VariationId string
+	Error       error
 	User        configcat.User
 }
 

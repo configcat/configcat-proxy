@@ -2,17 +2,53 @@ package cache
 
 import (
 	"context"
+	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/diag/status"
+	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/sdk/store"
 	configcat "github.com/configcat/go-sdk/v9"
 	"github.com/configcat/go-sdk/v9/configcatcache"
 )
+
+const (
+	keyName     = "key"
+	payloadName = "payload"
+)
+
+type External interface {
+	configcat.ConfigCache
+	Shutdown()
+}
 
 type cacheStore struct {
 	store.EntryStore
 
 	reporter    status.Reporter
 	actualCache configcat.ConfigCache
+}
+
+func SetupExternalCache(ctx context.Context, conf *config.CacheConfig, log log.Logger) (External, error) {
+	cacheLog := log.WithPrefix("cache")
+	if conf.Redis.Enabled {
+		redis, err := newRedis(&conf.Redis, cacheLog)
+		if err != nil {
+			return nil, err
+		}
+		return redis, nil
+	} else if conf.MongoDb.Enabled {
+		mongoDb, err := newMongoDb(ctx, &conf.MongoDb, cacheLog)
+		if err != nil {
+			return nil, err
+		}
+		return mongoDb, nil
+	} else if conf.DynamoDb.Enabled {
+		dynamoDb, err := newDynamoDb(ctx, &conf.DynamoDb, cacheLog)
+		if err != nil {
+			return nil, err
+		}
+		return dynamoDb, nil
+	}
+	return nil, nil
 }
 
 func NewCacheStore(actualCache configcat.ConfigCache, reporter status.Reporter) store.CacheEntryStore {
@@ -47,10 +83,4 @@ func (c *cacheStore) Set(ctx context.Context, key string, value []byte) error {
 	}
 	c.reporter.ReportOk(status.Cache, "cache write succeeded")
 	return nil
-}
-
-func (c *cacheStore) Close() {
-	if closable, ok := c.actualCache.(store.ClosableStore); ok {
-		closable.Close()
-	}
 }
