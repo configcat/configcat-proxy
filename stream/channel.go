@@ -42,7 +42,7 @@ func createChannel(established *connEstablished, sdkClient sdk.Client) channel {
 		}
 		return &allFlagsChannel{connectionHolder: connectionHolder{user: established.user}, lastPayload: payloads}
 	} else {
-		val, _ := sdkClient.Eval(established.key, established.user)
+		val := sdkClient.Eval(established.key, established.user)
 		payload := model.PayloadFromEvalData(&val)
 		return &singleFlagChannel{connectionHolder: connectionHolder{user: established.user}, lastPayload: &payload}
 	}
@@ -58,8 +58,8 @@ func (af *allFlagsChannel) LastPayload() interface{} {
 
 func (sf *singleFlagChannel) Notify(sdkClient sdk.Client, key string) int {
 	sent := 0
-	val, err := sdkClient.Eval(key, sf.user)
-	if err != nil {
+	val := sdkClient.Eval(key, sf.user)
+	if val.Error != nil {
 		return 0
 	}
 	if sf.lastPayload == nil || val.Value != sf.lastPayload.Value {

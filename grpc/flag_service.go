@@ -99,10 +99,10 @@ func (s *flagService) EvalFlag(_ context.Context, req *proto.EvalRequest) (*prot
 	if err != nil {
 		return nil, err
 	}
-	value, err := sdkClient.Eval(req.GetKey(), user)
-	if err != nil {
+	value := sdkClient.Eval(req.GetKey(), user)
+	if value.Error != nil {
 		var errKeyNotFound configcat.ErrKeyNotFound
-		if errors.As(err, &errKeyNotFound) {
+		if errors.As(value.Error, &errKeyNotFound) {
 			return nil, status.Error(codes.NotFound, "feature flag or setting with key '"+req.GetKey()+"' not found")
 		} else {
 			return nil, status.Error(codes.Unknown, "the request failed; please check the logs for more details")

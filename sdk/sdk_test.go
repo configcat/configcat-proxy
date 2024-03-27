@@ -36,9 +36,9 @@ func TestSdk_Signal(t *testing.T) {
 	client := NewClient(ctx, log.NewNullLogger())
 	defer client.Close()
 	sub := client.SubConfigChanged("id")
-	data, err := client.Eval("flag", nil)
+	data := client.Eval("flag", nil)
 	j := client.GetCachedJson()
-	assert.NoError(t, err)
+	assert.NoError(t, data.Error)
 	assert.True(t, data.Value.(bool))
 	assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true,"s":null,"i":null,"d":null},"t":0,"r":[],"p":null}},"s":null,"p":null}`, string(j.ConfigJson))
 	assert.Equal(t, fmt.Sprintf("%x", sha1.Sum(j.ConfigJson)), j.ETag)
@@ -51,9 +51,9 @@ func TestSdk_Signal(t *testing.T) {
 	utils.WithTimeout(2*time.Second, func() {
 		<-sub
 	})
-	data, err = client.Eval("flag", nil)
+	data = client.Eval("flag", nil)
 	j = client.GetCachedJson()
-	assert.NoError(t, err)
+	assert.NoError(t, data.Error)
 	assert.False(t, data.Value.(bool))
 	assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":false,"s":null,"i":null,"d":null},"t":0,"r":[],"p":null}},"s":null,"p":null}`, string(j.ConfigJson))
 	assert.Equal(t, fmt.Sprintf("%x", sha1.Sum(j.ConfigJson)), j.ETag)
@@ -110,9 +110,9 @@ func TestSdk_Signal_Refresh(t *testing.T) {
 	client := NewClient(ctx, log.NewNullLogger())
 	defer client.Close()
 	sub := client.SubConfigChanged("id")
-	data, err := client.Eval("flag", nil)
+	data := client.Eval("flag", nil)
 	j := client.GetCachedJson()
-	assert.NoError(t, err)
+	assert.NoError(t, data.Error)
 	assert.True(t, data.Value.(bool))
 	assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true,"s":null,"i":null,"d":null},"t":0,"r":[],"p":null}},"s":null,"p":null}`, string(j.ConfigJson))
 	assert.Equal(t, fmt.Sprintf("%x", sha1.Sum(j.ConfigJson)), j.ETag)
@@ -126,10 +126,11 @@ func TestSdk_Signal_Refresh(t *testing.T) {
 	utils.WithTimeout(2*time.Second, func() {
 		<-sub
 	})
-	data, err = client.Eval("flag", nil)
+	data = client.Eval("flag", nil)
 	j = client.GetCachedJson()
-	assert.NoError(t, err)
+	assert.NoError(t, data.Error)
 	assert.False(t, data.Value.(bool))
+	assert.Nil(t, data.Error)
 	assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":false,"s":null,"i":null,"d":null},"t":0,"r":[],"p":null}},"s":null,"p":null}`, string(j.ConfigJson))
 	assert.Equal(t, fmt.Sprintf("%x", sha1.Sum(j.ConfigJson)), j.ETag)
 }
@@ -143,10 +144,11 @@ func TestSdk_BadConfig(t *testing.T) {
 	ctx := newTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key, Log: config.LogConfig{Level: "debug"}}, nil)
 	client := NewClient(ctx, log.NewDebugLogger())
 	defer client.Close()
-	data, err := client.Eval("flag", nil)
+	data := client.Eval("flag", nil)
 	j := client.GetCachedJson()
-	assert.Error(t, err)
+	assert.Error(t, data.Error)
 	assert.Nil(t, data.Value)
+	assert.NotNil(t, data.Error)
 	assert.Equal(t, `{"f":null,"s":null,"p":null}`, string(j.ConfigJson))
 	assert.Equal(t, utils.GenerateEtag(j.ConfigJson), j.ETag)
 }
@@ -161,13 +163,14 @@ func TestSdk_BadConfig_WithCache(t *testing.T) {
 	cacheKey := configcatcache.ProduceCacheKey(key, configcatcache.ConfigJSONName, configcatcache.ConfigJSONCacheVersion)
 	cacheEntry := configcatcache.CacheSegmentsToBytes(time.Now(), "etag", []byte(`{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true},"t":0}}}`))
 	err := s.Set(cacheKey, string(cacheEntry))
+	assert.NoError(t, err)
 
 	ctx := newTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key, Log: config.LogConfig{Level: "debug"}}, newRedisCache(s.Addr()))
 	client := NewClient(ctx, log.NewDebugLogger())
 	defer client.Close()
-	data, err := client.Eval("flag", nil)
+	data := client.Eval("flag", nil)
 	j := client.GetCachedJson()
-	assert.NoError(t, err)
+	assert.NoError(t, data.Error)
 	assert.True(t, data.Value.(bool))
 	assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true},"t":0}}}`, string(j.ConfigJson))
 	assert.Equal(t, "etag", j.ETag)
@@ -179,9 +182,9 @@ func TestSdk_Signal_Offline_File_Watch(t *testing.T) {
 		client := NewClient(ctx, log.NewNullLogger())
 		defer client.Close()
 		sub := client.SubConfigChanged("id")
-		data, err := client.Eval("flag", nil)
+		data := client.Eval("flag", nil)
 		j := client.GetCachedJson()
-		assert.NoError(t, err)
+		assert.NoError(t, data.Error)
 		assert.True(t, data.Value.(bool))
 		assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true,"s":null,"i":null,"d":null},"t":0,"r":null,"p":null}},"s":null,"p":null}`, string(j.ConfigJson))
 		assert.Equal(t, fmt.Sprintf("W/\"%s\"", utils.FastHashHex(j.ConfigJson)), j.ETag)
@@ -190,9 +193,9 @@ func TestSdk_Signal_Offline_File_Watch(t *testing.T) {
 		utils.WithTimeout(2*time.Second, func() {
 			<-sub
 		})
-		data, err = client.Eval("flag", nil)
+		data = client.Eval("flag", nil)
 		j = client.GetCachedJson()
-		assert.NoError(t, err)
+		assert.NoError(t, data.Error)
 		assert.False(t, data.Value.(bool))
 		assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":false,"s":null,"i":null,"d":null},"t":0,"r":null,"p":null}},"s":null,"p":null}`, string(j.ConfigJson))
 		assert.Equal(t, utils.GenerateEtag(j.ConfigJson), j.ETag)
@@ -205,9 +208,9 @@ func TestSdk_Signal_Offline_Poll_Watch(t *testing.T) {
 		client := NewClient(ctx, log.NewNullLogger())
 		defer client.Close()
 		sub := client.SubConfigChanged("id")
-		data, err := client.Eval("flag", nil)
+		data := client.Eval("flag", nil)
 		j := client.GetCachedJson()
-		assert.NoError(t, err)
+		assert.NoError(t, data.Error)
 		assert.True(t, data.Value.(bool))
 		assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true,"s":null,"i":null,"d":null},"t":0,"r":null,"p":null}},"s":null,"p":null}`, string(j.ConfigJson))
 		assert.Equal(t, fmt.Sprintf("W/\"%s\"", utils.FastHashHex(j.ConfigJson)), j.ETag)
@@ -216,9 +219,9 @@ func TestSdk_Signal_Offline_Poll_Watch(t *testing.T) {
 		utils.WithTimeout(2*time.Second, func() {
 			<-sub
 		})
-		data, err = client.Eval("flag", nil)
+		data = client.Eval("flag", nil)
 		j = client.GetCachedJson()
-		assert.NoError(t, err)
+		assert.NoError(t, data.Error)
 		assert.False(t, data.Value.(bool))
 		assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":false,"s":null,"i":null,"d":null},"t":0,"r":null,"p":null}},"s":null,"p":null}`, string(j.ConfigJson))
 		assert.Equal(t, utils.GenerateEtag(j.ConfigJson), j.ETag)
@@ -239,9 +242,9 @@ func TestSdk_Signal_Offline_Redis_Watch(t *testing.T) {
 	client := NewClient(ctx, log.NewNullLogger())
 	defer client.Close()
 	sub := client.SubConfigChanged("id")
-	data, err := client.Eval("flag", nil)
+	data := client.Eval("flag", nil)
 	j := client.GetCachedJson()
-	assert.NoError(t, err)
+	assert.NoError(t, data.Error)
 	assert.True(t, data.Value.(bool))
 	assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true,"s":null,"i":null,"d":null},"t":0,"r":null,"p":null}},"s":null,"p":null}`, string(j.ConfigJson))
 	assert.Equal(t, "etag", j.ETag)
@@ -251,9 +254,9 @@ func TestSdk_Signal_Offline_Redis_Watch(t *testing.T) {
 	utils.WithTimeout(2*time.Second, func() {
 		<-sub
 	})
-	data, err = client.Eval("flag", nil)
+	data = client.Eval("flag", nil)
 	j = client.GetCachedJson()
-	assert.NoError(t, err)
+	assert.NoError(t, data.Error)
 	assert.False(t, data.Value.(bool))
 	assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":false,"s":null,"i":null,"d":null},"t":0,"r":null,"p":null}},"s":null,"p":null}`, string(j.ConfigJson))
 	assert.Equal(t, "etag2", j.ETag)
@@ -301,6 +304,8 @@ func TestSdk_EvalAll(t *testing.T) {
 	assert.Equal(t, 2, len(details))
 	assert.Equal(t, "v1", details["flag1"].Value)
 	assert.Equal(t, "v2", details["flag2"].Value)
+	assert.Nil(t, details["flag1"].Error)
+	assert.Nil(t, details["flag2"].Error)
 }
 
 func TestSdk_Keys(t *testing.T) {
@@ -344,7 +349,7 @@ func TestSdk_EvalStatsReporter(t *testing.T) {
 	client := NewClient(ctx, log.NewNullLogger())
 	defer client.Close()
 
-	_, _ = client.Eval("flag1", model.UserAttrs{"e": "h"})
+	_ = client.Eval("flag1", model.UserAttrs{"e": "h"})
 
 	var event *statistics.EvalEvent
 	utils.WithTimeout(2*time.Second, func() {
@@ -369,7 +374,7 @@ func TestSdk_DefaultAttrs(t *testing.T) {
 	client := NewClient(ctx, log.NewNullLogger())
 	defer client.Close()
 
-	evalData, _ := client.Eval("flag1", model.UserAttrs{"e": "h"})
+	evalData := client.Eval("flag1", model.UserAttrs{"e": "h"})
 	assert.Equal(t, model.UserAttrs{"a": "g", "c": "d", "e": "h"}, evalData.User.(model.UserAttrs))
 }
 
@@ -427,11 +432,24 @@ func TestSdk_IsInValidState_EmptyCache_False(t *testing.T) {
 	assert.False(t, client.IsInValidState())
 }
 
+func TestSdk_StatusReporter(t *testing.T) {
+	reporter := status.NewEmptyReporter()
+	ctx := newTestSdkContextWithReporter(&config.SDKConfig{BaseUrl: "https://localhost", Key: configcattest.RandomSDKKey()}, nil, reporter)
+	client := NewClient(ctx, log.NewDebugLogger())
+	defer client.Close()
+
+	assert.NotEmpty(t, reporter.GetStatus().SDKs)
+}
+
 func newTestSdkContext(conf *config.SDKConfig, externalCache configcat.ConfigCache) *Context {
+	return newTestSdkContextWithReporter(conf, externalCache, status.NewEmptyReporter())
+}
+
+func newTestSdkContextWithReporter(conf *config.SDKConfig, externalCache configcat.ConfigCache, reporter status.Reporter) *Context {
 	return &Context{
 		SDKConf:         conf,
 		ProxyConf:       &config.HttpProxyConfig{},
-		StatusReporter:  status.NewEmptyReporter(),
+		StatusReporter:  reporter,
 		MetricsReporter: nil,
 		EvalReporter:    nil,
 		SdkId:           "test",

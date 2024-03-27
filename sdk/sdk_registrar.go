@@ -21,7 +21,6 @@ type registrar struct {
 func NewRegistrar(conf *config.Config, metricsReporter metrics.Reporter, statusReporter status.Reporter, externalCache configcat.ConfigCache, log log.Logger) Registrar {
 	sdkClients := make(map[string]Client, len(conf.SDKs))
 	for key, sdkConf := range conf.SDKs {
-		statusReporter.RegisterSdk(key, sdkConf)
 		sdkClients[key] = NewClient(&Context{
 			SDKConf:            sdkConf,
 			MetricsReporter:    metricsReporter,

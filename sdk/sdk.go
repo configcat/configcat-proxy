@@ -25,7 +25,7 @@ const (
 )
 
 type Client interface {
-	Eval(key string, user model.UserAttrs) (model.EvalData, error)
+	Eval(key string, user model.UserAttrs) model.EvalData
 	EvalAll(user model.UserAttrs) map[string]model.EvalData
 	Keys() []string
 	GetCachedJson() *store.EntryWithEtag
@@ -66,6 +66,8 @@ type client struct {
 
 func NewClient(sdkCtx *Context, log log.Logger) Client {
 	sdkLog := log.WithLevel(sdkCtx.SDKConf.Log.GetLevel()).WithPrefix("sdk-" + sdkCtx.SdkId)
+	sdkCtx.StatusReporter.RegisterSdk(sdkCtx.SdkId, sdkCtx.SDKConf)
+
 	offline := sdkCtx.SDKConf.Offline.Enabled
 	key := sdkCtx.SDKConf.Key
 	var storage configcat.ConfigCache
@@ -183,10 +185,10 @@ func (c *client) signal() {
 	}
 }
 
-func (c *client) Eval(key string, user model.UserAttrs) (model.EvalData, error) {
+func (c *client) Eval(key string, user model.UserAttrs) model.EvalData {
 	mergedUser := model.MergeUserAttrs(c.defaultAttrs, user)
 	details := c.configCatClient.Snapshot(mergedUser).GetValueDetails(key)
-	return model.EvalData{Value: details.Value, VariationId: details.Data.VariationID, User: details.Data.User}, details.Data.Error
+	return model.EvalData{Value: details.Value, VariationId: details.Data.VariationID, User: details.Data.User, Error: details.Data.Error}
 }
 
 func (c *client) EvalAll(user model.UserAttrs) map[string]model.EvalData {
@@ -194,7 +196,7 @@ func (c *client) EvalAll(user model.UserAttrs) map[string]model.EvalData {
 	allDetails := c.configCatClient.Snapshot(mergedUser).GetAllValueDetails()
 	result := make(map[string]model.EvalData, len(allDetails))
 	for _, details := range allDetails {
-		result[details.Data.Key] = model.EvalData{Value: details.Value, VariationId: details.Data.VariationID, User: details.Data.User}
+		result[details.Data.Key] = model.EvalData{Value: details.Value, VariationId: details.Data.VariationID, User: details.Data.User, Error: details.Data.Error}
 	}
 	return result
 }

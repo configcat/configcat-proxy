@@ -39,13 +39,3 @@ func TestClient_Close(t *testing.T) {
 		<-c.ctx.Done()
 	})
 }
-
-func TestRegistrar_Reporter(t *testing.T) {
-	reporter := status.NewEmptyReporter()
-	reg := NewRegistrar(&config.Config{
-		SDKs: map[string]*config.SDKConfig{"test": {Key: "key"}},
-	}, nil, reporter, nil, log.NewNullLogger())
-	defer reg.Close()
-
-	assert.NotEmpty(t, reporter.GetStatus().SDKs)
-}

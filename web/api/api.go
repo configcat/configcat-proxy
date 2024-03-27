@@ -41,10 +41,10 @@ func (s *Server) Eval(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), code)
 		return
 	}
-	eval, err := sdkClient.Eval(evalReq.Key, evalReq.User)
-	if err != nil {
+	eval := sdkClient.Eval(evalReq.Key, evalReq.User)
+	if eval.Error != nil {
 		var errKeyNotFound configcat.ErrKeyNotFound
-		if errors.As(err, &errKeyNotFound) {
+		if errors.As(eval.Error, &errKeyNotFound) {
 			http.Error(w, "feature flag or setting with key '"+evalReq.Key+"' not found", http.StatusBadRequest)
 		} else {
 			http.Error(w, "the request failed; please check the logs for more details", http.StatusInternalServerError)
