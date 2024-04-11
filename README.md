@@ -1,12 +1,9 @@
-# ConfigCat Proxy [Beta]
+# ConfigCat Proxy
 
 [![Build Status](https://github.com/configcat/configcat-proxy/actions/workflows/proxy-ci.yml/badge.svg?branch=main)](https://github.com/configcat/configcat-proxy/actions/workflows/proxy-ci.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/configcat/configcat-proxy)](https://goreportcard.com/report/github.com/configcat/configcat-proxy)
 [![Sonar Quality Gate](https://img.shields.io/sonar/quality_gate/configcat_configcat-proxy?logo=sonarcloud&server=https%3A%2F%2Fsonarcloud.io)](https://sonarcloud.io/project/overview?id=configcat_configcat-proxy)
 [![Sonar Coverage](https://img.shields.io/sonar/coverage/configcat_configcat-proxy?logo=SonarCloud&server=https%3A%2F%2Fsonarcloud.io)](https://sonarcloud.io/project/overview?id=configcat_configcat-proxy)
-
-> [!NOTE]\
-> The ConfigCat Proxy is in a public beta phase. If you have feedback or questions, please file a [GitHub Issue](https://github.com/configcat/configcat-proxy/issues) or [contact us](https://configcat.com/support).
 
 The ConfigCat Proxy allows you to host a feature flag evaluation service in your own infrastructure. 
 It's a small Go application that communicates with ConfigCat's CDN network and caches/proxies *config JSON* files for your frontend and backend applications. 
@@ -48,9 +45,9 @@ You can install the ConfigCat Proxy from the following sources:
 
 The docker image is available on DockerHub. You can run the image either as a standalone docker container or via `docker-compose`.
 
-1. Pull the latest image:
+1. Pull the docker image:
     ```shell
-    docker pull configcat/proxy:latest
+    docker pull configcat/proxy:1.0.0
     ```
 2. Run the ConfigCat Proxy:
     ```shell
@@ -66,7 +63,7 @@ Using with `docker-compose`:
     ```yaml
     services:
       configcat_proxy:
-        image: configcat/proxy:latest
+        image: configcat/proxy:1.0.0
         environment:
           - CONFIGCAT_SDKS={"<sdk-identifier>":"<your-sdk-key>"}
         ports:
