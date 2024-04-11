@@ -45,9 +45,9 @@ You can install the ConfigCat Proxy from the following sources:
 
 The docker image is available on DockerHub. You can run the image either as a standalone docker container or via `docker-compose`.
 
-1. Pull the latest image:
+1. Pull the docker image:
     ```shell
-    docker pull configcat/proxy:latest
+    docker pull configcat/proxy:1.0.0
     ```
 2. Run the ConfigCat Proxy:
     ```shell
@@ -63,7 +63,7 @@ Using with `docker-compose`:
     ```yaml
     services:
       configcat_proxy:
-        image: configcat/proxy:latest
+        image: configcat/proxy:1.0.0
         environment:
           - CONFIGCAT_SDKS={"<sdk-identifier>":"<your-sdk-key>"}
         ports:
