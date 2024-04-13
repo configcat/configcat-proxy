@@ -47,7 +47,7 @@ The docker image is available on DockerHub. You can run the image either as a st
 
 1. Pull the docker image:
     ```shell
-    docker pull configcat/proxy:1.0.0
+    docker pull configcat/proxy
     ```
 2. Run the ConfigCat Proxy:
     ```shell
@@ -63,7 +63,7 @@ Using with `docker-compose`:
     ```yaml
     services:
       configcat_proxy:
-        image: configcat/proxy:1.0.0
+        image: configcat/proxy
         environment:
           - CONFIGCAT_SDKS={"<sdk-identifier>":"<your-sdk-key>"}
         ports:

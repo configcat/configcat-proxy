@@ -4,14 +4,37 @@ builds:
   - env:
       - CGO_ENABLED=0
     ldflags:
-      - -s -w -X internal.version.Version={{.Version}}
+      - -s -w -X github.com/configcat/configcat-proxy/sdk.proxyVersion={{.Version}}
     goos:
       - linux
       - windows
       - darwin
+    goarch:
+      - '386'
+      - amd64
+      - arm
+      - arm64
+    ignore:
+      - goos: darwin
+        goarch: '386'
+    goarm:
+      - '7'
 
 archives:
   - format: tar.gz
     format_overrides:
     - goos: windows
       format: zip
+
+dockers:
+  - image_templates:
+    - "configcat/proxy:{{.Version}}"
+    - "configcat/proxy:v{{.Major}}"
+    - "configcat/proxy:latest"
+    goos: linux
+    goarch: amd64
+    dockerfile: Dockerfile.goreleaser
+    skip_push: false
+    build_flag_templates:
+      - "--pull"
+      - "--platform=linux/amd64"

@@ -1,0 +1,8 @@
+FROM gcr.io/distroless/static-debian11
+
+COPY --chown=nonroot:nonroot /configcat-proxy /
+
+USER nonroot
+EXPOSE 8050 8051 50051
+
+ENTRYPOINT ["/configcat-proxy"]
