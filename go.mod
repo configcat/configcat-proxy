@@ -8,7 +8,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.27.27
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.34.4
 	github.com/cespare/xxhash/v2 v2.3.0
-	github.com/configcat/go-sdk/v9 v9.0.6
+	github.com/configcat/go-sdk/v9 v9.0.7
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/prometheus/client_golang v1.19.1
