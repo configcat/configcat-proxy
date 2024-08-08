@@ -84,4 +84,4 @@ jobs:
       - uses: goreleaser/goreleaser-action@v6
         with:
           version: latest
-          args: release --clean --skip=publish
+          args: build --clean
