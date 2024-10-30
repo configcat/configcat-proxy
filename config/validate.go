@@ -7,8 +7,11 @@ import (
 )
 
 func (c *Config) Validate() error {
-	if len(c.SDKs) == 0 {
+	if len(c.SDKs) == 0 && !c.AutoSDK.IsSet() {
 		return fmt.Errorf("sdk: at least 1 SDK must be configured")
+	}
+	if c.AutoSDK.IsSet() && c.AutoSDK.PollInterval < 30 {
+		return fmt.Errorf("sdk: auto configuration poll interval cannot be less than 30 seconds")
 	}
 	for id, conf := range c.SDKs {
 		if err := conf.validate(&c.Cache, id); err != nil {

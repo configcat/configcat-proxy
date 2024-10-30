@@ -12,6 +12,26 @@ func TestConfig_Validate(t *testing.T) {
 		conf.setDefaults()
 		require.ErrorContains(t, conf.Validate(), "sdk: at least 1 SDK must be configured")
 	})
+	t.Run("no envs with auto key missing", func(t *testing.T) {
+		conf := Config{AutoSDK: AutoSDKConfig{Key: "", Secret: "secret"}}
+		conf.setDefaults()
+		require.ErrorContains(t, conf.Validate(), "sdk: at least 1 SDK must be configured")
+	})
+	t.Run("no envs with auto secret missing", func(t *testing.T) {
+		conf := Config{AutoSDK: AutoSDKConfig{Key: "key", Secret: ""}}
+		conf.setDefaults()
+		require.ErrorContains(t, conf.Validate(), "sdk: at least 1 SDK must be configured")
+	})
+	t.Run("no envs with auto ok", func(t *testing.T) {
+		conf := Config{AutoSDK: AutoSDKConfig{Key: "key", Secret: "secret", PollInterval: 60}}
+		conf.setDefaults()
+		require.NoError(t, conf.Validate())
+	})
+	t.Run("no envs with auto ok too low poll interval", func(t *testing.T) {
+		conf := Config{AutoSDK: AutoSDKConfig{Key: "key", Secret: "secret", PollInterval: 10}}
+		conf.setDefaults()
+		require.ErrorContains(t, conf.Validate(), "sdk: auto configuration poll interval cannot be less than 30 seconds")
+	})
 	t.Run("missing sdk key", func(t *testing.T) {
 		conf := Config{SDKs: map[string]*SDKConfig{"env1": {}}}
 		conf.setDefaults()

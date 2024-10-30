@@ -11,7 +11,7 @@ import (
 )
 
 func TestRegistrar_GetSdkOrNil(t *testing.T) {
-	reg := NewRegistrar(&config.Config{
+	reg, _ := NewRegistrar(&config.Config{
 		SDKs: map[string]*config.SDKConfig{"test": {Key: "key"}},
 	}, nil, status.NewEmptyReporter(), nil, log.NewNullLogger())
 	defer reg.Close()
@@ -20,7 +20,7 @@ func TestRegistrar_GetSdkOrNil(t *testing.T) {
 }
 
 func TestRegistrar_All(t *testing.T) {
-	reg := NewRegistrar(&config.Config{
+	reg, _ := NewRegistrar(&config.Config{
 		SDKs: map[string]*config.SDKConfig{"test1": {Key: "key1"}, "test2": {Key: "key2"}},
 	}, nil, status.NewEmptyReporter(), nil, log.NewNullLogger())
 	defer reg.Close()
@@ -28,8 +28,18 @@ func TestRegistrar_All(t *testing.T) {
 	assert.Equal(t, 2, len(reg.GetAll()))
 }
 
+func TestRegistrar_StatusReporter(t *testing.T) {
+	reporter := status.NewEmptyReporter()
+	reg, _ := NewRegistrar(&config.Config{
+		SDKs: map[string]*config.SDKConfig{"test1": {Key: "key1"}},
+	}, nil, reporter, nil, log.NewNullLogger())
+	defer reg.Close()
+
+	assert.NotEmpty(t, reporter.GetStatus().SDKs)
+}
+
 func TestClient_Close(t *testing.T) {
-	reg := NewRegistrar(&config.Config{
+	reg, _ := NewRegistrar(&config.Config{
 		SDKs: map[string]*config.SDKConfig{"test": {Key: "key"}},
 	}, nil, status.NewEmptyReporter(), nil, log.NewNullLogger())
 

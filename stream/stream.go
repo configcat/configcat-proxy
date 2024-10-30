@@ -14,6 +14,7 @@ type Stream interface {
 	CreateConnection(key string, user model.UserAttrs) *Connection
 	CloseConnection(conn *Connection, key string)
 	Close()
+	Closed() <-chan struct{}
 }
 
 type connEstablished struct {
@@ -29,7 +30,7 @@ type connClosed struct {
 
 type stream struct {
 	sdkClient        sdk.Client
-	sdkConfigChanged <-chan struct{}
+	sdkConfigChanged chan struct{}
 	stop             chan struct{}
 	log              log.Logger
 	serverType       string
@@ -48,7 +49,7 @@ func NewStream(sdkId string, sdkClient sdk.Client, metrics metrics.Reporter, log
 		connEstablished:  make(chan *connEstablished),
 		connClosed:       make(chan *connClosed),
 		stop:             make(chan struct{}),
-		sdkConfigChanged: sdkClient.SubConfigChanged(serverType + sdkId),
+		sdkConfigChanged: make(chan struct{}, 1),
 		sdkClient:        sdkClient,
 		log:              log.WithPrefix("stream-" + sdkId),
 		serverType:       serverType,
@@ -56,6 +57,7 @@ func NewStream(sdkId string, sdkClient sdk.Client, metrics metrics.Reporter, log
 		metrics:          metrics,
 		seed:             maphash.MakeSeed(),
 	}
+	sdkClient.Subscribe(s.sdkConfigChanged)
 	go s.run()
 	return s
 }
@@ -128,8 +130,12 @@ func (s *stream) CloseConnection(conn *Connection, key string) {
 
 func (s *stream) Close() {
 	close(s.stop)
-	s.sdkClient.UnsubConfigChanged(s.serverType + s.sdkId)
+	s.sdkClient.Unsubscribe(s.sdkConfigChanged)
 	s.log.Reportf("shutdown complete")
+}
+
+func (s *stream) Closed() <-chan struct{} {
+	return s.stop
 }
 
 func (s *stream) addConnection(established *connEstablished) {

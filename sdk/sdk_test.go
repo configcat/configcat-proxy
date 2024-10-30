@@ -35,7 +35,8 @@ func TestSdk_Signal(t *testing.T) {
 	ctx := newTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key, PollInterval: 1}, nil)
 	client := NewClient(ctx, log.NewNullLogger())
 	defer client.Close()
-	sub := client.SubConfigChanged("id")
+	sub := make(chan struct{})
+	client.Subscribe(sub)
 	data := client.Eval("flag", nil)
 	j := client.GetCachedJson()
 	assert.NoError(t, data.Error)
@@ -109,7 +110,8 @@ func TestSdk_Signal_Refresh(t *testing.T) {
 	ctx := newTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key}, nil)
 	client := NewClient(ctx, log.NewNullLogger())
 	defer client.Close()
-	sub := client.SubConfigChanged("id")
+	sub := make(chan struct{})
+	client.Subscribe(sub)
 	data := client.Eval("flag", nil)
 	j := client.GetCachedJson()
 	assert.NoError(t, data.Error)
@@ -181,7 +183,8 @@ func TestSdk_Signal_Offline_File_Watch(t *testing.T) {
 		ctx := newTestSdkContext(&config.SDKConfig{Key: "key", Offline: config.OfflineConfig{Enabled: true, Local: config.LocalConfig{FilePath: path}}}, nil)
 		client := NewClient(ctx, log.NewNullLogger())
 		defer client.Close()
-		sub := client.SubConfigChanged("id")
+		sub := make(chan struct{})
+		client.Subscribe(sub)
 		data := client.Eval("flag", nil)
 		j := client.GetCachedJson()
 		assert.NoError(t, data.Error)
@@ -207,7 +210,8 @@ func TestSdk_Signal_Offline_Poll_Watch(t *testing.T) {
 		ctx := newTestSdkContext(&config.SDKConfig{Key: "key", Offline: config.OfflineConfig{Enabled: true, Local: config.LocalConfig{FilePath: path, Polling: true, PollInterval: 1}}}, nil)
 		client := NewClient(ctx, log.NewNullLogger())
 		defer client.Close()
-		sub := client.SubConfigChanged("id")
+		sub := make(chan struct{})
+		client.Subscribe(sub)
 		data := client.Eval("flag", nil)
 		j := client.GetCachedJson()
 		assert.NoError(t, data.Error)
@@ -241,7 +245,8 @@ func TestSdk_Signal_Offline_Redis_Watch(t *testing.T) {
 	}, newRedisCache(s.Addr()))
 	client := NewClient(ctx, log.NewNullLogger())
 	defer client.Close()
-	sub := client.SubConfigChanged("id")
+	sub := make(chan struct{})
+	client.Subscribe(sub)
 	data := client.Eval("flag", nil)
 	j := client.GetCachedJson()
 	assert.NoError(t, data.Error)
@@ -260,26 +265,6 @@ func TestSdk_Signal_Offline_Redis_Watch(t *testing.T) {
 	assert.False(t, data.Value.(bool))
 	assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":false,"s":null,"i":null,"d":null},"t":0,"r":null,"p":null}},"s":null,"p":null}`, string(j.ConfigJson))
 	assert.Equal(t, "etag2", j.ETag)
-}
-
-func TestSdk_Sub_Unsub(t *testing.T) {
-	key := configcattest.RandomSDKKey()
-	var h configcattest.Handler
-	_ = h.SetFlags(key, map[string]*configcattest.Flag{
-		"flag": {
-			Default: true,
-		},
-	})
-	srv := httptest.NewServer(&h)
-	defer srv.Close()
-
-	ctx := newTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key, PollInterval: 1}, nil)
-	client := NewClient(ctx, log.NewNullLogger()).(*client)
-	defer client.Close()
-	_ = client.SubConfigChanged("id")
-	assert.NotEmpty(t, client.subscriptions)
-	client.UnsubConfigChanged("id")
-	assert.Empty(t, client.subscriptions)
 }
 
 func TestSdk_EvalAll(t *testing.T) {
@@ -430,15 +415,6 @@ func TestSdk_IsInValidState_EmptyCache_False(t *testing.T) {
 	defer client.Close()
 
 	assert.False(t, client.IsInValidState())
-}
-
-func TestSdk_StatusReporter(t *testing.T) {
-	reporter := status.NewEmptyReporter()
-	ctx := newTestSdkContextWithReporter(&config.SDKConfig{BaseUrl: "https://localhost", Key: configcattest.RandomSDKKey()}, nil, reporter)
-	client := NewClient(ctx, log.NewDebugLogger())
-	defer client.Close()
-
-	assert.NotEmpty(t, reporter.GetStatus().SDKs)
 }
 
 func newTestSdkContext(conf *config.SDKConfig, externalCache configcat.ConfigCache) *Context {

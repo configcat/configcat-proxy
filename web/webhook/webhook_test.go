@@ -70,7 +70,8 @@ func TestWebhook_Signature_Ok(t *testing.T) {
 		req.Header.Set("X-ConfigCat-Webhook-ID", id)
 		req.Header.Set("X-ConfigCat-Webhook-Timestamp", timestamp)
 		testutils.AddSdkIdContextParam(req)
-		sub := reg.GetSdkOrNil("test").SubConfigChanged("hook1")
+		sub := make(chan struct{})
+		reg.GetSdkOrNil("test").Subscribe(sub)
 		utils.WithTimeout(2*time.Second, func() {
 			<-reg.GetSdkOrNil("test").Ready()
 		}) // wait for the SDK to do the initialization
@@ -98,7 +99,8 @@ func TestWebhook_Signature_Ok(t *testing.T) {
 		req.Header.Set("X-ConfigCat-Webhook-ID", id)
 		req.Header.Set("X-ConfigCat-Webhook-Timestamp", timestamp)
 		testutils.AddSdkIdContextParam(req)
-		sub := reg.GetSdkOrNil("test").SubConfigChanged("hook1")
+		sub := make(chan struct{})
+		reg.GetSdkOrNil("test").Subscribe(sub)
 		utils.WithTimeout(2*time.Second, func() {
 			<-reg.GetSdkOrNil("test").Ready()
 		}) // wait for the SDK to do the initialization

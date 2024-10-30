@@ -1,9 +1,16 @@
-sdks:
-  sdk1:
-    base_url: "https://test-cdn-global.configcat.com"
-    key: "XxPbCKmzIUGORk4vsufpzw/iC_KABprDEueeQs3yovVnQ"
-    poll_interval: 300
-    webhook_signing_key: "configcat_whsk_Dj59sEWxRmm+84izQ8Cbn9o4Pnjz7E+/hxcmyfEVT+A="
+#sdks:
+#  sdk1:
+#    base_url: "https://test-cdn-global.configcat.com"
+#    key: "XxPbCKmzIUGORk4vsufpzw/iC_KABprDEueeQs3yovVnQ"
+#    poll_interval: 300
+#    webhook_signing_key: "configcat_whsk_Dj59sEWxRmm+84izQ8Cbn9o4Pnjz7E+/hxcmyfEVT+A="
+auto_config:
+  key: 08dcec39-de57-4126-8496-3f194ac1e4dd
+  secret: "secret"
+  base_url: "http://localhost:5200"
+  poll_interval: 30
+  log:
+    level: "debug"
 
 log:
   level: "error"
@@ -16,6 +23,7 @@ grpc:
 
 diag:
   enabled: true
+  port: 8091
 
 http:
   port: 8090

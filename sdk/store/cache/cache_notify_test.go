@@ -212,6 +212,10 @@ func (r *testReporter) RegisterSdk(_ string, _ *config.SDKConfig) {
 	// do nothing
 }
 
+func (r *testReporter) RemoveSdk(_ string) {
+	// do nothing
+}
+
 func (r *testReporter) ReportOk(component string, message string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()

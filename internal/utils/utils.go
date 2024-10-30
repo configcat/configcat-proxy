@@ -4,24 +4,11 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"github.com/cespare/xxhash/v2"
+	"github.com/puzpuzpuz/xsync/v3"
 	"strings"
 	"time"
 	"unicode/utf8"
 )
-
-func WithTimeout(timeout time.Duration, f func()) {
-	t := time.After(timeout)
-	done := make(chan struct{})
-	go func() {
-		select {
-		case <-t:
-			panic("test timeout expired")
-		case <-done:
-		}
-	}()
-	f()
-	done <- struct{}{}
-}
 
 func Base64URLDecode(encoded string) ([]byte, error) {
 	decoded, err := base64.URLEncoding.DecodeString(encoded)
@@ -32,16 +19,6 @@ func Base64URLDecode(encoded string) ([]byte, error) {
 		}
 	}
 	return decoded, nil
-}
-
-func Min(args ...int) int {
-	min := args[0]
-	for _, x := range args {
-		if x < min {
-			min = x
-		}
-	}
-	return min
 }
 
 func FastHashHex(b []byte) string {
@@ -63,10 +40,36 @@ func Obfuscate(str string, clearLen int) string {
 	return strings.Repeat("*", utf8.RuneCountInString(toObfuscate)) + str[l-clearLen:l]
 }
 
-func Keys[M ~map[K]V, K comparable, V any](m M) []K {
+func KeysOfMap[M ~map[K]V, K comparable, V any](m M) []K {
 	r := make([]K, 0, len(m))
 	for k := range m {
 		r = append(r, k)
+	}
+	return r
+}
+
+func KeysOfSyncMap[K comparable, V any](m *xsync.MapOf[K, V]) []K {
+	keys := make([]K, 0, m.Size())
+	m.Range(func(key K, value V) bool {
+		keys = append(keys, key)
+		return true
+	})
+	return keys
+}
+
+func Except[T ~[]K, K comparable](a T, b T) T {
+	var r T
+	for _, va := range a {
+		found := false
+		for _, vb := range b {
+			if va == vb {
+				found = true
+				break
+			}
+		}
+		if !found {
+			r = append(r, va)
+		}
 	}
 	return r
 }
@@ -81,4 +84,33 @@ func DedupStringSlice(strings []string) []string {
 		}
 	}
 	return list
+}
+
+func WithTimeout(timeout time.Duration, f func()) {
+	t := time.After(timeout)
+	done := make(chan struct{})
+	go func() {
+		select {
+		case <-t:
+			panic("timeout expired")
+		case <-done:
+		}
+	}()
+	f()
+	done <- struct{}{}
+}
+
+func WaitUntil(timeout time.Duration, f func() bool) {
+	t := time.After(timeout)
+	done := make(chan struct{})
+	go func() {
+		select {
+		case <-t:
+			panic("timeout expired")
+		case <-done:
+		}
+	}()
+	if f() {
+		done <- struct{}{}
+	}
 }

@@ -59,6 +59,8 @@ func TestConfig_Defaults(t *testing.T) {
 	assert.Equal(t, uint16(tls.VersionTLS12), conf.Cache.Redis.Tls.GetVersion())
 	assert.Equal(t, uint16(tls.VersionTLS12), conf.Cache.MongoDb.Tls.GetVersion())
 
+	assert.Equal(t, "https://api.configcat.com", conf.AutoSDK.BaseUrl)
+
 	assert.Nil(t, conf.DefaultAttrs)
 }
 
@@ -94,6 +96,7 @@ log:
 			assert.Equal(t, log.Info, conf.Http.Sse.Log.GetLevel())
 			assert.Equal(t, log.Info, conf.Grpc.Log.GetLevel())
 			assert.Equal(t, log.Info, conf.GlobalOfflineConfig.Log.GetLevel())
+			assert.Equal(t, log.Info, conf.AutoSDK.Log.GetLevel())
 		})
 	})
 
@@ -211,6 +214,27 @@ sdks:
 		assert.Equal(t, "attr value4", conf.SDKs["test_sdk"].DefaultAttrs["attr 4"])
 		assert.Equal(t, 5, conf.SDKs["test_sdk"].DefaultAttrs["attr5"])
 		assert.Equal(t, []string{"a", "b"}, conf.SDKs["test_sdk"].DefaultAttrs["attr6"])
+	})
+}
+
+func TestConfig_AutoSDKs(t *testing.T) {
+	utils.UseTempFile(`
+auto_config:
+  key: key
+  secret: secret
+  base_url: "https://base.com"
+  poll_interval: 300
+  log:
+    level: "debug"
+`, func(file string) {
+		conf, err := LoadConfigFromFileAndEnvironment(file)
+		require.NoError(t, err)
+
+		assert.Equal(t, "key", conf.AutoSDK.Key)
+		assert.Equal(t, "secret", conf.AutoSDK.Secret)
+		assert.Equal(t, "https://base.com", conf.AutoSDK.BaseUrl)
+		assert.Equal(t, 300, conf.AutoSDK.PollInterval)
+		assert.Equal(t, log.Debug, conf.AutoSDK.Log.GetLevel())
 	})
 }
 

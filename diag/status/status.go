@@ -35,6 +35,7 @@ const maxLastErrorsMeaningDegraded = 2
 
 type Reporter interface {
 	RegisterSdk(sdkId string, conf *config.SDKConfig)
+	RemoveSdk(sdkId string)
 	ReportOk(component string, message string)
 	ReportError(component string, message string)
 	GetStatus() Status
@@ -127,6 +128,15 @@ func (r *reporter) RegisterSdk(sdkId string, conf *config.SDKConfig) {
 	}
 }
 
+func (r *reporter) RemoveSdk(sdkId string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	delete(r.status.SDKs, sdkId)
+	delete(r.records, sdkId)
+	r.reCalcStatus()
+}
+
 func (r *reporter) ReportOk(component string, message string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -159,26 +169,6 @@ func (r *reporter) GetStatus() Status {
 	return r.status
 }
 
-func (r *reporter) checkStatus(records []record) ([]string, HealthStatus) {
-	length := len(records)
-	targetRecords := make([]string, length)
-	var errorCount = 0
-	for i, msg := range records {
-		targetRecords[i] = msg.time.UTC().Format(time.RFC1123) + ": " + msg.message
-		if i >= length-maxLastErrorsMeaningDegraded {
-			if msg.isError {
-				errorCount++
-			} else {
-				errorCount--
-			}
-		}
-	}
-	if errorCount > 0 && errorCount >= utils.Min(maxLastErrorsMeaningDegraded, length) {
-		return targetRecords, Degraded
-	}
-	return targetRecords, Healthy
-}
-
 func (r *reporter) appendRecord(component string, message string, isError bool) {
 	if isError {
 		message = "[error] " + message
@@ -205,26 +195,49 @@ func (r *reporter) appendRecord(component string, message string, isError bool) 
 			stat = Down
 		}
 		sdk.Source.Status = stat
+		r.reCalcStatus()
+	}
+}
 
-		allSdksDown := true
-		hasDegradedSdk := false
-		for _, sdk := range r.status.SDKs {
-			if sdk.Source.Status != Down {
-				allSdksDown = false
-			}
-			if sdk.Source.Status != Healthy {
-				hasDegradedSdk = true
+func (r *reporter) checkStatus(records []record) ([]string, HealthStatus) {
+	length := len(records)
+	targetRecords := make([]string, length)
+	var errorCount = 0
+	for i, msg := range records {
+		targetRecords[i] = msg.time.UTC().Format(time.RFC1123) + ": " + msg.message
+		if i >= length-maxLastErrorsMeaningDegraded {
+			if msg.isError {
+				errorCount++
+			} else {
+				errorCount--
 			}
 		}
-		if !hasDegradedSdk && !allSdksDown {
-			r.status.Status = Healthy
-		} else {
-			if hasDegradedSdk {
-				r.status.Status = Degraded
-			}
-			if allSdksDown {
-				r.status.Status = Down
-			}
+	}
+	if errorCount > 0 && errorCount >= min(maxLastErrorsMeaningDegraded, length) {
+		return targetRecords, Degraded
+	}
+	return targetRecords, Healthy
+}
+
+func (r *reporter) reCalcStatus() {
+	allSdksDown := true
+	hasDegradedSdk := false
+	for _, sdk := range r.status.SDKs {
+		if sdk.Source.Status != Down {
+			allSdksDown = false
+		}
+		if sdk.Source.Status != Healthy {
+			hasDegradedSdk = true
+		}
+	}
+	if !hasDegradedSdk && !allSdksDown {
+		r.status.Status = Healthy
+	} else {
+		if hasDegradedSdk {
+			r.status.Status = Degraded
+		}
+		if allSdksDown {
+			r.status.Status = Down
 		}
 	}
 }

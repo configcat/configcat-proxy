@@ -7,6 +7,7 @@ import (
 	"github.com/configcat/configcat-proxy/diag/status"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/model"
+	"github.com/configcat/configcat-proxy/pubsub"
 	"github.com/configcat/configcat-proxy/sdk/statistics"
 	"github.com/configcat/configcat-proxy/sdk/store"
 	"github.com/configcat/configcat-proxy/sdk/store/cache"
@@ -25,12 +26,11 @@ const (
 )
 
 type Client interface {
+	pubsub.SubscriptionHandler[struct{}]
 	Eval(key string, user model.UserAttrs) model.EvalData
 	EvalAll(user model.UserAttrs) map[string]model.EvalData
 	Keys() []string
 	GetCachedJson() *store.EntryWithEtag
-	SubConfigChanged(id string) <-chan struct{}
-	UnsubConfigChanged(id string)
 	Ready() <-chan struct{}
 	Refresh() error
 	Close()
@@ -53,20 +53,18 @@ type Context struct {
 type client struct {
 	configCatClient *configcat.Client
 	defaultAttrs    model.UserAttrs
-	subscriptions   map[string]chan struct{}
 	readyOnce       sync.Once
 	log             log.Logger
 	cache           store.EntryStore
 	sdkCtx          *Context
-	mu              sync.RWMutex
 	initialized     atomic.Bool
 	ctx             context.Context
 	ctxCancel       func()
+	pubsub.Publisher[struct{}]
 }
 
 func NewClient(sdkCtx *Context, log log.Logger) Client {
 	sdkLog := log.WithLevel(sdkCtx.SDKConf.Log.GetLevel()).WithPrefix("sdk-" + sdkCtx.SdkId)
-	sdkCtx.StatusReporter.RegisterSdk(sdkCtx.SdkId, sdkCtx.SDKConf)
 
 	offline := sdkCtx.SDKConf.Offline.Enabled
 	key := sdkCtx.SDKConf.Key
@@ -84,11 +82,11 @@ func NewClient(sdkCtx *Context, log log.Logger) Client {
 		storage = store.NewInMemoryStorage()
 	}
 	client := &client{
-		log:           sdkLog,
-		subscriptions: make(map[string]chan struct{}),
-		cache:         storage.(store.EntryStore),
-		sdkCtx:        sdkCtx,
-		defaultAttrs:  model.MergeUserAttrs(sdkCtx.GlobalDefaultAttrs, sdkCtx.SDKConf.DefaultAttrs),
+		Publisher:    pubsub.NewPublisher[struct{}](),
+		log:          sdkLog,
+		cache:        storage.(store.EntryStore),
+		sdkCtx:       sdkCtx,
+		defaultAttrs: model.MergeUserAttrs(sdkCtx.GlobalDefaultAttrs, sdkCtx.SDKConf.DefaultAttrs),
 	}
 	client.ctx, client.ctxCancel = context.WithCancel(context.Background())
 	var transport = http.DefaultTransport.(*http.Transport)
@@ -168,9 +166,6 @@ func (c *client) listen(notifier store.NotifyingStore) {
 }
 
 func (c *client) signal() {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
 	// we don't want to notify subscribers in ONLINE mode
 	// about the first change upon SDK initialization
 	if !c.sdkCtx.SDKConf.Offline.Enabled && c.initialized.CompareAndSwap(false, true) {
@@ -180,9 +175,7 @@ func (c *client) signal() {
 	if c.sdkCtx.SDKConf.Offline.Enabled {
 		_ = c.Refresh()
 	}
-	for _, sub := range c.subscriptions {
-		sub <- struct{}{}
-	}
+	c.Publish(struct{}{})
 }
 
 func (c *client) Eval(key string, user model.UserAttrs) model.EvalData {
@@ -215,25 +208,6 @@ func (c *client) GetCachedJson() *store.EntryWithEtag {
 	return c.cache.LoadEntry()
 }
 
-func (c *client) SubConfigChanged(id string) <-chan struct{} {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	sub, ok := c.subscriptions[id]
-	if !ok {
-		sub = make(chan struct{}, 1)
-		c.subscriptions[id] = sub
-	}
-	return sub
-}
-
-func (c *client) UnsubConfigChanged(id string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	delete(c.subscriptions, id)
-}
-
 func (c *client) Refresh() error {
 	return c.configCatClient.Refresh(c.ctx)
 }
@@ -258,7 +232,12 @@ func (c *client) Close() {
 	if notifier, ok := c.cache.(store.Notifier); ok {
 		notifier.Close()
 	}
+	c.Publisher.Close()
 	c.ctxCancel()
 	c.configCatClient.Close()
 	c.log.Reportf("shutdown complete")
+}
+
+func Version() string {
+	return proxyVersion
 }

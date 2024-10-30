@@ -1,14 +1,10 @@
 package utils
 
 import (
+	"github.com/puzpuzpuz/xsync/v3"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
-
-func TestMin(t *testing.T) {
-	assert.Equal(t, 2, Min(4, 2))
-	assert.Equal(t, 1, Min(7, 3, 1, 2))
-}
 
 func TestObfuscate(t *testing.T) {
 	assert.Equal(t, "**st", Obfuscate("test", 2))
@@ -21,9 +17,17 @@ func TestDedupStringSlice(t *testing.T) {
 	assert.Equal(t, []string{"a", "b"}, DedupStringSlice([]string{"a", "b"}))
 }
 
-func TestKeys(t *testing.T) {
-	assert.Contains(t, Keys(map[string]int{"a": 1, "b": 2}), "a")
-	assert.Contains(t, Keys(map[string]int{"a": 1, "b": 2}), "b")
+func TestKeysOfMap(t *testing.T) {
+	assert.Contains(t, KeysOfMap(map[string]int{"a": 1, "b": 2}), "a")
+	assert.Contains(t, KeysOfMap(map[string]int{"a": 1, "b": 2}), "b")
+}
+
+func TestKeysOfSyncMap(t *testing.T) {
+	map1 := xsync.NewMapOf[string, int]()
+	map1.Store("a", 1)
+	map1.Store("b", 2)
+	assert.Contains(t, KeysOfSyncMap(map1), "a")
+	assert.Contains(t, KeysOfSyncMap(map1), "b")
 }
 
 func TestBase64URLDecode(t *testing.T) {
@@ -38,4 +42,8 @@ func TestFastHashHex(t *testing.T) {
 
 func TestGenerateEtag(t *testing.T) {
 	assert.Equal(t, "W/\"4fdcca5ddb678139\"", GenerateEtag([]byte("test")))
+}
+
+func TestExcept(t *testing.T) {
+	assert.Equal(t, []string{"c", "d"}, Except([]string{"a", "b", "c", "d"}, []string{"a", "b"}))
 }

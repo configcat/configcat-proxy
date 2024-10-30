@@ -69,6 +69,9 @@ func (c *Config) loadEnv() error {
 		}
 		c.SDKs[sdkId] = sdkConf
 	}
+	if err := c.AutoSDK.loadEnv(envPrefix); err != nil {
+		return err
+	}
 	if err := c.Http.loadEnv(envPrefix); err != nil {
 		return err
 	}
@@ -114,6 +117,17 @@ func (s *SDKConfig) loadEnv(prefix string) error {
 		return err
 	}
 	return s.Log.loadEnv(prefix)
+}
+
+func (a *AutoSDKConfig) loadEnv(prefix string) error {
+	prefix = concatPrefix(prefix, "AUTO_CONFIG")
+	readEnvString(prefix, "KEY", &a.Key)
+	readEnvString(prefix, "SECRET", &a.Secret)
+	readEnvString(prefix, "BASE_URL", &a.BaseUrl)
+	if err := readEnv(prefix, "POLL_INTERVAL", &a.PollInterval, toInt); err != nil {
+		return err
+	}
+	return a.Log.loadEnv(prefix)
 }
 
 func (h *HttpConfig) loadEnv(prefix string) error {

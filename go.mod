@@ -12,6 +12,7 @@ require (
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/prometheus/client_golang v1.19.1
+	github.com/puzpuzpuz/xsync/v3 v3.4.0
 	github.com/redis/go-redis/v9 v9.6.1
 	github.com/stretchr/testify v1.9.0
 	go.mongodb.org/mongo-driver v1.16.1

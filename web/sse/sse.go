@@ -63,13 +63,7 @@ func (s *Server) SingleFlag(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	conn := str.CreateConnection(evalReq.Key, evalReq.User)
-	w.WriteHeader(http.StatusOK)
-	flusher.Flush()
-
-	if s.listenAndRespond(conn, w, r, flusher) {
-		str.CloseConnection(conn, evalReq.Key)
-	}
+	s.listenAndRespond(str, evalReq.User, evalReq.Key, w, r, flusher)
 }
 
 func (s *Server) AllFlags(w http.ResponseWriter, r *http.Request) {
@@ -90,13 +84,7 @@ func (s *Server) AllFlags(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	conn := str.CreateConnection(stream.AllFlagsDiscriminator, evalReq.User)
-	w.WriteHeader(http.StatusOK)
-	flusher.Flush()
-
-	if s.listenAndRespond(conn, w, r, flusher) {
-		str.CloseConnection(conn, stream.AllFlagsDiscriminator)
-	}
+	s.listenAndRespond(str, evalReq.User, stream.AllFlagsDiscriminator, w, r, flusher)
 }
 
 func (s *Server) Close() {
@@ -104,7 +92,12 @@ func (s *Server) Close() {
 	s.streamServer.Close()
 }
 
-func (s *Server) listenAndRespond(conn *stream.Connection, w http.ResponseWriter, r *http.Request, flusher http.Flusher) bool {
+func (s *Server) listenAndRespond(str stream.Stream, attrs model.UserAttrs, key string, w http.ResponseWriter, r *http.Request, flusher http.Flusher) {
+	conn := str.CreateConnection(key, attrs)
+
+	w.WriteHeader(http.StatusOK)
+	flusher.Flush()
+
 	for {
 		select {
 		case payload := <-conn.Receive():
@@ -120,9 +113,12 @@ func (s *Server) listenAndRespond(conn *stream.Connection, w http.ResponseWriter
 				s.logger.Errorf("%s", e)
 			}
 		case <-r.Context().Done():
-			return true
+			str.CloseConnection(conn, key)
+			return
+		case <-str.Closed():
+			return
 		case <-s.stop:
-			return false
+			return
 		}
 	}
 }

@@ -45,6 +45,7 @@ type Config struct {
 	HttpProxy           HttpProxyConfig     `yaml:"http_proxy"`
 	GlobalOfflineConfig GlobalOfflineConfig `yaml:"offline"`
 	DefaultAttrs        model.UserAttrs     `yaml:"default_user_attributes"`
+	AutoSDK             AutoSDKConfig       `yaml:"auto_config"`
 }
 
 type SDKConfig struct {
@@ -57,6 +58,14 @@ type SDKConfig struct {
 	DefaultAttrs             model.UserAttrs `yaml:"default_user_attributes"`
 	Offline                  OfflineConfig
 	Log                      LogConfig
+}
+
+type AutoSDKConfig struct {
+	Key          string
+	Secret       string
+	BaseUrl      string `yaml:"base_url"`
+	PollInterval int    `yaml:"poll_interval"`
+	Log          LogConfig
 }
 
 type GrpcConfig struct {
@@ -335,6 +344,12 @@ func (c *Config) fixupDefaults() {
 	if c.GlobalOfflineConfig.CachePollInterval == 0 {
 		c.GlobalOfflineConfig.CachePollInterval = 5
 	}
+	if c.AutoSDK.BaseUrl == "" {
+		c.AutoSDK.BaseUrl = "https://api.configcat.com"
+	}
+	if c.AutoSDK.PollInterval == 0 {
+		c.AutoSDK.PollInterval = 60 * 5
+	}
 }
 
 func (c *Config) fixupOffline() {
@@ -355,6 +370,9 @@ func (c *Config) fixupOffline() {
 }
 
 func (c *Config) fixupLogLevels(defLevel string) {
+	if c.AutoSDK.Log.GetLevel() == log.None {
+		c.AutoSDK.Log.Level = defLevel
+	}
 	for _, sdk := range c.SDKs {
 		if sdk == nil {
 			continue
@@ -447,6 +465,10 @@ func (k *KeepAliveConfig) ToParams() (keepalive.ServerParameters, bool) {
 
 func (c *CacheConfig) IsSet() bool {
 	return c.Redis.Enabled || c.MongoDb.Enabled || c.DynamoDb.Enabled
+}
+
+func (a *AutoSDKConfig) IsSet() bool {
+	return a.Key != "" && a.Secret != ""
 }
 
 func (t *TlsConfig) LoadTlsOptions() (*tls.Config, error) {

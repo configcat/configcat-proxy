@@ -20,7 +20,7 @@ func NewTestRegistrar(conf *config.SDKConfig, cache configcat.ConfigCache) sdk.R
 
 func NewTestRegistrarWithStatusReporter(conf *config.SDKConfig, cache configcat.ConfigCache, reporter status.Reporter) sdk.Registrar {
 	ctx := NewTestSdkContext(conf, cache)
-	reg := sdk.NewRegistrar(&config.Config{
+	reg, _ := sdk.NewRegistrar(&config.Config{
 		SDKs: map[string]*config.SDKConfig{"test": conf},
 	}, ctx.MetricsReporter, reporter, cache, log.NewNullLogger())
 	return reg

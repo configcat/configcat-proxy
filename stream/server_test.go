@@ -13,11 +13,11 @@ func TestServer_GetStreamOrNil(t *testing.T) {
 
 	str := srv.GetStreamOrNil("test")
 	assert.NotNil(t, str)
-	assert.Equal(t, 1, len(srv.streams))
+	assert.Equal(t, 1, srv.streams.Size())
 
 	str = srv.GetStreamOrNil("nonexisting")
 	assert.Nil(t, str)
 
 	srv.Close()
-	assert.Equal(t, 0, len(srv.streams))
+	assert.Equal(t, 0, srv.streams.Size())
 }
