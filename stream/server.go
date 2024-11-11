@@ -58,9 +58,11 @@ func (s *server) run() {
 func (s *server) handleSdkId(sdkId string) {
 	sdkClient := s.sdkRegistrar.GetSdkOrNil(sdkId)
 	if sdkClient != nil {
-		s.streams.LoadOrCompute(sdkId, func() Stream {
+		if str, loaded := s.streams.LoadOrCompute(sdkId, func() Stream {
 			return NewStream(sdkId, sdkClient, s.metrics, s.log, s.serverType)
-		})
+		}); loaded {
+			str.ResetSdk(sdkClient)
+		}
 	} else {
 		if str, ok := s.streams.LoadAndDelete(sdkId); ok {
 			str.Close()
