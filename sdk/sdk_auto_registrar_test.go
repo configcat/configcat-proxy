@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/alicebob/miniredis/v2"
 	"github.com/configcat/configcat-proxy/config"
+	"github.com/configcat/configcat-proxy/diag/status"
 	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/model"
@@ -273,4 +274,47 @@ func TestAutoRegistrar_Cache_Refresh(t *testing.T) {
 
 	res2 := sdkClient2.Eval("flag", nil)
 	assert.True(t, res2.Value.(bool))
+}
+
+func TestAutoRegistrar_Cache_When_Fail(t *testing.T) {
+	cache := miniredis.RunT(t)
+	extCache := newRedisCache(cache.Addr())
+
+	sdkKey := configcattest.RandomSDKKey()
+	cacheKey := configcatcache.ProduceCacheKey(sdkKey, configcatcache.ConfigJSONName, configcatcache.ConfigJSONCacheVersion)
+	cacheEntry := configcatcache.CacheSegmentsToBytes(time.Now(), "etag", []byte(`{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true},"t":0}}}`))
+	_ = cache.Set(cacheKey, string(cacheEntry))
+
+	autoConfig := model.ProxyConfigModel{
+		SDKs: map[string]*model.SdkConfigModel{"test": {SDKKey: sdkKey}},
+	}
+
+	autConfigCacheEntry, _ := json.Marshal(autoConfig)
+	_ = cache.Set("configcat-proxy-conf/test-reg", string(autConfigCacheEntry))
+
+	conf := config.Config{AutoSDK: config.AutoSDKConfig{Key: "test-reg", PollInterval: 60, Log: config.LogConfig{Level: "debug"}}}
+	reg, _ := newAutoRegistrar(&conf, nil, status.NewEmptyReporter(), extCache, log.NewDebugLogger())
+	defer reg.Close()
+
+	sdkClient := reg.GetSdkOrNil("test").(*client)
+	assert.NotNil(t, sdkClient)
+	assert.Equal(t, 0, sdkClient.sdkCtx.SDKConf.PollInterval)
+	assert.Equal(t, "", sdkClient.sdkCtx.SDKConf.DataGovernance)
+
+	res := sdkClient.Eval("flag", nil)
+	assert.True(t, res.Value.(bool))
+}
+
+func TestAutoRegistrar_Saves_To_Cache(t *testing.T) {
+	cache := miniredis.RunT(t)
+	extCache := newRedisCache(cache.Addr())
+
+	conf := config.Config{AutoSDK: config.AutoSDKConfig{Key: "test-reg", PollInterval: 60, Log: config.LogConfig{Level: "debug"}}}
+	reg, _ := NewTestAutoRegistrar(t, conf, extCache, log.NewDebugLogger())
+
+	sdkClient := reg.GetSdkOrNil("test").(*client)
+	assert.NotNil(t, sdkClient)
+
+	cached, _ := cache.Get("configcat-proxy-conf/test-reg")
+	assert.Equal(t, `{"SDKs":{"test":{"SDKKey":"`+sdkClient.sdkCtx.SDKConf.Key+`"}},"Options":{"PollInterval":60,"DataGovernance":"global"}}`, cached)
 }

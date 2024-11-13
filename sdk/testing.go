@@ -90,7 +90,7 @@ func NewTestAutoRegistrarWithAutoConfig(t *testing.T, autoConf config.AutoSDKCon
 }
 
 func NewTestAutoRegistrarWithCache(t *testing.T, cachePoll int, cache store.Cache, logger log.Logger) AutoRegistrar {
-	conf := config.Config{AutoSDK: config.AutoSDKConfig{Key: "test-reg", PollInterval: 60, Log: config.LogConfig{Level: "debug"}}, GlobalOfflineConfig: config.GlobalOfflineConfig{
+	conf := config.Config{AutoSDK: config.AutoSDKConfig{Key: "test-reg", PollInterval: 60}, GlobalOfflineConfig: config.GlobalOfflineConfig{
 		CachePollInterval: cachePoll,
 		Enabled:           true,
 	}}
