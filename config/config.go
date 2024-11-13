@@ -64,6 +64,7 @@ type AutoSDKConfig struct {
 	Key          string
 	Secret       string
 	BaseUrl      string `yaml:"base_url"`
+	SdkBaseUrl   string `yaml:"sdk_base_url"`
 	PollInterval int    `yaml:"poll_interval"`
 	Log          LogConfig
 }

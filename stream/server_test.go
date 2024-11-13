@@ -1,14 +1,14 @@
 package stream
 
 import (
-	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/log"
+	"github.com/configcat/configcat-proxy/sdk"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
 func TestServer_GetStreamOrNil(t *testing.T) {
-	reg, _, _ := testutils.NewTestRegistrarT(t)
+	reg, _, _ := sdk.NewTestRegistrarT(t)
 	srv := NewServer(reg, nil, log.NewNullLogger(), "test").(*server)
 
 	str := srv.GetStreamOrNil("test")

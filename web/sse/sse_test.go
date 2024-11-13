@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/base64"
 	"github.com/configcat/configcat-proxy/config"
-	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/log"
+	"github.com/configcat/configcat-proxy/sdk"
 	"github.com/configcat/go-sdk/v9/configcattest"
 	"github.com/julienschmidt/httprouter"
 	"github.com/stretchr/testify/assert"
@@ -79,7 +79,7 @@ func TestSSE_NonExisting_Flag(t *testing.T) {
 }
 
 func TestSSE_SDK_InvalidState(t *testing.T) {
-	reg := testutils.NewTestRegistrar(&config.SDKConfig{BaseUrl: "http://localhost", Key: configcattest.RandomSDKKey()}, nil)
+	reg := sdk.NewTestRegistrar(&config.SDKConfig{BaseUrl: "http://localhost", Key: configcattest.RandomSDKKey()}, nil)
 	defer reg.Close()
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -213,6 +213,6 @@ func TestSSE_Get_All_User_Invalid(t *testing.T) {
 }
 
 func newServer(t *testing.T, conf *config.SseConfig) *Server {
-	reg, _, _ := testutils.NewTestRegistrarT(t)
+	reg, _, _ := sdk.NewTestRegistrarT(t)
 	return NewServer(reg, nil, conf, log.NewNullLogger())
 }

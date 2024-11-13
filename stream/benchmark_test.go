@@ -3,9 +3,9 @@ package stream
 import (
 	"fmt"
 	"github.com/configcat/configcat-proxy/config"
-	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/model"
+	"github.com/configcat/configcat-proxy/sdk"
 	"github.com/configcat/go-sdk/v9/configcattest"
 	"net/http/httptest"
 	"strconv"
@@ -23,7 +23,7 @@ func BenchmarkStream(b *testing.B) {
 	srv := httptest.NewServer(&h)
 	defer srv.Close()
 
-	reg := testutils.NewTestRegistrar(&config.SDKConfig{BaseUrl: srv.URL, Key: key}, nil)
+	reg := sdk.NewTestRegistrar(&config.SDKConfig{BaseUrl: srv.URL, Key: key}, nil)
 	defer reg.Close()
 
 	strServer := NewServer(reg, nil, log.NewNullLogger(), "test").(*server)

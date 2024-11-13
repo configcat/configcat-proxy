@@ -107,6 +107,30 @@ func TestReporter_Online(t *testing.T) {
 		assert.Equal(t, NA, stat.Cache.Status)
 		assert.Equal(t, 0, len(stat.Cache.Records))
 	})
+	t.Run("1 sdk, ok then remove", func(t *testing.T) {
+		reporter := NewEmptyReporter()
+		reporter.RegisterSdk("t1", &config.SDKConfig{})
+		srv := httptest.NewServer(reporter.HttpHandler())
+		reporter.ReportOk("t1", "")
+		stat := readStatus(srv.URL)
+
+		assert.Equal(t, Healthy, stat.Status)
+		assert.Equal(t, 1, len(stat.SDKs))
+		assert.Equal(t, Healthy, stat.SDKs["t1"].Source.Status)
+		assert.Equal(t, Online, stat.SDKs["t1"].Mode)
+		assert.Equal(t, 1, len(stat.SDKs["t1"].Source.Records))
+		assert.Equal(t, RemoteSrc, stat.SDKs["t1"].Source.Type)
+		assert.Equal(t, NA, stat.Cache.Status)
+		assert.Equal(t, 0, len(stat.Cache.Records))
+
+		reporter.RemoveSdk("t1")
+		stat = readStatus(srv.URL)
+
+		assert.Equal(t, Down, stat.Status)
+		assert.Equal(t, 0, len(stat.SDKs))
+		assert.Equal(t, NA, stat.Cache.Status)
+		assert.Equal(t, 0, len(stat.Cache.Records))
+	})
 	t.Run("max 5 records", func(t *testing.T) {
 		reporter := NewEmptyReporter()
 		reporter.RegisterSdk("t", &config.SDKConfig{})

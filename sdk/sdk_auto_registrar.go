@@ -9,8 +9,9 @@ import (
 	"github.com/configcat/configcat-proxy/diag/status"
 	"github.com/configcat/configcat-proxy/internal/utils"
 	"github.com/configcat/configcat-proxy/log"
+	"github.com/configcat/configcat-proxy/model"
 	"github.com/configcat/configcat-proxy/pubsub"
-	configcat "github.com/configcat/go-sdk/v9"
+	"github.com/configcat/configcat-proxy/sdk/store"
 	"github.com/puzpuzpuz/xsync/v3"
 	"io"
 	"net/http"
@@ -19,27 +20,14 @@ import (
 )
 
 type AutoRegistrar interface {
+	Refresh()
 	pubsub.SubscriptionHandler[string]
 	Registrar
 }
 
-type proxyConfigModel struct {
-	SDKs    map[string]*sdkConfigModel
-	Options optionsModel
-}
-
-type optionsModel struct {
-	PollInterval   int
-	BaseUrl        string
-	DataGovernance string
-}
-
-type sdkConfigModel struct {
-	SDKKey string
-}
-
 type autoRegistrar struct {
-	options         *optionsModel
+	refreshChan     chan struct{}
+	options         *model.OptionsModel
 	cacheKey        string
 	sdkClients      *xsync.MapOf[string, Client]
 	httpClient      *http.Client
@@ -48,13 +36,13 @@ type autoRegistrar struct {
 	conf            *config.Config
 	metricsReporter metrics.Reporter
 	statusReporter  status.Reporter
-	externalCache   configcat.ConfigCache
+	cache           store.Cache
 	log             log.Logger
 	poller          *time.Ticker
 	pubsub.Publisher[string]
 }
 
-func newAutoRegistrar(conf *config.Config, metricsReporter metrics.Reporter, statusReporter status.Reporter, externalCache configcat.ConfigCache, log log.Logger) (*autoRegistrar, error) {
+func newAutoRegistrar(conf *config.Config, metricsReporter metrics.Reporter, statusReporter status.Reporter, cache store.Cache, log log.Logger) (*autoRegistrar, error) {
 	regLog := log.WithPrefix("auto-sdk-registrar").WithLevel(conf.AutoSDK.Log.GetLevel())
 	var transport = http.DefaultTransport.(*http.Transport)
 	if !conf.GlobalOfflineConfig.Enabled && conf.HttpProxy.Url != "" {
@@ -68,11 +56,12 @@ func newAutoRegistrar(conf *config.Config, metricsReporter metrics.Reporter, sta
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	registrar := &autoRegistrar{
+		refreshChan:     make(chan struct{}),
 		conf:            conf,
 		sdkClients:      xsync.NewMapOf[string, Client](),
 		metricsReporter: metricsReporter,
 		statusReporter:  statusReporter,
-		externalCache:   externalCache,
+		cache:           cache,
 		log:             regLog,
 		Publisher:       pubsub.NewPublisher[string](),
 		httpClient: &http.Client{
@@ -105,13 +94,14 @@ func newAutoRegistrar(conf *config.Config, metricsReporter metrics.Reporter, sta
 	}
 	registrar.poller = time.NewTicker(interval)
 	go registrar.run()
-
 	return registrar, nil
 }
 
 func (r *autoRegistrar) GetSdkOrNil(sdkId string) Client {
-	sdk, _ := r.sdkClients.Load(sdkId)
-	return sdk
+	if sdk, ok := r.sdkClients.Load(sdkId); ok {
+		return sdk
+	}
+	return nil
 }
 
 func (r *autoRegistrar) GetAll() map[string]Client {
@@ -121,6 +111,15 @@ func (r *autoRegistrar) GetAll() map[string]Client {
 		return true
 	})
 	return all
+}
+
+func (r *autoRegistrar) Refresh() {
+	select {
+	case <-r.ctx.Done():
+		return
+	default:
+		r.refreshChan <- struct{}{}
+	}
 }
 
 func (r *autoRegistrar) Close() {
@@ -141,36 +140,42 @@ func (r *autoRegistrar) run() {
 	for {
 		select {
 		case <-r.poller.C:
-			autoConfig, err := r.getConfig(r.ctx)
-			if err != nil {
-				r.log.Errorf("%v", err)
-			} else {
-				existingKeys := utils.KeysOfSyncMap(r.sdkClients)
-				remoteKeys := utils.KeysOfMap(autoConfig.SDKs)
-
-				toAddKeys := utils.Except(remoteKeys, existingKeys)
-				toDeleteKeys := utils.Except(existingKeys, remoteKeys)
-
-				r.deleteSdkClients(toDeleteKeys)
-				if r.shouldUpdateOptions(&autoConfig.Options) {
-					r.options = &autoConfig.Options
-					resetKeys := utils.Except(remoteKeys, toAddKeys)
-					r.resetSdkClients(resetKeys, autoConfig)
-				}
-				r.addSdkClients(toAddKeys, autoConfig)
-			}
+			r.refreshConfig()
+		case <-r.refreshChan:
+			r.refreshConfig()
 		case <-r.ctx.Done():
 			return
 		}
 	}
 }
 
-func (r *autoRegistrar) getConfig(ctx context.Context) (*proxyConfigModel, error) {
+func (r *autoRegistrar) refreshConfig() {
+	autoConfig, err := r.getConfig(r.ctx)
+	if err != nil {
+		r.log.Errorf("%v", err)
+	} else {
+		existingKeys := utils.KeysOfSyncMap(r.sdkClients)
+		remoteKeys := utils.KeysOfMap(autoConfig.SDKs)
+
+		toAddKeys := utils.Except(remoteKeys, existingKeys)
+		toDeleteKeys := utils.Except(existingKeys, remoteKeys)
+
+		r.deleteSdkClients(toDeleteKeys)
+		if r.shouldUpdateOptions(&autoConfig.Options) {
+			r.options = &autoConfig.Options
+			resetKeys := utils.Except(remoteKeys, toAddKeys)
+			r.resetSdkClients(resetKeys, autoConfig)
+		}
+		r.addSdkClients(toAddKeys, autoConfig)
+	}
+}
+
+func (r *autoRegistrar) getConfig(ctx context.Context) (*model.ProxyConfigModel, error) {
 	if r.conf.GlobalOfflineConfig.Enabled {
-		if r.externalCache == nil {
+		if r.cache == nil {
 			return nil, fmt.Errorf("could not load auto sdk configuration: offline mode is enabled without an external cache")
 		}
-		cached, err := r.externalCache.Get(ctx, r.cacheKey)
+		cached, err := r.cache.Get(ctx, r.cacheKey)
 		if err != nil {
 			return nil, fmt.Errorf("could not read a valid auto sdk configuration from cache: %v", err)
 		}
@@ -181,11 +186,11 @@ func (r *autoRegistrar) getConfig(ctx context.Context) (*proxyConfigModel, error
 	}
 	fetched, err := r.fetchConfig(ctx)
 	if err != nil {
-		if r.externalCache == nil {
+		if r.cache == nil {
 			return nil, err
 		}
 		r.log.Errorf("could not fetch auto sdk configuration, falling back to cache: %v", err)
-		cached, err := r.externalCache.Get(ctx, r.cacheKey)
+		cached, err := r.cache.Get(ctx, r.cacheKey)
 		if err != nil {
 			return nil, fmt.Errorf("could not read a valid auto sdk configuration from cache: %v", err)
 		}
@@ -194,8 +199,8 @@ func (r *autoRegistrar) getConfig(ctx context.Context) (*proxyConfigModel, error
 		}
 		return r.parseConfig(cached)
 	}
-	if r.externalCache != nil {
-		err = r.externalCache.Set(ctx, r.cacheKey, fetched)
+	if r.cache != nil {
+		err = r.cache.Set(ctx, r.cacheKey, fetched)
 		if err != nil {
 			r.log.Errorf("could not write the auto sdk configuration to cache: %v", err)
 		}
@@ -203,8 +208,8 @@ func (r *autoRegistrar) getConfig(ctx context.Context) (*proxyConfigModel, error
 	return r.parseConfig(fetched)
 }
 
-func (r *autoRegistrar) parseConfig(body []byte) (*proxyConfigModel, error) {
-	parsed := proxyConfigModel{}
+func (r *autoRegistrar) parseConfig(body []byte) (*model.ProxyConfigModel, error) {
+	parsed := model.ProxyConfigModel{}
 	if err := json.Unmarshal(body, &parsed); err != nil {
 		return nil, fmt.Errorf("error during parsing auto sdk configuration: %v", err)
 	}
@@ -239,9 +244,9 @@ func (r *autoRegistrar) fetchConfig(ctx context.Context) ([]byte, error) {
 	return body, nil
 }
 
-func (r *autoRegistrar) buildSdkConfig(sdkId string, sdkModel *sdkConfigModel) *config.SDKConfig {
+func (r *autoRegistrar) buildSdkConfig(sdkId string, sdkModel *model.SdkConfigModel) *config.SDKConfig {
 	sdkConfig := &config.SDKConfig{
-		BaseUrl:        r.options.BaseUrl,
+		BaseUrl:        r.conf.AutoSDK.SdkBaseUrl,
 		Key:            sdkModel.SDKKey,
 		PollInterval:   r.options.PollInterval,
 		DataGovernance: r.options.DataGovernance,
@@ -269,7 +274,7 @@ func (r *autoRegistrar) buildSdkClient(sdkId string, sdkConfig *config.SDKConfig
 		ProxyConf:          &r.conf.HttpProxy,
 		GlobalDefaultAttrs: r.conf.DefaultAttrs,
 		SdkId:              sdkId,
-		ExternalCache:      r.externalCache,
+		ExternalCache:      r.cache,
 	}, r.log)
 }
 
@@ -289,7 +294,7 @@ func (r *autoRegistrar) deleteSdkClients(sdkIds []string) {
 	}
 }
 
-func (r *autoRegistrar) addSdkClients(sdkIds []string, config *proxyConfigModel) {
+func (r *autoRegistrar) addSdkClients(sdkIds []string, config *model.ProxyConfigModel) {
 	if len(sdkIds) == 0 {
 		r.log.Debugf("no SDK clients to add")
 		return
@@ -309,7 +314,7 @@ func (r *autoRegistrar) addSdkClients(sdkIds []string, config *proxyConfigModel)
 	}
 }
 
-func (r *autoRegistrar) resetSdkClients(sdkIds []string, config *proxyConfigModel) {
+func (r *autoRegistrar) resetSdkClients(sdkIds []string, config *model.ProxyConfigModel) {
 	if len(sdkIds) == 0 {
 		r.log.Debugf("no SDK clients to reset")
 		return
@@ -328,8 +333,7 @@ func (r *autoRegistrar) resetSdkClients(sdkIds []string, config *proxyConfigMode
 	}
 }
 
-func (r *autoRegistrar) shouldUpdateOptions(options *optionsModel) bool {
-	return r.options.BaseUrl != options.BaseUrl ||
-		r.options.PollInterval != options.PollInterval ||
+func (r *autoRegistrar) shouldUpdateOptions(options *model.OptionsModel) bool {
+	return r.options.PollInterval != options.PollInterval ||
 		r.options.DataGovernance != options.DataGovernance
 }

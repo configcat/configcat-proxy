@@ -2,10 +2,10 @@ package stream
 
 import (
 	"github.com/configcat/configcat-proxy/config"
-	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/internal/utils"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/model"
+	"github.com/configcat/configcat-proxy/sdk"
 	"github.com/configcat/go-sdk/v9/configcattest"
 	"github.com/stretchr/testify/assert"
 	"net/http/httptest"
@@ -27,7 +27,7 @@ func TestStreamServer_Load(t *testing.T) {
 	srv := httptest.NewServer(&h)
 	defer srv.Close()
 
-	reg := testutils.NewTestRegistrar(&config.SDKConfig{BaseUrl: srv.URL, Key: key}, nil)
+	reg := sdk.NewTestRegistrar(&config.SDKConfig{BaseUrl: srv.URL, Key: key}, nil)
 	defer reg.Close()
 
 	strServer := NewServer(reg, nil, log.NewNullLogger(), "test").(*server)

@@ -5,7 +5,7 @@ import (
 	"github.com/configcat/configcat-proxy/diag/metrics"
 	"github.com/configcat/configcat-proxy/diag/status"
 	"github.com/configcat/configcat-proxy/log"
-	configcat "github.com/configcat/go-sdk/v9"
+	"github.com/configcat/configcat-proxy/sdk/store"
 )
 
 type Registrar interface {
@@ -18,7 +18,7 @@ type manualRegistrar struct {
 	sdkClients map[string]Client
 }
 
-func NewRegistrar(conf *config.Config, metricsReporter metrics.Reporter, statusReporter status.Reporter, externalCache configcat.ConfigCache, log log.Logger) (Registrar, error) {
+func NewRegistrar(conf *config.Config, metricsReporter metrics.Reporter, statusReporter status.Reporter, externalCache store.Cache, log log.Logger) (Registrar, error) {
 	if conf.AutoSDK.IsSet() {
 		return newAutoRegistrar(conf, metricsReporter, statusReporter, externalCache, log)
 	} else {
@@ -26,7 +26,7 @@ func NewRegistrar(conf *config.Config, metricsReporter metrics.Reporter, statusR
 	}
 }
 
-func newManualRegistrar(conf *config.Config, metricsReporter metrics.Reporter, statusReporter status.Reporter, externalCache configcat.ConfigCache, log log.Logger) (*manualRegistrar, error) {
+func newManualRegistrar(conf *config.Config, metricsReporter metrics.Reporter, statusReporter status.Reporter, externalCache store.Cache, log log.Logger) (*manualRegistrar, error) {
 	sdkClients := make(map[string]Client, len(conf.SDKs))
 	for key, sdkConf := range conf.SDKs {
 		statusReporter.RegisterSdk(key, sdkConf)

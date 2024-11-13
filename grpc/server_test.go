@@ -4,9 +4,9 @@ import (
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/diag/metrics"
 	"github.com/configcat/configcat-proxy/diag/status"
-	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/internal/utils"
 	"github.com/configcat/configcat-proxy/log"
+	"github.com/configcat/configcat-proxy/sdk"
 	"github.com/configcat/go-sdk/v9/configcattest"
 	"github.com/stretchr/testify/assert"
 	"net/http/httptest"
@@ -30,7 +30,7 @@ func TestNewServer(t *testing.T) {
 	defer sdkSrv.Close()
 
 	sdkConf := config.SDKConfig{BaseUrl: sdkSrv.URL, Key: key, PollInterval: 1}
-	reg := testutils.NewTestRegistrar(&sdkConf, nil)
+	reg := sdk.NewTestRegistrar(&sdkConf, nil)
 	conf := config.Config{Grpc: config.GrpcConfig{Port: 5061, HealthCheckEnabled: true, ServerReflectionEnabled: true, KeepAlive: config.KeepAliveConfig{Timeout: 10}}, SDKs: map[string]*config.SDKConfig{key: &sdkConf}}
 	defer reg.Close()
 
@@ -116,7 +116,7 @@ MK4Li/LGWcksyoF+hbPNXMFCIA==
 			defer sdkSrv.Close()
 
 			sdkConf := config.SDKConfig{BaseUrl: sdkSrv.URL, Key: key, PollInterval: 1}
-			reg := testutils.NewTestRegistrar(&sdkConf, nil)
+			reg := sdk.NewTestRegistrar(&sdkConf, nil)
 			conf := config.Config{Grpc: config.GrpcConfig{Port: 5062}, Tls: tlsConf, SDKs: map[string]*config.SDKConfig{key: &sdkConf}}
 			defer reg.Close()
 
@@ -157,7 +157,7 @@ func TestNewServer_TLS_Missing_Cert(t *testing.T) {
 	defer sdkSrv.Close()
 
 	sdkConf := config.SDKConfig{BaseUrl: sdkSrv.URL, Key: key, PollInterval: 1}
-	reg := testutils.NewTestRegistrar(&sdkConf, nil)
+	reg := sdk.NewTestRegistrar(&sdkConf, nil)
 	conf := config.Config{Grpc: config.GrpcConfig{Port: 5063}, Tls: tlsConf, SDKs: map[string]*config.SDKConfig{key: &sdkConf}}
 	defer reg.Close()
 

@@ -3,6 +3,7 @@ package stream
 import (
 	"github.com/configcat/configcat-proxy/diag/metrics"
 	"github.com/configcat/configcat-proxy/log"
+	"github.com/configcat/configcat-proxy/pubsub"
 	"github.com/configcat/configcat-proxy/sdk"
 	"github.com/puzpuzpuz/xsync/v3"
 )
@@ -36,7 +37,7 @@ func NewServer(sdkRegistrar sdk.Registrar, metrics metrics.Reporter, log log.Log
 		serverType:   serverType,
 		stop:         make(chan struct{}),
 	}
-	if autoRegistrar, ok := sdkRegistrar.(sdk.AutoRegistrar); ok {
+	if autoRegistrar, ok := sdkRegistrar.(pubsub.SubscriptionHandler[string]); ok {
 		srv.sdkChanged = make(chan string, 1)
 		autoRegistrar.Subscribe(srv.sdkChanged)
 		go srv.run()
@@ -77,7 +78,7 @@ func (s *server) GetStreamOrNil(sdkId string) Stream {
 
 func (s *server) Close() {
 	close(s.stop)
-	if autoRegistrar, ok := s.sdkRegistrar.(sdk.AutoRegistrar); ok {
+	if autoRegistrar, ok := s.sdkRegistrar.(pubsub.SubscriptionHandler[string]); ok {
 		autoRegistrar.Unsubscribe(s.sdkChanged)
 	}
 	s.streams.Range(func(key string, value Stream) bool {

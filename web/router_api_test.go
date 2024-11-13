@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/diag/status"
-	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/log"
+	"github.com/configcat/configcat-proxy/sdk"
 	"github.com/stretchr/testify/assert"
 	"io"
 	"net/http"
@@ -425,6 +425,6 @@ func TestAPI_Refresh_Headers(t *testing.T) {
 }
 
 func newAPIRouter(t *testing.T, conf config.ApiConfig) *HttpRouter {
-	reg, _, _ := testutils.NewTestRegistrarT(t)
+	reg, _, _ := sdk.NewTestRegistrarT(t)
 	return NewRouter(reg, nil, status.NewEmptyReporter(), &config.HttpConfig{Api: conf}, log.NewNullLogger())
 }

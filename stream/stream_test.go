@@ -2,7 +2,6 @@ package stream
 
 import (
 	"github.com/configcat/configcat-proxy/config"
-	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/internal/utils"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/model"
@@ -16,7 +15,7 @@ import (
 )
 
 func TestStream_Receive(t *testing.T) {
-	clients, h, key := testutils.NewTestSdkClient(t)
+	clients, h, key := sdk.NewTestSdkClient(t)
 
 	str := NewStream("test", clients["test"], nil, log.NewNullLogger(), "test")
 	defer str.Close()
@@ -52,7 +51,7 @@ func TestStream_Receive(t *testing.T) {
 
 func TestStream_Offline_Receive(t *testing.T) {
 	utils.UseTempFile(`{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true},"t":0}}}`, func(path string) {
-		ctx := testutils.NewTestSdkContext(&config.SDKConfig{Key: "key", Offline: config.OfflineConfig{Enabled: true, Local: config.LocalConfig{FilePath: path}}}, nil)
+		ctx := sdk.NewTestSdkContext(&config.SDKConfig{Key: "key", Offline: config.OfflineConfig{Enabled: true, Local: config.LocalConfig{FilePath: path}}}, nil)
 		client := sdk.NewClient(ctx, log.NewNullLogger())
 		defer client.Close()
 
@@ -82,7 +81,7 @@ func TestStream_Offline_Receive(t *testing.T) {
 }
 
 func TestStream_Receive_Close(t *testing.T) {
-	clients, _, _ := testutils.NewTestSdkClient(t)
+	clients, _, _ := sdk.NewTestSdkClient(t)
 
 	str := NewStream("test", clients["test"], nil, log.NewNullLogger(), "test")
 	sConn := str.CreateConnection("flag", nil)
@@ -113,7 +112,7 @@ func TestStream_IsInValidState_True(t *testing.T) {
 	srv := httptest.NewServer(&h)
 	defer srv.Close()
 
-	ctx := testutils.NewTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key}, nil)
+	ctx := sdk.NewTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key}, nil)
 	client := sdk.NewClient(ctx, log.NewNullLogger())
 	defer client.Close()
 
@@ -122,7 +121,7 @@ func TestStream_IsInValidState_True(t *testing.T) {
 }
 
 func TestStream_IsInValidState_False(t *testing.T) {
-	ctx := testutils.NewTestSdkContext(&config.SDKConfig{BaseUrl: "http://localhost", Key: configcattest.RandomSDKKey()}, nil)
+	ctx := sdk.NewTestSdkContext(&config.SDKConfig{BaseUrl: "http://localhost", Key: configcattest.RandomSDKKey()}, nil)
 	client := sdk.NewClient(ctx, log.NewNullLogger())
 	defer client.Close()
 
@@ -131,7 +130,7 @@ func TestStream_IsInValidState_False(t *testing.T) {
 }
 
 func TestStream_Goroutines(t *testing.T) {
-	clients, _, _ := testutils.NewTestSdkClient(t)
+	clients, _, _ := sdk.NewTestSdkClient(t)
 
 	str := NewStream("test", clients["test"], nil, log.NewNullLogger(), "test")
 	defer str.Close()

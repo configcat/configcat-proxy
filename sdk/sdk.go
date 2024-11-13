@@ -47,7 +47,7 @@ type Context struct {
 	MetricsReporter    metrics.Reporter
 	StatusReporter     status.Reporter
 	EvalReporter       statistics.Reporter
-	ExternalCache      configcat.ConfigCache
+	ExternalCache      store.Cache
 }
 
 type client struct {
@@ -68,7 +68,7 @@ func NewClient(sdkCtx *Context, log log.Logger) Client {
 
 	offline := sdkCtx.SDKConf.Offline.Enabled
 	key := sdkCtx.SDKConf.Key
-	var storage configcat.ConfigCache
+	var storage store.Cache
 	if offline && sdkCtx.SDKConf.Offline.Local.FilePath != "" {
 		key = validEmptySdkKey
 		storage = file.NewFileStore(sdkCtx.SdkId, &sdkCtx.SDKConf.Offline.Local, sdkCtx.StatusReporter, log.WithLevel(sdkCtx.SDKConf.Offline.Log.GetLevel()))
@@ -151,6 +151,7 @@ func NewClient(sdkCtx *Context, log log.Logger) Client {
 	if notifier, ok := storage.(store.NotifyingStore); ok {
 		go client.listen(notifier)
 	}
+	sdkLog.Reportf("started")
 	return client
 }
 

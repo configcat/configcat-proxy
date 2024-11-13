@@ -6,7 +6,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"github.com/configcat/configcat-proxy/config"
-	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/internal/utils"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/sdk"
@@ -27,7 +26,7 @@ func TestWebhook_Signature_Bad(t *testing.T) {
 	t.Run("headers missing", func(t *testing.T) {
 		res := httptest.NewRecorder()
 		req := http.Request{Method: http.MethodGet}
-		testutils.AddSdkIdContextParam(&req)
+		utils.AddSdkIdContextParam(&req)
 		srv.ServeHTTP(res, &req)
 		assert.Equal(t, http.StatusBadRequest, res.Code)
 	})
@@ -37,7 +36,7 @@ func TestWebhook_Signature_Bad(t *testing.T) {
 		req.Header.Set("X-ConfigCat-Webhook-Signature-V1", "wrong")
 		req.Header.Set("X-ConfigCat-Webhook-ID", "1")
 		req.Header.Set("X-ConfigCat-Webhook-Timestamp", strconv.FormatInt(time.Now().Unix(), 10))
-		testutils.AddSdkIdContextParam(req)
+		utils.AddSdkIdContextParam(req)
 		srv.ServeHTTP(res, req)
 		assert.Equal(t, http.StatusBadRequest, res.Code)
 	})
@@ -47,7 +46,7 @@ func TestWebhook_Signature_Bad(t *testing.T) {
 		req.Header.Set("X-ConfigCat-Webhook-Signature-V1", "wrong")
 		req.Header.Set("X-ConfigCat-Webhook-ID", "1")
 		req.Header.Set("X-ConfigCat-Webhook-Timestamp", strconv.FormatInt(time.Now().Unix(), 10))
-		testutils.AddSdkIdContextParam(req)
+		utils.AddSdkIdContextParam(req)
 		srv.ServeHTTP(res, req)
 		assert.Equal(t, http.StatusBadRequest, res.Code)
 	})
@@ -69,7 +68,7 @@ func TestWebhook_Signature_Ok(t *testing.T) {
 		req.Header.Set("X-ConfigCat-Webhook-Signature-V1", signature)
 		req.Header.Set("X-ConfigCat-Webhook-ID", id)
 		req.Header.Set("X-ConfigCat-Webhook-Timestamp", timestamp)
-		testutils.AddSdkIdContextParam(req)
+		utils.AddSdkIdContextParam(req)
 		sub := make(chan struct{})
 		reg.GetSdkOrNil("test").Subscribe(sub)
 		utils.WithTimeout(2*time.Second, func() {
@@ -98,7 +97,7 @@ func TestWebhook_Signature_Ok(t *testing.T) {
 		req.Header.Set("X-ConfigCat-Webhook-Signature-V1", signature)
 		req.Header.Set("X-ConfigCat-Webhook-ID", id)
 		req.Header.Set("X-ConfigCat-Webhook-Timestamp", timestamp)
-		testutils.AddSdkIdContextParam(req)
+		utils.AddSdkIdContextParam(req)
 		sub := make(chan struct{})
 		reg.GetSdkOrNil("test").Subscribe(sub)
 		utils.WithTimeout(2*time.Second, func() {
@@ -129,7 +128,7 @@ func TestWebhook_Signature_Replay_Reject(t *testing.T) {
 	req.Header.Set("X-ConfigCat-Webhook-Signature-V1", signature)
 	req.Header.Set("X-ConfigCat-Webhook-ID", id)
 	req.Header.Set("X-ConfigCat-Webhook-Timestamp", timestamp)
-	testutils.AddSdkIdContextParam(req)
+	utils.AddSdkIdContextParam(req)
 	time.Sleep(2100 * time.Millisecond) // expire timestamp
 	srv.ServeHTTP(res, req)
 	assert.Equal(t, http.StatusBadRequest, res.Code)
@@ -140,7 +139,7 @@ func newRegistrar(t *testing.T, signingKey string, validFor int) (sdk.Registrar,
 	var h = &configcattest.Handler{}
 	_ = h.SetFlags(key, map[string]*configcattest.Flag{"flag": {Default: true}})
 	srv := httptest.NewServer(h)
-	reg := testutils.NewTestRegistrar(&config.SDKConfig{BaseUrl: srv.URL, Key: key, WebhookSigningKey: signingKey, WebhookSignatureValidFor: validFor}, nil)
+	reg := sdk.NewTestRegistrar(&config.SDKConfig{BaseUrl: srv.URL, Key: key, WebhookSigningKey: signingKey, WebhookSignatureValidFor: validFor}, nil)
 	t.Cleanup(func() {
 		srv.Close()
 		reg.Close()

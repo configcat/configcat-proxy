@@ -10,8 +10,10 @@ func (c *Config) Validate() error {
 	if len(c.SDKs) == 0 && !c.AutoSDK.IsSet() {
 		return fmt.Errorf("sdk: at least 1 SDK must be configured")
 	}
-	if c.AutoSDK.IsSet() && c.AutoSDK.PollInterval < 30 {
-		return fmt.Errorf("sdk: auto configuration poll interval cannot be less than 30 seconds")
+	if c.AutoSDK.IsSet() {
+		if err := c.AutoSDK.validate(); err != nil {
+			return err
+		}
 	}
 	for id, conf := range c.SDKs {
 		if err := conf.validate(&c.Cache, id); err != nil {
@@ -199,6 +201,13 @@ func (d *DiagConfig) validate() error {
 func (g *GrpcConfig) validate() error {
 	if g.Port < 1 || g.Port > 65535 {
 		return fmt.Errorf("grpc: invalid port %d", g.Port)
+	}
+	return nil
+}
+
+func (a *AutoSDKConfig) validate() error {
+	if a.PollInterval < 30 {
+		return fmt.Errorf("sdk: auto configuration poll interval cannot be less than 30 seconds")
 	}
 	return nil
 }
