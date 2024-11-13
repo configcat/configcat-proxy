@@ -164,3 +164,44 @@ func TestStream_Goroutines(t *testing.T) {
 
 	assert.Equal(t, count, runtime.NumGoroutine())
 }
+
+func TestStream_ResetSdk(t *testing.T) {
+	key := configcattest.RandomSDKKey()
+	var h configcattest.Handler
+	_ = h.SetFlags(key, map[string]*configcattest.Flag{
+		"flag": {
+			Default: true,
+		},
+	})
+	srv := httptest.NewServer(&h)
+	defer srv.Close()
+
+	ctx := sdk.NewTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key}, nil)
+	client := sdk.NewClient(ctx, log.NewNullLogger())
+	defer client.Close()
+
+	str := NewStream("test", client, nil, log.NewNullLogger(), "test").(*stream)
+
+	assert.Same(t, client, str.sdkClient.Load())
+
+	key2 := configcattest.RandomSDKKey()
+	_ = h.SetFlags(key2, map[string]*configcattest.Flag{
+		"flag": {
+			Default: true,
+		},
+	})
+
+	ctx2 := sdk.NewTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key2}, nil)
+	client2 := sdk.NewClient(ctx2, log.NewNullLogger())
+	defer client2.Close()
+
+	str.ResetSdk(client2)
+
+	assert.NotSame(t, client, str.sdkClient.Load())
+	assert.Same(t, client2, str.sdkClient.Load())
+
+	str.Close()
+
+	// ensure stream is closed
+	<-str.Closed()
+}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"github.com/configcat/configcat-proxy/config"
+	"github.com/configcat/configcat-proxy/internal/utils"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/sdk"
 	"github.com/configcat/go-sdk/v9/configcattest"
@@ -20,7 +21,6 @@ func TestSSE_Get(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 
 	srv := newServer(t, &config.SseConfig{Enabled: true})
-	defer srv.Close()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
@@ -29,6 +29,33 @@ func TestSSE_Get(t *testing.T) {
 	ctx = context.WithValue(ctx, httprouter.ParamsKey, params)
 	req = req.WithContext(ctx)
 	srv.SingleFlag(res, req)
+
+	assert.Equal(t, http.StatusOK, res.Code)
+	// line breaks are intentional
+	assert.Equal(t, `data: {"value":true,"variationId":"v_flag"}
+
+`, res.Body.String())
+	assert.Equal(t, "text/event-stream", res.Header().Get("Content-Type"))
+	assert.Equal(t, "no-cache", res.Header().Get("Cache-Control"))
+	assert.Equal(t, "keep-alive", res.Header().Get("Connection"))
+}
+
+func TestSSE_Get_SdkRemoved(t *testing.T) {
+	res := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	srv, h := newServerWithAutoRegistrar(t, &config.SseConfig{Enabled: true})
+
+	data := base64.URLEncoding.EncodeToString([]byte(`{"key":"flag"}`))
+	params := httprouter.Params{httprouter.Param{Key: streamDataName, Value: data}, httprouter.Param{Key: "sdkId", Value: "test"}}
+	ctx := context.WithValue(context.Background(), httprouter.ParamsKey, params)
+	req = req.WithContext(ctx)
+
+	// the removal closes the connection, so it won't block indefinitely
+	h.RemoveSdk("test")
+	utils.WithTimeout(5*time.Second, func() {
+		srv.SingleFlag(res, req)
+	})
 
 	assert.Equal(t, http.StatusOK, res.Code)
 	// line breaks are intentional
@@ -128,6 +155,33 @@ func TestSSE_Get_All(t *testing.T) {
 	assert.Equal(t, "keep-alive", res.Header().Get("Connection"))
 }
 
+func TestSSE_Get_All_SdkRemoved(t *testing.T) {
+	res := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	srv, h := newServerWithAutoRegistrar(t, &config.SseConfig{Enabled: true})
+
+	data := base64.URLEncoding.EncodeToString([]byte(`{"key":"flag"}`))
+	params := httprouter.Params{httprouter.Param{Key: streamDataName, Value: data}, httprouter.Param{Key: "sdkId", Value: "test"}}
+	ctx := context.WithValue(context.Background(), httprouter.ParamsKey, params)
+	req = req.WithContext(ctx)
+
+	// the removal closes the connection, so it won't block indefinitely
+	h.RemoveSdk("test")
+	utils.WithTimeout(5*time.Second, func() {
+		srv.AllFlags(res, req)
+	})
+
+	assert.Equal(t, http.StatusOK, res.Code)
+	// line breaks are intentional
+	assert.Equal(t, `data: {"flag":{"value":true,"variationId":"v_flag"}}
+
+`, res.Body.String())
+	assert.Equal(t, "text/event-stream", res.Header().Get("Content-Type"))
+	assert.Equal(t, "no-cache", res.Header().Get("Cache-Control"))
+	assert.Equal(t, "keep-alive", res.Header().Get("Connection"))
+}
+
 func TestSSE_Get_User(t *testing.T) {
 	res := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -214,5 +268,18 @@ func TestSSE_Get_All_User_Invalid(t *testing.T) {
 
 func newServer(t *testing.T, conf *config.SseConfig) *Server {
 	reg, _, _ := sdk.NewTestRegistrarT(t)
-	return NewServer(reg, nil, conf, log.NewNullLogger())
+	server := NewServer(reg, nil, conf, log.NewNullLogger())
+	t.Cleanup(func() {
+		server.Close()
+	})
+	return server
+}
+
+func newServerWithAutoRegistrar(t *testing.T, conf *config.SseConfig) (*Server, *sdk.TestSdkRegistrarHandler) {
+	reg, h := sdk.NewTestAutoRegistrarWithAutoConfig(t, config.AutoSDKConfig{PollInterval: 1}, log.NewNullLogger())
+	server := NewServer(reg, nil, conf, log.NewNullLogger())
+	t.Cleanup(func() {
+		server.Close()
+	})
+	return server, h
 }
