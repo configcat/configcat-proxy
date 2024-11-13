@@ -177,7 +177,7 @@ func TestAutoRegistrar_Cache_Poll(t *testing.T) {
 	autConfigCacheEntry, _ := json.Marshal(autoConfig)
 	_ = cache.Set("configcat-proxy-conf/test-reg", string(autConfigCacheEntry))
 
-	reg := NewTestAutoRegistrarWithCache(t, 1, extCache, log.NewDebugLogger())
+	reg := NewTestAutoRegistrarWithCache(t, 1, extCache, log.NewNullLogger())
 
 	sub := make(chan string)
 	reg.Subscribe(sub)
@@ -234,7 +234,7 @@ func TestAutoRegistrar_Cache_Refresh(t *testing.T) {
 	autConfigCacheEntry, _ := json.Marshal(autoConfig)
 	_ = cache.Set("configcat-proxy-conf/test-reg", string(autConfigCacheEntry))
 
-	reg := NewTestAutoRegistrarWithCache(t, 60, extCache, log.NewDebugLogger())
+	reg := NewTestAutoRegistrarWithCache(t, 60, extCache, log.NewNullLogger())
 
 	sub := make(chan string)
 	reg.Subscribe(sub)
@@ -292,8 +292,8 @@ func TestAutoRegistrar_Cache_When_Fail(t *testing.T) {
 	autConfigCacheEntry, _ := json.Marshal(autoConfig)
 	_ = cache.Set("configcat-proxy-conf/test-reg", string(autConfigCacheEntry))
 
-	conf := config.Config{AutoSDK: config.AutoSDKConfig{Key: "test-reg", PollInterval: 60, Log: config.LogConfig{Level: "debug"}}}
-	reg, _ := newAutoRegistrar(&conf, nil, status.NewEmptyReporter(), extCache, log.NewDebugLogger())
+	conf := config.Config{AutoSDK: config.AutoSDKConfig{Key: "test-reg", PollInterval: 60}}
+	reg, _ := newAutoRegistrar(&conf, nil, status.NewEmptyReporter(), extCache, log.NewNullLogger())
 	defer reg.Close()
 
 	sdkClient := reg.GetSdkOrNil("test").(*client)
@@ -309,8 +309,8 @@ func TestAutoRegistrar_Saves_To_Cache(t *testing.T) {
 	cache := miniredis.RunT(t)
 	extCache := newRedisCache(cache.Addr())
 
-	conf := config.Config{AutoSDK: config.AutoSDKConfig{Key: "test-reg", PollInterval: 60, Log: config.LogConfig{Level: "debug"}}}
-	reg, _ := NewTestAutoRegistrar(t, conf, extCache, log.NewDebugLogger())
+	conf := config.Config{AutoSDK: config.AutoSDKConfig{Key: "test-reg", PollInterval: 60}}
+	reg, _ := NewTestAutoRegistrar(t, conf, extCache, log.NewNullLogger())
 
 	sdkClient := reg.GetSdkOrNil("test").(*client)
 	assert.NotNil(t, sdkClient)
