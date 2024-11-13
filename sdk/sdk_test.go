@@ -417,6 +417,10 @@ func TestSdk_IsInValidState_EmptyCache_False(t *testing.T) {
 	assert.False(t, client.IsInValidState())
 }
 
+func TestVersion(t *testing.T) {
+	assert.Equal(t, "0.0.0", Version())
+}
+
 func newRedisCache(addr string) store.Cache {
 	c, _ := cache.SetupExternalCache(context.Background(), &config.CacheConfig{Redis: config.RedisConfig{Enabled: true, Addresses: []string{addr}}}, log.NewNullLogger())
 	return c
