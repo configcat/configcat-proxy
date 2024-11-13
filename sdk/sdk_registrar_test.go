@@ -1,10 +1,15 @@
 package sdk
 
 import (
+	"encoding/json"
+	"github.com/alicebob/miniredis/v2"
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/diag/status"
 	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/log"
+	"github.com/configcat/configcat-proxy/model"
+	"github.com/configcat/go-sdk/v9/configcatcache"
+	"github.com/configcat/go-sdk/v9/configcattest"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
@@ -48,4 +53,23 @@ func TestClient_Close(t *testing.T) {
 	testutils.WithTimeout(1*time.Second, func() {
 		<-c.ctx.Done()
 	})
+}
+
+func TestNewRegistrar(t *testing.T) {
+	cache := miniredis.RunT(t)
+	extCache := newRedisCache(cache.Addr())
+	sdkKey := configcattest.RandomSDKKey()
+	cacheKey := configcatcache.ProduceCacheKey(sdkKey, configcatcache.ConfigJSONName, configcatcache.ConfigJSONCacheVersion)
+	cacheEntry := configcatcache.CacheSegmentsToBytes(time.Now(), "etag", []byte(`{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true},"t":0}}}`))
+	_ = cache.Set(cacheKey, string(cacheEntry))
+	autoConfig := model.ProxyConfigModel{
+		SDKs: map[string]*model.SdkConfigModel{"test": {SDKKey: sdkKey}},
+	}
+	autConfigCacheEntry, _ := json.Marshal(autoConfig)
+	_ = cache.Set("configcat-proxy-conf/test-reg", string(autConfigCacheEntry))
+	reg, _ := NewRegistrar(&config.Config{
+		AutoSDK: config.AutoSDKConfig{Key: "test-reg", Secret: "secret", PollInterval: 60},
+	}, nil, status.NewEmptyReporter(), extCache, log.NewDebugLogger())
+	defer reg.Close()
+	assert.IsType(t, &autoRegistrar{}, reg)
 }
