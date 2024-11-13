@@ -2,7 +2,7 @@ package stream
 
 import (
 	"github.com/configcat/configcat-proxy/config"
-	"github.com/configcat/configcat-proxy/internal/utils"
+	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/model"
 	"github.com/configcat/configcat-proxy/sdk"
@@ -25,11 +25,11 @@ func TestStream_Receive(t *testing.T) {
 
 	sConn := str.CreateConnection("flag", nil)
 	aConn := str.CreateConnection(AllFlagsDiscriminator, nil)
-	utils.WithTimeout(2*time.Second, func() {
+	testutils.WithTimeout(2*time.Second, func() {
 		pyl := <-sConn.Receive()
 		assert.True(t, pyl.(*model.ResponsePayload).Value.(bool))
 	})
-	utils.WithTimeout(2*time.Second, func() {
+	testutils.WithTimeout(2*time.Second, func() {
 		pyl := <-aConn.Receive()
 		assert.True(t, pyl.(map[string]*model.ResponsePayload)["flag"].Value.(bool))
 	})
@@ -39,18 +39,18 @@ func TestStream_Receive(t *testing.T) {
 		},
 	})
 	_ = clients["test"].Refresh()
-	utils.WithTimeout(2*time.Second, func() {
+	testutils.WithTimeout(2*time.Second, func() {
 		pyl := <-sConn.Receive()
 		assert.False(t, pyl.(*model.ResponsePayload).Value.(bool))
 	})
-	utils.WithTimeout(2*time.Second, func() {
+	testutils.WithTimeout(2*time.Second, func() {
 		pyl := <-aConn.Receive()
 		assert.False(t, pyl.(map[string]*model.ResponsePayload)["flag"].Value.(bool))
 	})
 }
 
 func TestStream_Offline_Receive(t *testing.T) {
-	utils.UseTempFile(`{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true},"t":0}}}`, func(path string) {
+	testutils.UseTempFile(`{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true},"t":0}}}`, func(path string) {
 		ctx := sdk.NewTestSdkContext(&config.SDKConfig{Key: "key", Offline: config.OfflineConfig{Enabled: true, Local: config.LocalConfig{FilePath: path}}}, nil)
 		client := sdk.NewClient(ctx, log.NewNullLogger())
 		defer client.Close()
@@ -60,20 +60,20 @@ func TestStream_Offline_Receive(t *testing.T) {
 
 		sConn := str.CreateConnection("flag", nil)
 		aConn := str.CreateConnection(AllFlagsDiscriminator, nil)
-		utils.WithTimeout(2*time.Second, func() {
+		testutils.WithTimeout(2*time.Second, func() {
 			pyl := <-sConn.Receive()
 			assert.True(t, pyl.(*model.ResponsePayload).Value.(bool))
 		})
-		utils.WithTimeout(2*time.Second, func() {
+		testutils.WithTimeout(2*time.Second, func() {
 			pyl := <-aConn.Receive()
 			assert.True(t, pyl.(map[string]*model.ResponsePayload)["flag"].Value.(bool))
 		})
-		utils.WriteIntoFile(path, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":false},"t":0}}}`)
-		utils.WithTimeout(2*time.Second, func() {
+		testutils.WriteIntoFile(path, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":false},"t":0}}}`)
+		testutils.WithTimeout(2*time.Second, func() {
 			pyl := <-sConn.Receive()
 			assert.False(t, pyl.(*model.ResponsePayload).Value.(bool))
 		})
-		utils.WithTimeout(2*time.Second, func() {
+		testutils.WithTimeout(2*time.Second, func() {
 			pyl := <-aConn.Receive()
 			assert.False(t, pyl.(map[string]*model.ResponsePayload)["flag"].Value.(bool))
 		})
@@ -86,11 +86,11 @@ func TestStream_Receive_Close(t *testing.T) {
 	str := NewStream("test", clients["test"], nil, log.NewNullLogger(), "test")
 	sConn := str.CreateConnection("flag", nil)
 	aConn := str.CreateConnection(AllFlagsDiscriminator, nil)
-	utils.WithTimeout(2*time.Second, func() {
+	testutils.WithTimeout(2*time.Second, func() {
 		pyl := <-sConn.Receive()
 		assert.True(t, pyl.(*model.ResponsePayload).Value.(bool))
 	})
-	utils.WithTimeout(2*time.Second, func() {
+	testutils.WithTimeout(2*time.Second, func() {
 		pyl := <-aConn.Receive()
 		assert.True(t, pyl.(map[string]*model.ResponsePayload)["flag"].Value.(bool))
 	})

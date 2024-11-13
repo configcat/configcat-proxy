@@ -5,7 +5,7 @@ import (
 	"github.com/alicebob/miniredis/v2"
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/diag/status"
-	"github.com/configcat/configcat-proxy/internal/utils"
+	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/go-sdk/v9/configcatcache"
 	"github.com/stretchr/testify/assert"
@@ -26,7 +26,7 @@ func TestRedisNotify(t *testing.T) {
 	cacheEntry := configcatcache.CacheSegmentsToBytes(time.Now(), "etag", []byte(`{"f":{"flag":{"v":{"b":true}}},"p":null}`))
 	err = s.Set(cacheKey, string(cacheEntry))
 	assert.NoError(t, err)
-	utils.WithTimeout(2*time.Second, func() {
+	testutils.WithTimeout(2*time.Second, func() {
 		<-srv.Modified()
 	})
 	s.CheckGet(t, cacheKey, string(cacheEntry))
@@ -78,7 +78,7 @@ func TestRedisNotify_Notify(t *testing.T) {
 
 	cacheEntry = configcatcache.CacheSegmentsToBytes(time.Now(), "etag2", []byte(`{"f":{"flag":{"v":{"b":true}}},"p":null}`))
 	err = s.Set(cacheKey, string(cacheEntry))
-	utils.WithTimeout(2*time.Second, func() {
+	testutils.WithTimeout(2*time.Second, func() {
 		<-srv.Modified()
 	})
 	res, err = srv.Get(context.Background(), "")
@@ -194,7 +194,7 @@ func TestRedisNotify_Close(t *testing.T) {
 	go func() {
 		srv.Close()
 	}()
-	utils.WithTimeout(2*time.Second, func() {
+	testutils.WithTimeout(2*time.Second, func() {
 		select {
 		case <-srv.Closed():
 		case <-srv.Modified():

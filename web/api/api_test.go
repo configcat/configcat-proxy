@@ -2,7 +2,7 @@ package api
 
 import (
 	"github.com/configcat/configcat-proxy/config"
-	"github.com/configcat/configcat-proxy/internal/utils"
+	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/sdk"
 	"github.com/configcat/go-sdk/v9/configcattest"
@@ -20,7 +20,7 @@ func TestAPI_Eval(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"key":"flag"}`))
 
 		srv := newServer(t, config.ApiConfig{Enabled: true})
-		utils.AddSdkIdContextParam(req)
+		testutils.AddSdkIdContextParam(req)
 		srv.Eval(res, req)
 
 		assert.Equal(t, 200, res.Code)
@@ -31,7 +31,7 @@ func TestAPI_Eval(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"key":"non-existing"}`))
 
 		srv := newServer(t, config.ApiConfig{Enabled: true})
-		utils.AddSdkIdContextParam(req)
+		testutils.AddSdkIdContextParam(req)
 		srv.Eval(res, req)
 
 		assert.Equal(t, 400, res.Code)
@@ -42,7 +42,7 @@ func TestAPI_Eval(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"key":"flag"}`))
 
 		srv := newErrorServer(t, config.ApiConfig{Enabled: true})
-		utils.AddSdkIdContextParam(req)
+		testutils.AddSdkIdContextParam(req)
 		srv.Eval(res, req)
 
 		assert.Equal(t, http.StatusInternalServerError, res.Code)
@@ -53,7 +53,7 @@ func TestAPI_Eval(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"key":"flag","user":{"Identifier":"test"}}`))
 
 		srv := newServer(t, config.ApiConfig{Enabled: true})
-		utils.AddSdkIdContextParam(req)
+		testutils.AddSdkIdContextParam(req)
 		srv.Eval(res, req)
 
 		assert.Equal(t, 200, res.Code)
@@ -64,19 +64,19 @@ func TestAPI_Eval(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"key":"flag","user":{"Identifier":false}}`))
 
 		srv := newServer(t, config.ApiConfig{Enabled: true})
-		utils.AddSdkIdContextParam(req)
+		testutils.AddSdkIdContextParam(req)
 		srv.Eval(res, req)
 
 		assert.Equal(t, 400, res.Code)
 		assert.Contains(t, res.Body.String(), `failed to parse JSON body: 'Identifier' has an invalid type, only 'string', 'number', and 'string[]' types are allowed`)
 	})
 	t.Run("offline", func(t *testing.T) {
-		utils.UseTempFile(`{"f":{"flag":{"i":"","v":{"b":true},"t":0}}}`, func(path string) {
+		testutils.UseTempFile(`{"f":{"flag":{"i":"","v":{"b":true},"t":0}}}`, func(path string) {
 			res := httptest.NewRecorder()
 			req, _ := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"key":"flag"}`))
 
 			srv := newOfflineServer(t, path, config.ApiConfig{Enabled: true})
-			utils.AddSdkIdContextParam(req)
+			testutils.AddSdkIdContextParam(req)
 			srv.Eval(res, req)
 
 			assert.Equal(t, http.StatusOK, res.Code)
@@ -84,12 +84,12 @@ func TestAPI_Eval(t *testing.T) {
 		})
 	})
 	t.Run("offline error", func(t *testing.T) {
-		utils.UseTempFile(`{"f":{"flag":{"i":""`, func(path string) {
+		testutils.UseTempFile(`{"f":{"flag":{"i":""`, func(path string) {
 			res := httptest.NewRecorder()
 			req, _ := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"key":"flag"}`))
 
 			srv := newOfflineServer(t, path, config.ApiConfig{Enabled: true})
-			utils.AddSdkIdContextParam(req)
+			testutils.AddSdkIdContextParam(req)
 			srv.Eval(res, req)
 
 			assert.Equal(t, http.StatusInternalServerError, res.Code)
@@ -104,7 +104,7 @@ func TestAPI_EvalAll(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"key":"flag"}`))
 
 		srv := newServer(t, config.ApiConfig{Enabled: true})
-		utils.AddSdkIdContextParam(req)
+		testutils.AddSdkIdContextParam(req)
 		srv.EvalAll(res, req)
 
 		assert.Equal(t, 200, res.Code)
@@ -115,7 +115,7 @@ func TestAPI_EvalAll(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"key":"flag"}`))
 
 		srv := newErrorServer(t, config.ApiConfig{Enabled: true})
-		utils.AddSdkIdContextParam(req)
+		testutils.AddSdkIdContextParam(req)
 		srv.EvalAll(res, req)
 
 		assert.Equal(t, http.StatusInternalServerError, res.Code)
@@ -126,7 +126,7 @@ func TestAPI_EvalAll(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"key":"flag","user":{"Identifier":"test"}}`))
 
 		srv := newServer(t, config.ApiConfig{Enabled: true})
-		utils.AddSdkIdContextParam(req)
+		testutils.AddSdkIdContextParam(req)
 		srv.EvalAll(res, req)
 
 		assert.Equal(t, 200, res.Code)
@@ -137,19 +137,19 @@ func TestAPI_EvalAll(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"key":"flag","user":{"Identifier":false}}`))
 
 		srv := newServer(t, config.ApiConfig{Enabled: true})
-		utils.AddSdkIdContextParam(req)
+		testutils.AddSdkIdContextParam(req)
 		srv.EvalAll(res, req)
 
 		assert.Equal(t, 400, res.Code)
 		assert.Contains(t, res.Body.String(), `failed to parse JSON body: 'Identifier' has an invalid type, only 'string', 'number', and 'string[]' types are allowed`)
 	})
 	t.Run("offline", func(t *testing.T) {
-		utils.UseTempFile(`{"f":{"flag":{"i":"","v":{"b":true},"t":0}}}`, func(path string) {
+		testutils.UseTempFile(`{"f":{"flag":{"i":"","v":{"b":true},"t":0}}}`, func(path string) {
 			res := httptest.NewRecorder()
 			req, _ := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"key":"flag"}`))
 
 			srv := newOfflineServer(t, path, config.ApiConfig{Enabled: true})
-			utils.AddSdkIdContextParam(req)
+			testutils.AddSdkIdContextParam(req)
 			srv.EvalAll(res, req)
 
 			assert.Equal(t, http.StatusOK, res.Code)
@@ -157,12 +157,12 @@ func TestAPI_EvalAll(t *testing.T) {
 		})
 	})
 	t.Run("offline error", func(t *testing.T) {
-		utils.UseTempFile(`{"f":{"flag":{"i":""`, func(path string) {
+		testutils.UseTempFile(`{"f":{"flag":{"i":""`, func(path string) {
 			res := httptest.NewRecorder()
 			req, _ := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"key":"flag"}`))
 
 			srv := newOfflineServer(t, path, config.ApiConfig{Enabled: true})
-			utils.AddSdkIdContextParam(req)
+			testutils.AddSdkIdContextParam(req)
 			srv.EvalAll(res, req)
 
 			assert.Equal(t, http.StatusInternalServerError, res.Code)
@@ -177,7 +177,7 @@ func TestAPI_ICanHasCoffee(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodGet, "/", http.NoBody)
 
 		srv := newServer(t, config.ApiConfig{Enabled: true})
-		utils.AddSdkIdContextParam(req)
+		testutils.AddSdkIdContextParam(req)
 		srv.ICanHasCoffee(res, req)
 
 		assert.Equal(t, http.StatusTeapot, res.Code)
@@ -190,7 +190,7 @@ func TestAPI_Keys(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodGet, "/", http.NoBody)
 
 		srv := newServer(t, config.ApiConfig{Enabled: true})
-		utils.AddSdkIdContextParam(req)
+		testutils.AddSdkIdContextParam(req)
 		srv.Keys(res, req)
 
 		assert.Equal(t, 200, res.Code)
@@ -201,19 +201,19 @@ func TestAPI_Keys(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodGet, "/", http.NoBody)
 
 		srv := newErrorServer(t, config.ApiConfig{Enabled: true})
-		utils.AddSdkIdContextParam(req)
+		testutils.AddSdkIdContextParam(req)
 		srv.Keys(res, req)
 
 		assert.Equal(t, http.StatusInternalServerError, res.Code)
 		assert.Equal(t, "SDK with identifier 'test' is in an invalid state; please check the logs for more details\n", res.Body.String())
 	})
 	t.Run("offline", func(t *testing.T) {
-		utils.UseTempFile(`{"f":{"flag":{"i":"","v":{"b":true},"t":0}}}`, func(path string) {
+		testutils.UseTempFile(`{"f":{"flag":{"i":"","v":{"b":true},"t":0}}}`, func(path string) {
 			res := httptest.NewRecorder()
 			req, _ := http.NewRequest(http.MethodGet, "/", http.NoBody)
 
 			srv := newOfflineServer(t, path, config.ApiConfig{Enabled: true})
-			utils.AddSdkIdContextParam(req)
+			testutils.AddSdkIdContextParam(req)
 			srv.Keys(res, req)
 
 			assert.Equal(t, http.StatusOK, res.Code)
@@ -221,12 +221,12 @@ func TestAPI_Keys(t *testing.T) {
 		})
 	})
 	t.Run("offline error", func(t *testing.T) {
-		utils.UseTempFile(`{"f":{"flag":{"i":""`, func(path string) {
+		testutils.UseTempFile(`{"f":{"flag":{"i":""`, func(path string) {
 			res := httptest.NewRecorder()
 			req, _ := http.NewRequest(http.MethodGet, "/", http.NoBody)
 
 			srv := newOfflineServer(t, path, config.ApiConfig{Enabled: true})
-			utils.AddSdkIdContextParam(req)
+			testutils.AddSdkIdContextParam(req)
 			srv.Keys(res, req)
 
 			assert.Equal(t, http.StatusInternalServerError, res.Code)
@@ -240,7 +240,7 @@ func TestAPI_Refresh(t *testing.T) {
 
 	res := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"key":"flag"}`))
-	utils.AddSdkIdContextParam(req)
+	testutils.AddSdkIdContextParam(req)
 	srv.Eval(res, req)
 
 	assert.Equal(t, http.StatusOK, res.Code)
@@ -253,12 +253,12 @@ func TestAPI_Refresh(t *testing.T) {
 	})
 
 	req = &http.Request{Method: http.MethodPost}
-	utils.AddSdkIdContextParam(req)
+	testutils.AddSdkIdContextParam(req)
 	srv.Refresh(httptest.NewRecorder(), req)
 	time.Sleep(100 * time.Millisecond)
 	res = httptest.NewRecorder()
 	req, _ = http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"key":"flag"}`))
-	utils.AddSdkIdContextParam(req)
+	testutils.AddSdkIdContextParam(req)
 	srv.Eval(res, req)
 
 	assert.Equal(t, http.StatusOK, res.Code)
@@ -271,7 +271,7 @@ func TestAPI_WrongSdkId(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"key":"flag"}`))
 
 		srv := newServer(t, config.ApiConfig{Enabled: true})
-		utils.AddSdkIdContextParamWithSdkId(req, "non-existing")
+		testutils.AddSdkIdContextParamWithSdkId(req, "non-existing")
 		srv.Eval(res, req)
 
 		assert.Equal(t, 404, res.Code)
@@ -282,7 +282,7 @@ func TestAPI_WrongSdkId(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"key":"flag"}`))
 
 		srv := newServer(t, config.ApiConfig{Enabled: true})
-		utils.AddSdkIdContextParamWithSdkId(req, "non-existing")
+		testutils.AddSdkIdContextParamWithSdkId(req, "non-existing")
 		srv.EvalAll(res, req)
 
 		assert.Equal(t, 404, res.Code)
@@ -293,7 +293,7 @@ func TestAPI_WrongSdkId(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodGet, "/", http.NoBody)
 
 		srv := newServer(t, config.ApiConfig{Enabled: true})
-		utils.AddSdkIdContextParamWithSdkId(req, "non-existing")
+		testutils.AddSdkIdContextParamWithSdkId(req, "non-existing")
 		srv.Keys(res, req)
 
 		assert.Equal(t, 404, res.Code)
@@ -304,7 +304,7 @@ func TestAPI_WrongSdkId(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPost, "/", http.NoBody)
 
 		srv := newServer(t, config.ApiConfig{Enabled: true})
-		utils.AddSdkIdContextParamWithSdkId(req, "non-existing")
+		testutils.AddSdkIdContextParamWithSdkId(req, "non-existing")
 		srv.Refresh(res, req)
 
 		assert.Equal(t, 404, res.Code)
@@ -321,7 +321,7 @@ func TestAPI_WrongSDKState(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"key":"flag"}`))
 
 		srv := NewServer(reg, &config.ApiConfig{Enabled: true}, log.NewNullLogger())
-		utils.AddSdkIdContextParam(req)
+		testutils.AddSdkIdContextParam(req)
 		srv.Eval(res, req)
 
 		assert.Equal(t, http.StatusInternalServerError, res.Code)
@@ -332,7 +332,7 @@ func TestAPI_WrongSDKState(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"key":"flag"}`))
 
 		srv := NewServer(reg, &config.ApiConfig{Enabled: true}, log.NewNullLogger())
-		utils.AddSdkIdContextParam(req)
+		testutils.AddSdkIdContextParam(req)
 		srv.EvalAll(res, req)
 
 		assert.Equal(t, http.StatusInternalServerError, res.Code)
@@ -343,7 +343,7 @@ func TestAPI_WrongSDKState(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodGet, "/", http.NoBody)
 
 		srv := NewServer(reg, &config.ApiConfig{Enabled: true}, log.NewNullLogger())
-		utils.AddSdkIdContextParam(req)
+		testutils.AddSdkIdContextParam(req)
 		srv.Keys(res, req)
 
 		assert.Equal(t, http.StatusInternalServerError, res.Code)

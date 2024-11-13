@@ -3,7 +3,7 @@ package sdk
 import (
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/diag/status"
-	"github.com/configcat/configcat-proxy/internal/utils"
+	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -45,7 +45,7 @@ func TestClient_Close(t *testing.T) {
 
 	c := reg.GetSdkOrNil("test").(*client)
 	reg.Close()
-	utils.WithTimeout(1*time.Second, func() {
+	testutils.WithTimeout(1*time.Second, func() {
 		<-c.ctx.Done()
 	})
 }

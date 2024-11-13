@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/diag/status"
-	"github.com/configcat/configcat-proxy/internal/utils"
+	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/sdk"
 	"github.com/stretchr/testify/assert"
@@ -75,7 +75,7 @@ func newStatusRouter(t *testing.T) *HttpRouter {
 	reporter := status.NewEmptyReporter()
 	reg, _, _ := sdk.NewTestRegistrarTWithStatusReporter(t, reporter)
 	client := reg.GetSdkOrNil("test")
-	utils.WithTimeout(2*time.Second, func() {
+	testutils.WithTimeout(2*time.Second, func() {
 		<-client.Ready()
 	})
 	return NewRouter(reg, nil, reporter, &config.HttpConfig{Status: config.StatusConfig{Enabled: true}}, log.NewNullLogger())

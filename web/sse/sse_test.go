@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"github.com/configcat/configcat-proxy/config"
-	"github.com/configcat/configcat-proxy/internal/utils"
+	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/sdk"
 	"github.com/configcat/go-sdk/v9/configcattest"
@@ -53,7 +53,7 @@ func TestSSE_Get_SdkRemoved(t *testing.T) {
 
 	// the removal closes the connection, so it won't block indefinitely
 	h.RemoveSdk("test")
-	utils.WithTimeout(5*time.Second, func() {
+	testutils.WithTimeout(5*time.Second, func() {
 		srv.SingleFlag(res, req)
 	})
 
@@ -168,7 +168,7 @@ func TestSSE_Get_All_SdkRemoved(t *testing.T) {
 
 	// the removal closes the connection, so it won't block indefinitely
 	h.RemoveSdk("test")
-	utils.WithTimeout(5*time.Second, func() {
+	testutils.WithTimeout(5*time.Second, func() {
 		srv.AllFlags(res, req)
 	})
 

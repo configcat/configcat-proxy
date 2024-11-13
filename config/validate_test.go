@@ -1,7 +1,7 @@
 package config
 
 import (
-	"github.com/configcat/configcat-proxy/internal/utils"
+	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
@@ -48,7 +48,7 @@ func TestConfig_Validate(t *testing.T) {
 		require.ErrorContains(t, conf.Validate(), "sdk-env1: couldn't find the local file")
 	})
 	t.Run("offline file polling invalid poll interval", func(t *testing.T) {
-		utils.UseTempFile("", func(path string) {
+		testutils.UseTempFile("", func(path string) {
 			conf := Config{SDKs: map[string]*SDKConfig{"env1": {Key: "Key", Offline: OfflineConfig{Enabled: true, Local: LocalConfig{FilePath: path, Polling: true, PollInterval: 0}}}}}
 			conf.setDefaults()
 			require.ErrorContains(t, conf.Validate(), "sdk-env1: local file poll interval must be greater than 1 seconds")

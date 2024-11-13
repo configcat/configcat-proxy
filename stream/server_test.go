@@ -2,7 +2,7 @@ package stream
 
 import (
 	"github.com/configcat/configcat-proxy/config"
-	"github.com/configcat/configcat-proxy/internal/utils"
+	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/model"
 	"github.com/configcat/configcat-proxy/sdk"
@@ -37,7 +37,7 @@ func TestServer_AutoRegistrar(t *testing.T) {
 	h.AddSdk("test2")
 	reg.Refresh()
 
-	utils.WaitUntil(5*time.Second, func() bool {
+	testutils.WaitUntil(5*time.Second, func() bool {
 		return nil != srv.GetStreamOrNil("test2")
 	})
 
@@ -56,11 +56,11 @@ func TestServer_AutoRegistrar(t *testing.T) {
 	h.ModifyGlobalOpts(model.OptionsModel{PollInterval: 120})
 	reg.Refresh()
 
-	utils.WaitUntil(5*time.Second, func() bool {
+	testutils.WaitUntil(5*time.Second, func() bool {
 		return nil != srv.GetStreamOrNil("test")
 	})
 
-	utils.WaitUntil(5*time.Second, func() bool {
+	testutils.WaitUntil(5*time.Second, func() bool {
 		return sdkClient != str1.sdkClient.Load()
 	})
 	sdkClient2 := str1.sdkClient.Load()

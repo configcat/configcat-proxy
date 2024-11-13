@@ -2,7 +2,7 @@ package file
 
 import (
 	"github.com/configcat/configcat-proxy/config"
-	"github.com/configcat/configcat-proxy/internal/utils"
+	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -10,29 +10,29 @@ import (
 )
 
 func TestPollWatcher_Existing(t *testing.T) {
-	utils.UseTempFile("", func(path string) {
+	testutils.UseTempFile("", func(path string) {
 		watcher, _ := newPollWatcher(&config.LocalConfig{PollInterval: 1, FilePath: path}, log.NewNullLogger())
-		utils.WriteIntoFile(path, "test")
-		utils.WithTimeout(2*time.Second, func() {
+		testutils.WriteIntoFile(path, "test")
+		testutils.WithTimeout(2*time.Second, func() {
 			<-watcher.Modified()
 		})
-		assert.Equal(t, "test", utils.ReadFile(path))
+		assert.Equal(t, "test", testutils.ReadFile(path))
 	})
 }
 
 func TestPollWatcher_Stop(t *testing.T) {
-	utils.UseTempFile("", func(path string) {
+	testutils.UseTempFile("", func(path string) {
 		watcher, _ := newPollWatcher(&config.LocalConfig{PollInterval: 1, FilePath: path}, log.NewNullLogger())
 		go func() {
 			watcher.Close()
 		}()
-		utils.WithTimeout(2*time.Second, func() {
+		testutils.WithTimeout(2*time.Second, func() {
 			select {
 			case <-watcher.Closed():
 			case <-watcher.Modified():
 			}
 		})
-		assert.Equal(t, "", utils.ReadFile(path))
+		assert.Equal(t, "", testutils.ReadFile(path))
 	})
 }
 

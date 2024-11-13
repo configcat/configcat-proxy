@@ -2,7 +2,7 @@ package config
 
 import (
 	"crypto/tls"
-	"github.com/configcat/configcat-proxy/internal/utils"
+	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -65,7 +65,7 @@ func TestConfig_Defaults(t *testing.T) {
 }
 
 func TestConfig_DefaultAttrs(t *testing.T) {
-	utils.UseTempFile(`
+	testutils.UseTempFile(`
 sdks:
   test_sdk:
     key: key
@@ -79,7 +79,7 @@ sdks:
 
 func TestConfig_LogLevelFixup(t *testing.T) {
 	t.Run("valid base level", func(t *testing.T) {
-		utils.UseTempFile(`
+		testutils.UseTempFile(`
 sdks:
   test_sdk:
     key: key
@@ -101,7 +101,7 @@ log:
 	})
 
 	t.Run("invalid base level", func(t *testing.T) {
-		utils.UseTempFile(`
+		testutils.UseTempFile(`
 sdks:
   test_sdk:
     key: key
@@ -122,7 +122,7 @@ log:
 	})
 
 	t.Run("overrides", func(t *testing.T) {
-		utils.UseTempFile(`
+		testutils.UseTempFile(`
 log:
   level: "error"
 sdks:
@@ -161,7 +161,7 @@ offline:
 }
 
 func TestSDKConfig_YAML(t *testing.T) {
-	utils.UseTempFile(`
+	testutils.UseTempFile(`
 sdks:
   test_sdk:
     base_url: "base"
@@ -218,7 +218,7 @@ sdks:
 }
 
 func TestConfig_AutoSDKs(t *testing.T) {
-	utils.UseTempFile(`
+	testutils.UseTempFile(`
 auto_config:
   key: key
   secret: secret
@@ -239,7 +239,7 @@ auto_config:
 }
 
 func TestSDKWithGlobalOffline_YAML(t *testing.T) {
-	utils.UseTempFile(`
+	testutils.UseTempFile(`
 sdks:
   test_sdk_1:
     poll_interval: 30
@@ -281,7 +281,7 @@ offline:
 }
 
 func TestSDKWithGlobalOfflineAndEnv_YAML(t *testing.T) {
-	utils.UseTempFile(`
+	testutils.UseTempFile(`
 sdks:
   test_sdk_1:
     poll_interval: 30
@@ -321,7 +321,7 @@ sdks:
 }
 
 func TestRedisConfig_YAML(t *testing.T) {
-	utils.UseTempFile(`
+	testutils.UseTempFile(`
 cache:
   redis:
     enabled: true
@@ -359,7 +359,7 @@ cache:
 }
 
 func TestMongoDbConfig_YAML(t *testing.T) {
-	utils.UseTempFile(`
+	testutils.UseTempFile(`
 cache:
   mongodb:
     enabled: true
@@ -394,7 +394,7 @@ cache:
 }
 
 func TestDynamoDbConfig_YAML(t *testing.T) {
-	utils.UseTempFile(`
+	testutils.UseTempFile(`
 cache:
   dynamodb:
     enabled: true
@@ -411,7 +411,7 @@ cache:
 }
 
 func TestGlobalOfflineConfig_YAML(t *testing.T) {
-	utils.UseTempFile(`
+	testutils.UseTempFile(`
 offline:
   enabled: true
   cache_poll_interval: 200
@@ -428,7 +428,7 @@ offline:
 }
 
 func TestTlsConfig_YAML(t *testing.T) {
-	utils.UseTempFile(`
+	testutils.UseTempFile(`
 tls: 
   enabled: true
   min_version: 1.1
@@ -453,7 +453,7 @@ tls:
 }
 
 func TestLogConfig_YAML(t *testing.T) {
-	utils.UseTempFile(`
+	testutils.UseTempFile(`
 log:
   level: "error"
 `, func(file string) {
@@ -465,7 +465,7 @@ log:
 }
 
 func TestDiagConfig_YAML(t *testing.T) {
-	utils.UseTempFile(`
+	testutils.UseTempFile(`
 diag:
   enabled: false
   port: 8091
@@ -485,7 +485,7 @@ diag:
 }
 
 func TestHttpConfig_YAML(t *testing.T) {
-	utils.UseTempFile(`
+	testutils.UseTempFile(`
 http:
   enabled: true
   port: 8090
@@ -570,7 +570,7 @@ http:
 }
 
 func TestCORSConfig_YAML(t *testing.T) {
-	utils.UseTempFile(`
+	testutils.UseTempFile(`
 http:
   cdn_proxy:
     cors: 
@@ -615,7 +615,7 @@ http:
 }
 
 func TestCORSConfigInvalidRegex_YAML(t *testing.T) {
-	utils.UseTempFile(`
+	testutils.UseTempFile(`
 http:
   sse:
     cors: 
@@ -631,7 +631,7 @@ http:
 }
 
 func TestGrpcConfig_YAML(t *testing.T) {
-	utils.UseTempFile(`
+	testutils.UseTempFile(`
 grpc:
   enabled: true
   port: 8060
@@ -663,7 +663,7 @@ grpc:
 }
 
 func TestHttpProxyConfig_YAML(t *testing.T) {
-	utils.UseTempFile(`
+	testutils.UseTempFile(`
 http_proxy:
   url: "proxy-url"
 `, func(file string) {
@@ -675,7 +675,7 @@ http_proxy:
 }
 
 func TestDefaultAttributesConfig_YAML(t *testing.T) {
-	utils.UseTempFile(`
+	testutils.UseTempFile(`
 default_user_attributes:
   attr_1: "attr_value1"
   attr2: "attr_value2"
@@ -727,7 +727,7 @@ func TestGrpcConfig_KeepAlive(t *testing.T) {
 
 func TestTlsConfig_LoadTlsOptions(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
-		utils.UseTempFile(`
+		testutils.UseTempFile(`
 -----BEGIN CERTIFICATE-----
 MIICrzCCAZcCFDnpdKF+Pg1smjtIXrNdIgxGYEJfMA0GCSqGSIb3DQEBCwUAMBQx
 EjAQBgNVBAMMCWxvY2FsaG9zdDAeFw0yMzAzMDEyMTA2NThaFw0yNDAyMjkyMTA2
@@ -745,7 +745,7 @@ J03vcwPSwme4bKC/avAT2oDD7jLGLA+kuhMqHvVq7nXRzs46xyFPBBv7fBxXjPPG
 c89d0ISafKtZ9kIKaRrzu2HX+b0fzKr0vtHYDLtC1U5oU7GPB12eupERkmWYlhrw
 hDL3X7kt3jEZFkzGV1XL1IJx/g==
 -----END CERTIFICATE-----`, func(cert string) {
-			utils.UseTempFile(`-----BEGIN PRIVATE KEY-----
+			testutils.UseTempFile(`-----BEGIN PRIVATE KEY-----
 MIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQDokw043wD7ySw2
 dpsDb7tKaIUhz0c832UXNeolSOvhEpdA8I3Y5chERTv7bNRkJ4RNoIMpL6MR+M1M
 tTgp40yfjJta8o8uBuWSCCyBfTHxXMpmuf+V3aDk3A692Q0wMBWmmymCorKFTBwC

@@ -2,7 +2,7 @@ package stream
 
 import (
 	"github.com/configcat/configcat-proxy/config"
-	"github.com/configcat/configcat-proxy/internal/utils"
+	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/model"
 	"github.com/configcat/configcat-proxy/sdk"
@@ -56,7 +56,7 @@ func TestStreamServer_Load(t *testing.T) {
 
 func runSingleConnectionTest(t *testing.T, fName string, str Stream) {
 	conn := str.CreateConnection(fName, nil)
-	utils.WithTimeout(2*time.Second, func() {
+	testutils.WithTimeout(2*time.Second, func() {
 		payload := <-conn.Receive()
 		assert.False(t, payload.(*model.ResponsePayload).Value.(bool))
 	})
@@ -64,7 +64,7 @@ func runSingleConnectionTest(t *testing.T, fName string, str Stream) {
 
 func runAllConnectionTest(t *testing.T, fName string, str Stream) {
 	conn := str.CreateConnection(AllFlagsDiscriminator, nil)
-	utils.WithTimeout(2*time.Second, func() {
+	testutils.WithTimeout(2*time.Second, func() {
 		payload := <-conn.Receive()
 		assert.False(t, payload.(map[string]*model.ResponsePayload)[fName].Value.(bool))
 	})
@@ -84,7 +84,7 @@ func checkConnections(t *testing.T, srv Server) {
 						cId := i
 						t.Run("conn"+strconv.Itoa(cId)+"single", func(t *testing.T) {
 							t.Parallel()
-							utils.WithTimeout(10*time.Second, func() {
+							testutils.WithTimeout(10*time.Second, func() {
 								payload := <-connect.Receive()
 								assert.True(t, payload.(*model.ResponsePayload).Value.(bool))
 							})
@@ -96,7 +96,7 @@ func checkConnections(t *testing.T, srv Server) {
 						cId := i
 						t.Run("conn"+strconv.Itoa(cId)+"all", func(t *testing.T) {
 							t.Parallel()
-							utils.WithTimeout(2*time.Second, func() {
+							testutils.WithTimeout(2*time.Second, func() {
 								payload := <-connect.Receive()
 								for _, v := range payload.(map[string]*model.ResponsePayload) {
 									assert.True(t, v.Value.(bool))

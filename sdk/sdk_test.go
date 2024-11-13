@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/alicebob/miniredis/v2"
 	"github.com/configcat/configcat-proxy/config"
+	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/internal/utils"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/model"
@@ -48,7 +49,7 @@ func TestSdk_Signal(t *testing.T) {
 			Default: false,
 		},
 	})
-	utils.WithTimeout(2*time.Second, func() {
+	testutils.WithTimeout(2*time.Second, func() {
 		<-sub
 	})
 	data = client.Eval("flag", nil)
@@ -73,7 +74,7 @@ func TestSdk_Ready_Online(t *testing.T) {
 	ctx := NewTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key}, nil)
 	client := NewClient(ctx, log.NewNullLogger())
 	defer client.Close()
-	utils.WithTimeout(2*time.Second, func() {
+	testutils.WithTimeout(2*time.Second, func() {
 		<-client.Ready()
 	})
 	j := client.GetCachedJson()
@@ -82,11 +83,11 @@ func TestSdk_Ready_Online(t *testing.T) {
 }
 
 func TestSdk_Ready_Offline(t *testing.T) {
-	utils.UseTempFile(`{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true},"t":0}}}`, func(path string) {
+	testutils.UseTempFile(`{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true},"t":0}}}`, func(path string) {
 		ctx := NewTestSdkContext(&config.SDKConfig{Key: "key", Offline: config.OfflineConfig{Enabled: true, Local: config.LocalConfig{FilePath: path}}}, nil)
 		client := NewClient(ctx, log.NewNullLogger())
 		defer client.Close()
-		utils.WithTimeout(2*time.Second, func() {
+		testutils.WithTimeout(2*time.Second, func() {
 			<-client.Ready()
 		})
 		j := client.GetCachedJson()
@@ -124,7 +125,7 @@ func TestSdk_Signal_Refresh(t *testing.T) {
 		},
 	})
 	_ = client.Refresh()
-	utils.WithTimeout(2*time.Second, func() {
+	testutils.WithTimeout(2*time.Second, func() {
 		<-sub
 	})
 	data = client.Eval("flag", nil)
@@ -178,7 +179,7 @@ func TestSdk_BadConfig_WithCache(t *testing.T) {
 }
 
 func TestSdk_Signal_Offline_File_Watch(t *testing.T) {
-	utils.UseTempFile(`{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true},"t":0}}}`, func(path string) {
+	testutils.UseTempFile(`{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true},"t":0}}}`, func(path string) {
 		ctx := NewTestSdkContext(&config.SDKConfig{Key: "key", Offline: config.OfflineConfig{Enabled: true, Local: config.LocalConfig{FilePath: path}}}, nil)
 		client := NewClient(ctx, log.NewNullLogger())
 		defer client.Close()
@@ -191,8 +192,8 @@ func TestSdk_Signal_Offline_File_Watch(t *testing.T) {
 		assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true,"s":null,"i":null,"d":null},"t":0,"r":null,"p":null}},"s":null,"p":null}`, string(j.ConfigJson))
 		assert.Equal(t, fmt.Sprintf("W/\"%s\"", utils.FastHashHex(j.ConfigJson)), j.ETag)
 
-		utils.WriteIntoFile(path, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":false},"t":0}}}`)
-		utils.WithTimeout(2*time.Second, func() {
+		testutils.WriteIntoFile(path, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":false},"t":0}}}`)
+		testutils.WithTimeout(2*time.Second, func() {
 			<-sub
 		})
 		data = client.Eval("flag", nil)
@@ -205,7 +206,7 @@ func TestSdk_Signal_Offline_File_Watch(t *testing.T) {
 }
 
 func TestSdk_Signal_Offline_Poll_Watch(t *testing.T) {
-	utils.UseTempFile(`{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true},"t":0}}}`, func(path string) {
+	testutils.UseTempFile(`{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true},"t":0}}}`, func(path string) {
 		ctx := NewTestSdkContext(&config.SDKConfig{Key: "key", Offline: config.OfflineConfig{Enabled: true, Local: config.LocalConfig{FilePath: path, Polling: true, PollInterval: 1}}}, nil)
 		client := NewClient(ctx, log.NewNullLogger())
 		defer client.Close()
@@ -218,8 +219,8 @@ func TestSdk_Signal_Offline_Poll_Watch(t *testing.T) {
 		assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true,"s":null,"i":null,"d":null},"t":0,"r":null,"p":null}},"s":null,"p":null}`, string(j.ConfigJson))
 		assert.Equal(t, fmt.Sprintf("W/\"%s\"", utils.FastHashHex(j.ConfigJson)), j.ETag)
 
-		utils.WriteIntoFile(path, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":false},"t":0}}}`)
-		utils.WithTimeout(2*time.Second, func() {
+		testutils.WriteIntoFile(path, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":false},"t":0}}}`)
+		testutils.WithTimeout(2*time.Second, func() {
 			<-sub
 		})
 		data = client.Eval("flag", nil)
@@ -255,7 +256,7 @@ func TestSdk_Signal_Offline_Redis_Watch(t *testing.T) {
 
 	cacheEntry = configcatcache.CacheSegmentsToBytes(time.Now(), "etag2", []byte(`{"f":{"flag":{"a":"","i":"v_flag","v":{"b":false},"t":0}}}`))
 	_ = s.Set(cacheKey, string(cacheEntry))
-	utils.WithTimeout(2*time.Second, func() {
+	testutils.WithTimeout(2*time.Second, func() {
 		<-sub
 	})
 	data = client.Eval("flag", nil)
@@ -336,7 +337,7 @@ func TestSdk_EvalStatsReporter(t *testing.T) {
 	_ = client.Eval("flag1", model.UserAttrs{"e": "h"})
 
 	var event *statistics.EvalEvent
-	utils.WithTimeout(2*time.Second, func() {
+	testutils.WithTimeout(2*time.Second, func() {
 		event = <-reporter.Latest()
 	})
 	assert.Equal(t, map[string]interface{}{"e": "h"}, event.UserAttrs)

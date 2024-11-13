@@ -32,5 +32,5 @@ Install [Go](https://golang.org) development environment.
 ## Running tests
 
 ```bash
-go test -race ./...
+go test -tags testing -race ./...
 ```

@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/grpc/proto"
-	"github.com/configcat/configcat-proxy/internal/utils"
+	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/sdk"
 	"github.com/configcat/go-sdk/v9/configcattest"
@@ -59,7 +59,7 @@ func TestGrpc_EvalFlagStream(t *testing.T) {
 	assert.NoError(t, err)
 
 	var payload *proto.EvalResponse
-	utils.WithTimeout(2*time.Second, func() {
+	testutils.WithTimeout(2*time.Second, func() {
 		payload, err = cl.Recv()
 		assert.NoError(t, err)
 	})
@@ -74,7 +74,7 @@ func TestGrpc_EvalFlagStream(t *testing.T) {
 	_, err = client.Refresh(context.Background(), &proto.RefreshRequest{SdkId: "test"})
 	assert.NoError(t, err)
 
-	utils.WithTimeout(2*time.Second, func() {
+	testutils.WithTimeout(2*time.Second, func() {
 		payload, err = cl.Recv()
 		assert.NoError(t, err)
 	})
@@ -111,7 +111,7 @@ func TestGrpc_EvalFlagStream_SdkRemoved(t *testing.T) {
 	assert.NoError(t, err)
 
 	var payload *proto.EvalResponse
-	utils.WithTimeout(2*time.Second, func() {
+	testutils.WithTimeout(2*time.Second, func() {
 		payload, err = cl.Recv()
 		assert.NoError(t, err)
 	})
@@ -119,7 +119,7 @@ func TestGrpc_EvalFlagStream_SdkRemoved(t *testing.T) {
 
 	h.RemoveSdk("test")
 	reg.Refresh()
-	utils.WithTimeout(10*time.Second, func() {
+	testutils.WithTimeout(10*time.Second, func() {
 		_, err = cl.Recv()
 		assert.Error(t, err, "rpc error: code = Aborted desc = connection aborted")
 	})
@@ -169,7 +169,7 @@ func TestGrpc_EvalAllFlagsStream(t *testing.T) {
 	assert.NoError(t, err)
 
 	var payload *proto.EvalAllResponse
-	utils.WithTimeout(2*time.Second, func() {
+	testutils.WithTimeout(2*time.Second, func() {
 		payload, err = cl.Recv()
 		assert.NoError(t, err)
 	})
@@ -192,7 +192,7 @@ func TestGrpc_EvalAllFlagsStream(t *testing.T) {
 	_, err = client.Refresh(context.Background(), &proto.RefreshRequest{SdkId: "test"})
 	assert.NoError(t, err)
 
-	utils.WithTimeout(2*time.Second, func() {
+	testutils.WithTimeout(2*time.Second, func() {
 		payload, err = cl.Recv()
 		assert.NoError(t, err)
 	})
@@ -232,7 +232,7 @@ func TestGrpc_EvalAllFlagsStream_SdkRemoved(t *testing.T) {
 	assert.NoError(t, err)
 
 	var payload *proto.EvalAllResponse
-	utils.WithTimeout(2*time.Second, func() {
+	testutils.WithTimeout(2*time.Second, func() {
 		payload, err = cl.Recv()
 		assert.NoError(t, err)
 	})
@@ -241,7 +241,7 @@ func TestGrpc_EvalAllFlagsStream_SdkRemoved(t *testing.T) {
 
 	h.RemoveSdk("test")
 	reg.Refresh()
-	utils.WithTimeout(10*time.Second, func() {
+	testutils.WithTimeout(10*time.Second, func() {
 		_, err = cl.Recv()
 		assert.Error(t, err, "rpc error: code = Aborted desc = connection aborted")
 	})
@@ -342,13 +342,13 @@ func TestGrpc_SDK_InvalidState(t *testing.T) {
 	assert.ErrorContains(t, err, "sdk with identifier 'test' is in an invalid state; please check the logs for more details")
 
 	cl, err := client.EvalFlagStream(context.Background(), &proto.EvalRequest{Key: "flag", SdkId: "test"})
-	utils.WithTimeout(2*time.Second, func() {
+	testutils.WithTimeout(2*time.Second, func() {
 		_, err = cl.Recv()
 		assert.ErrorContains(t, err, "sdk with identifier 'test' is in an invalid state; please check the logs for more details")
 	})
 
 	cl1, err := client.EvalAllFlagsStream(context.Background(), &proto.EvalRequest{Key: "flag", SdkId: "test"})
-	utils.WithTimeout(2*time.Second, func() {
+	testutils.WithTimeout(2*time.Second, func() {
 		_, err = cl1.Recv()
 		assert.ErrorContains(t, err, "sdk with identifier 'test' is in an invalid state; please check the logs for more details")
 	})
@@ -398,13 +398,13 @@ func TestGrpc_Invalid_SdkKey(t *testing.T) {
 	assert.ErrorContains(t, err, "sdk not found for identifier: 'non-existing'")
 
 	cl, err := client.EvalFlagStream(context.Background(), &proto.EvalRequest{Key: "flag", SdkId: "non-existing"})
-	utils.WithTimeout(2*time.Second, func() {
+	testutils.WithTimeout(2*time.Second, func() {
 		_, err = cl.Recv()
 		assert.ErrorContains(t, err, "sdk not found for identifier: 'non-existing'")
 	})
 
 	cl1, err := client.EvalAllFlagsStream(context.Background(), &proto.EvalRequest{Key: "flag", SdkId: "non-existing"})
-	utils.WithTimeout(2*time.Second, func() {
+	testutils.WithTimeout(2*time.Second, func() {
 		_, err = cl1.Recv()
 		assert.ErrorContains(t, err, "sdk not found for identifier: 'non-existing'")
 	})
@@ -454,7 +454,7 @@ func TestGrpc_Invalid_FlagKey(t *testing.T) {
 	assert.ErrorContains(t, err, "feature flag or setting with key 'flag' not found")
 
 	cl, err := client.EvalFlagStream(context.Background(), &proto.EvalRequest{Key: "flag", SdkId: "test"})
-	utils.WithTimeout(2*time.Second, func() {
+	testutils.WithTimeout(2*time.Second, func() {
 		_, err = cl.Recv()
 		assert.ErrorContains(t, err, "feature flag or setting with key 'flag' not found")
 	})

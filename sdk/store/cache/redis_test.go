@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/alicebob/miniredis/v2"
 	"github.com/configcat/configcat-proxy/config"
-	"github.com/configcat/configcat-proxy/internal/utils"
+	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/go-sdk/v9/configcatcache"
 	"github.com/stretchr/testify/assert"
@@ -45,7 +45,7 @@ func TestRedisStorage_Unavailable(t *testing.T) {
 
 func TestRedisStorage_TLS(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
-		utils.UseTempFile(`
+		testutils.UseTempFile(`
 -----BEGIN CERTIFICATE-----
 MIICrzCCAZcCFDnpdKF+Pg1smjtIXrNdIgxGYEJfMA0GCSqGSIb3DQEBCwUAMBQx
 EjAQBgNVBAMMCWxvY2FsaG9zdDAeFw0yMzAzMDEyMTA2NThaFw0yNDAyMjkyMTA2
@@ -63,7 +63,7 @@ J03vcwPSwme4bKC/avAT2oDD7jLGLA+kuhMqHvVq7nXRzs46xyFPBBv7fBxXjPPG
 c89d0ISafKtZ9kIKaRrzu2HX+b0fzKr0vtHYDLtC1U5oU7GPB12eupERkmWYlhrw
 hDL3X7kt3jEZFkzGV1XL1IJx/g==
 -----END CERTIFICATE-----`, func(cert string) {
-			utils.UseTempFile(`-----BEGIN PRIVATE KEY-----
+			testutils.UseTempFile(`-----BEGIN PRIVATE KEY-----
 MIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQDokw043wD7ySw2
 dpsDb7tKaIUhz0c832UXNeolSOvhEpdA8I3Y5chERTv7bNRkJ4RNoIMpL6MR+M1M
 tTgp40yfjJta8o8uBuWSCCyBfTHxXMpmuf+V3aDk3A692Q0wMBWmmymCorKFTBwC

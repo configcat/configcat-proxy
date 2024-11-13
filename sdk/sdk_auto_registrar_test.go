@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"github.com/alicebob/miniredis/v2"
 	"github.com/configcat/configcat-proxy/config"
-	"github.com/configcat/configcat-proxy/internal/utils"
+	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/model"
 	"github.com/configcat/go-sdk/v9/configcatcache"
@@ -28,10 +28,10 @@ func TestAutoRegistrar_Poll(t *testing.T) {
 	assert.True(t, res.Value.(bool))
 
 	h.AddSdk("test2")
-	utils.WaitUntil(5*time.Second, func() bool {
+	testutils.WaitUntil(5*time.Second, func() bool {
 		return nil != reg.GetSdkOrNil("test2")
 	})
-	utils.WaitUntil(5*time.Second, func() bool {
+	testutils.WaitUntil(5*time.Second, func() bool {
 		return "test2" == <-sub
 	})
 
@@ -42,10 +42,10 @@ func TestAutoRegistrar_Poll(t *testing.T) {
 	assert.True(t, res.Value.(bool))
 
 	h.RemoveSdk("test")
-	utils.WaitUntil(5*time.Second, func() bool {
+	testutils.WaitUntil(5*time.Second, func() bool {
 		return nil == reg.GetSdkOrNil("test")
 	})
-	utils.WaitUntil(5*time.Second, func() bool {
+	testutils.WaitUntil(5*time.Second, func() bool {
 		return "test" == <-sub
 	})
 
@@ -70,10 +70,10 @@ func TestAutoRegistrar_Refresh(t *testing.T) {
 
 	h.AddSdk("test2")
 	reg.Refresh()
-	utils.WaitUntil(5*time.Second, func() bool {
+	testutils.WaitUntil(5*time.Second, func() bool {
 		return nil != reg.GetSdkOrNil("test2")
 	})
-	utils.WaitUntil(5*time.Second, func() bool {
+	testutils.WaitUntil(5*time.Second, func() bool {
 		return "test2" == <-sub
 	})
 
@@ -85,10 +85,10 @@ func TestAutoRegistrar_Refresh(t *testing.T) {
 
 	h.RemoveSdk("test")
 	reg.Refresh()
-	utils.WaitUntil(5*time.Second, func() bool {
+	testutils.WaitUntil(5*time.Second, func() bool {
 		return nil == reg.GetSdkOrNil("test")
 	})
-	utils.WaitUntil(5*time.Second, func() bool {
+	testutils.WaitUntil(5*time.Second, func() bool {
 		return "test" == <-sub
 	})
 
@@ -115,12 +115,12 @@ func TestAutoRegistrar_Modify_Global_Opts(t *testing.T) {
 		DataGovernance: "eu",
 	})
 	reg.Refresh()
-	utils.WaitUntil(5*time.Second, func() bool {
+	testutils.WaitUntil(5*time.Second, func() bool {
 		return "test" == <-sub
 	})
 
 	// old sdk closed
-	utils.WithTimeout(1*time.Second, func() {
+	testutils.WithTimeout(1*time.Second, func() {
 		<-sdkClient.ctx.Done()
 	})
 
@@ -201,10 +201,10 @@ func TestAutoRegistrar_Cache_Poll(t *testing.T) {
 	autConfigCacheEntry, _ = json.Marshal(autoConfig)
 	_ = cache.Set("configcat-proxy-conf/test-reg", string(autConfigCacheEntry))
 
-	utils.WaitUntil(5*time.Second, func() bool {
+	testutils.WaitUntil(5*time.Second, func() bool {
 		return nil != reg.GetSdkOrNil("test2")
 	})
-	utils.WaitUntil(5*time.Second, func() bool {
+	testutils.WaitUntil(5*time.Second, func() bool {
 		return "test2" == <-sub
 	})
 
@@ -259,10 +259,10 @@ func TestAutoRegistrar_Cache_Refresh(t *testing.T) {
 	_ = cache.Set("configcat-proxy-conf/test-reg", string(autConfigCacheEntry))
 
 	reg.Refresh()
-	utils.WaitUntil(5*time.Second, func() bool {
+	testutils.WaitUntil(5*time.Second, func() bool {
 		return nil != reg.GetSdkOrNil("test2")
 	})
-	utils.WaitUntil(5*time.Second, func() bool {
+	testutils.WaitUntil(5*time.Second, func() bool {
 		return "test2" == <-sub
 	})
 

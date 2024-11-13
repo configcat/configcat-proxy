@@ -3,7 +3,7 @@
 package pubsub
 
 import (
-	"github.com/configcat/configcat-proxy/internal/utils"
+	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
@@ -14,7 +14,7 @@ func TestPubSub_Sub_Unsub(t *testing.T) {
 
 	sub := make(chan struct{})
 	pubSub.Subscribe(sub)
-	utils.WaitUntil(2*time.Second, func() bool {
+	testutils.WaitUntil(2*time.Second, func() bool {
 		_, ok := pubSub.subscriptions[sub]
 		return ok
 	})
@@ -25,7 +25,7 @@ func TestPubSub_Sub_Unsub(t *testing.T) {
 	assert.Equal(t, msg, recv)
 
 	pubSub.Unsubscribe(sub)
-	utils.WaitUntil(2*time.Second, func() bool {
+	testutils.WaitUntil(2*time.Second, func() bool {
 		return len(pubSub.subscriptions) == 0
 	})
 
