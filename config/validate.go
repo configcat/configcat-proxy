@@ -145,6 +145,9 @@ func (h *HttpConfig) validate() error {
 	if err := h.Api.CORS.validate(); err != nil {
 		return err
 	}
+	if err := h.OFREP.CORS.validate(); err != nil {
+		return err
+	}
 	if err := h.Sse.CORS.validate(); err != nil {
 		return err
 	}

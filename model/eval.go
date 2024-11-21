@@ -9,6 +9,7 @@ type EvalData struct {
 	VariationId string
 	Error       error
 	User        configcat.User
+	IsTargeting bool
 }
 
 type ResponsePayload struct {

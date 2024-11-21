@@ -153,6 +153,9 @@ func (h *HttpConfig) loadEnv(prefix string) error {
 	if err := h.Status.loadEnv(prefix); err != nil {
 		return err
 	}
+	if err := h.OFREP.loadEnv(prefix); err != nil {
+		return err
+	}
 	return h.Api.loadEnv(prefix)
 }
 
@@ -313,6 +316,20 @@ func (a *ApiConfig) loadEnv(prefix string) error {
 		return err
 	}
 	return a.CORS.loadEnv(prefix)
+}
+
+func (o *OFREPConfig) loadEnv(prefix string) error {
+	prefix = concatPrefix(prefix, "OFREP")
+	if err := readEnv(prefix, "ENABLED", &o.Enabled, toBool); err != nil {
+		return err
+	}
+	if err := readEnv(prefix, "HEADERS", &o.Headers, toStringMap); err != nil {
+		return err
+	}
+	if err := readEnv(prefix, "AUTH_HEADERS", &o.AuthHeaders, toStringMap); err != nil {
+		return err
+	}
+	return o.CORS.loadEnv(prefix)
 }
 
 func (c *CdnProxyConfig) loadEnv(prefix string) error {

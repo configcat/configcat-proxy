@@ -84,3 +84,15 @@ func DedupStringSlice(strings []string) []string {
 	}
 	return list
 }
+
+func Uint64ToBytes(val uint64) (res []byte) {
+	return append(res,
+		byte(val>>0),
+		byte(val>>8),
+		byte(val>>16),
+		byte(val>>24),
+		byte(val>>32),
+		byte(val>>40),
+		byte(val>>48),
+		byte(val>>56))
+}

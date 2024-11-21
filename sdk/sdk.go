@@ -182,7 +182,8 @@ func (c *client) signal() {
 func (c *client) Eval(key string, user model.UserAttrs) model.EvalData {
 	mergedUser := model.MergeUserAttrs(c.defaultAttrs, user)
 	details := c.configCatClient.Snapshot(mergedUser).GetValueDetails(key)
-	return model.EvalData{Value: details.Value, VariationId: details.Data.VariationID, User: details.Data.User, Error: details.Data.Error}
+	return model.EvalData{Value: details.Value, VariationId: details.Data.VariationID, User: details.Data.User, Error: details.Data.Error,
+		IsTargeting: details.Data.MatchedPercentageOption != nil || details.Data.MatchedTargetingRule != nil}
 }
 
 func (c *client) EvalAll(user model.UserAttrs) map[string]model.EvalData {
@@ -190,7 +191,8 @@ func (c *client) EvalAll(user model.UserAttrs) map[string]model.EvalData {
 	allDetails := c.configCatClient.Snapshot(mergedUser).GetAllValueDetails()
 	result := make(map[string]model.EvalData, len(allDetails))
 	for _, details := range allDetails {
-		result[details.Data.Key] = model.EvalData{Value: details.Value, VariationId: details.Data.VariationID, User: details.Data.User, Error: details.Data.Error}
+		result[details.Data.Key] = model.EvalData{Value: details.Value, VariationId: details.Data.VariationID, User: details.Data.User, Error: details.Data.Error,
+			IsTargeting: details.Data.MatchedPercentageOption != nil || details.Data.MatchedTargetingRule != nil}
 	}
 	return result
 }

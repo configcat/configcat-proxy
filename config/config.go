@@ -103,11 +103,12 @@ type HttpConfig struct {
 	Enabled  bool
 	Port     int            `yaml:"port"`
 	CdnProxy CdnProxyConfig `yaml:"cdn_proxy"`
-	Log      LogConfig
+	OFREP    OFREPConfig    `yaml:"ofrep"`
 	Webhook  WebhookConfig
 	Sse      SseConfig
 	Api      ApiConfig
 	Status   StatusConfig
+	Log      LogConfig
 }
 
 type WebhookConfig struct {
@@ -123,6 +124,13 @@ type CdnProxyConfig struct {
 }
 
 type ApiConfig struct {
+	AuthHeaders map[string]string `yaml:"auth_headers"`
+	Headers     map[string]string `yaml:"headers"`
+	Enabled     bool              `yaml:"enabled"`
+	CORS        CORSConfig
+}
+
+type OFREPConfig struct {
 	AuthHeaders map[string]string `yaml:"auth_headers"`
 	Headers     map[string]string `yaml:"headers"`
 	Enabled     bool              `yaml:"enabled"`
@@ -310,6 +318,9 @@ func (c *Config) setDefaults() {
 
 	c.Http.Api.Enabled = true
 	c.Http.Api.CORS.Enabled = true
+
+	c.Http.OFREP.Enabled = false
+	c.Http.OFREP.CORS.Enabled = true
 
 	c.Http.Webhook.Enabled = true
 

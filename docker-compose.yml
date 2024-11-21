@@ -28,11 +28,9 @@ services:
       - CONFIGCAT_GRPC_SERVER_REFLECTION_ENABLED=true
       - CONFIGCAT_SDKS={"sdk1":"XxPbCKmzIUGORk4vsufpzw/iC_KABprDEueeQs3yovVnQ", "sdk2":"XxPbCKmzIUGORk4vsufpzw/6ft7XQudcEuIXY49grZM9w"}
       - CONFIGCAT_SDK1_BASE_URL=https://test-cdn-global.configcat.com
-      - CONFIGCAT_SDK1_POLL_INTERVAL=300
       - CONFIGCAT_SDK1_LOG_LEVEL=error
       - CONFIGCAT_SDK1_WEBHOOK_SIGNING_KEY=configcat_whsk_Dj59sEWxRmm+84izQ8Cbn9o4Pnjz7E+/hxcmyfEVT+A=
       - CONFIGCAT_SDK2_BASE_URL=https://test-cdn-global.configcat.com
-      - CONFIGCAT_SDK2_POLL_INTERVAL=300
       - CONFIGCAT_SDK2_WEBHOOK_SIGNING_KEY=configcat_whsk_a8w2b38Ofhs0rzXbZhNCvPTeTeUxmerTBy9PzMCX6+E=
       - CONFIGCAT_SDK2_LOG_LEVEL=error
 #      - CONFIGCAT_SDK2_OFFLINE_ENABLED=true
@@ -47,6 +45,7 @@ services:
 #      - AWS_SECRET_ACCESS_KEY=secret
 #      - AWS_SESSION_TOKEN=session
 #      - AWS_DEFAULT_REGION=us-east-1
+      - CONFIGCAT_HTTP_OFREP_ENABLED=true
       - CONFIGCAT_TLS_ENABLED=true
       - CONFIGCAT_TLS_CERTIFICATES=[{"key":"./cert/localhost.key","cert":"./cert/localhost.crt"}]
       - CONFIGCAT_HTTP_PROXY_URL=http://squid:3128

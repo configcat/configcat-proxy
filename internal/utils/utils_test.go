@@ -47,3 +47,7 @@ func TestGenerateEtag(t *testing.T) {
 func TestExcept(t *testing.T) {
 	assert.Equal(t, []string{"c", "d"}, Except([]string{"a", "b", "c", "d"}, []string{"a", "b"}))
 }
+
+func TestUint64ToBytes(t *testing.T) {
+	assert.Equal(t, []byte{0x9a, 0xb7, 0x7, 0x2f, 0x62, 0xaf, 0xa7, 0xd}, Uint64ToBytes(983947879834433434))
+}

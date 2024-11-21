@@ -45,13 +45,15 @@ func WaitUntil(timeout time.Duration, f func() bool) {
 }
 
 func AddSdkIdContextParam(r *http.Request) {
-	params := httprouter.Params{httprouter.Param{Key: "sdkId", Value: "test"}}
-	ctx := context.WithValue(context.Background(), httprouter.ParamsKey, params)
-	*r = *r.WithContext(ctx)
+	AddContextParam(r, "sdkId", "test")
 }
 
 func AddSdkIdContextParamWithSdkId(r *http.Request, sdkId string) {
-	params := httprouter.Params{httprouter.Param{Key: "sdkId", Value: sdkId}}
+	AddContextParam(r, "sdkId", sdkId)
+}
+
+func AddContextParam(r *http.Request, key string, value string) {
+	params := httprouter.Params{httprouter.Param{Key: key, Value: value}}
 	ctx := context.WithValue(context.Background(), httprouter.ParamsKey, params)
 	*r = *r.WithContext(ctx)
 }

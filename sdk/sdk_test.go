@@ -13,6 +13,7 @@ import (
 	"github.com/configcat/configcat-proxy/sdk/statistics"
 	"github.com/configcat/configcat-proxy/sdk/store"
 	"github.com/configcat/configcat-proxy/sdk/store/cache"
+	configcat "github.com/configcat/go-sdk/v9"
 	"github.com/configcat/go-sdk/v9/configcatcache"
 	"github.com/configcat/go-sdk/v9/configcattest"
 	"github.com/stretchr/testify/assert"
@@ -289,6 +290,42 @@ func TestSdk_EvalAll(t *testing.T) {
 	assert.Equal(t, 2, len(details))
 	assert.Equal(t, "v1", details["flag1"].Value)
 	assert.Equal(t, "v2", details["flag2"].Value)
+	assert.False(t, details["flag1"].IsTargeting)
+	assert.False(t, details["flag2"].IsTargeting)
+	assert.Nil(t, details["flag1"].Error)
+	assert.Nil(t, details["flag2"].Error)
+}
+
+func TestSdk_EvalAll_Targeting(t *testing.T) {
+	key := configcattest.RandomSDKKey()
+	var h configcattest.Handler
+	_ = h.SetFlags(key, map[string]*configcattest.Flag{
+		"flag1": {
+			Default: "v1",
+			Rules: []configcattest.Rule{{
+				Value:               "t1",
+				ComparisonAttribute: "Email",
+				Comparator:          configcat.OpEq,
+				ComparisonValue:     "a@b.com",
+			}},
+		},
+		"flag2": {
+			Default: "v2",
+		},
+	})
+	srv := httptest.NewServer(&h)
+	defer srv.Close()
+
+	ctx := NewTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key}, nil)
+	client := NewClient(ctx, log.NewNullLogger())
+	defer client.Close()
+
+	details := client.EvalAll(model.UserAttrs{"Email": "a@b.com"})
+	assert.Equal(t, 2, len(details))
+	assert.Equal(t, "t1", details["flag1"].Value)
+	assert.Equal(t, "v2", details["flag2"].Value)
+	assert.True(t, details["flag1"].IsTargeting)
+	assert.False(t, details["flag2"].IsTargeting)
 	assert.Nil(t, details["flag1"].Error)
 	assert.Nil(t, details["flag2"].Error)
 }

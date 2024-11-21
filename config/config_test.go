@@ -519,6 +519,19 @@ http:
       allowed_origins:
         - https://example1.com
         - https://example2.com
+  ofrep:
+    enabled: true
+    headers:
+      CUSTOM-HEADER1: "ofrep-val1"
+      CUSTOM-HEADER2: "ofrep-val2"
+    auth_headers:
+      X-API-KEY1: "ofrep-auth1"
+      X-API-KEY2: "ofrep-auth2"
+    cors: 
+      enabled: true
+      allowed_origins:
+        - https://example1.com
+        - https://example2.com
   sse:
     log: 
       level: "warn"
@@ -564,6 +577,15 @@ http:
 		assert.Equal(t, "api-val2", conf.Http.Api.Headers["CUSTOM-HEADER2"])
 		assert.Equal(t, "api-auth1", conf.Http.Api.AuthHeaders["X-API-KEY1"])
 		assert.Equal(t, "api-auth2", conf.Http.Api.AuthHeaders["X-API-KEY2"])
+
+		assert.True(t, conf.Http.OFREP.Enabled)
+		assert.True(t, conf.Http.OFREP.CORS.Enabled)
+		assert.Equal(t, "https://example1.com", conf.Http.OFREP.CORS.AllowedOrigins[0])
+		assert.Equal(t, "https://example2.com", conf.Http.OFREP.CORS.AllowedOrigins[1])
+		assert.Equal(t, "ofrep-val1", conf.Http.OFREP.Headers["CUSTOM-HEADER1"])
+		assert.Equal(t, "ofrep-val2", conf.Http.OFREP.Headers["CUSTOM-HEADER2"])
+		assert.Equal(t, "ofrep-auth1", conf.Http.OFREP.AuthHeaders["X-API-KEY1"])
+		assert.Equal(t, "ofrep-auth2", conf.Http.OFREP.AuthHeaders["X-API-KEY2"])
 
 		assert.True(t, conf.Http.Status.Enabled)
 	})

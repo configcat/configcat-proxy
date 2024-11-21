@@ -10,6 +10,7 @@ import (
 	"github.com/configcat/configcat-proxy/web/api"
 	"github.com/configcat/configcat-proxy/web/cdnproxy"
 	"github.com/configcat/configcat-proxy/web/mware"
+	"github.com/configcat/configcat-proxy/web/ofrep"
 	"github.com/configcat/configcat-proxy/web/sse"
 	"github.com/configcat/configcat-proxy/web/webhook"
 	"github.com/julienschmidt/httprouter"
@@ -22,6 +23,7 @@ type HttpRouter struct {
 	webhookServer  *webhook.Server
 	cdnProxyServer *cdnproxy.Server
 	apiServer      *api.Server
+	ofrepServer    *ofrep.Server
 	metrics        metrics.Reporter
 }
 
@@ -47,6 +49,9 @@ func NewRouter(sdkRegistrar sdk.Registrar, metrics metrics.Reporter, reporter st
 	}
 	if conf.Api.Enabled {
 		r.setupAPIRoutes(&conf.Api, sdkRegistrar, httpLog)
+	}
+	if conf.OFREP.Enabled {
+		r.setupOFREPRoutes(&conf.OFREP, sdkRegistrar, httpLog)
 	}
 	if conf.Status.Enabled {
 		r.setupStatusRoutes(reporter, httpLog)
@@ -180,4 +185,36 @@ func (s *HttpRouter) setupAPIRoutes(conf *config.ApiConfig, sdkRegistrar sdk.Reg
 		s.router.HandlerFunc(http.MethodOptions, endpoint.path, endpoint.handler)
 	}
 	l.Reportf("API enabled, accepting requests on path: /api/:sdkId/*")
+}
+
+func (s *HttpRouter) setupOFREPRoutes(conf *config.OFREPConfig, sdkRegistrar sdk.Registrar, l log.Logger) {
+	s.ofrepServer = ofrep.NewServer(sdkRegistrar, conf, l)
+	endpoints := []endpoint{
+		{path: "/ofrep/v1/evaluate/flags/:key", handler: mware.GZip(s.ofrepServer.Eval), method: http.MethodPost},
+		{path: "/ofrep/v1/evaluate/flags", handler: mware.GZip(s.ofrepServer.EvalAll), method: http.MethodPost},
+		{path: "/ofrep/v1/configuration", handler: mware.GZip(s.ofrepServer.GetConfiguration), method: http.MethodGet},
+	}
+	for _, endpoint := range endpoints {
+		if len(conf.AuthHeaders) > 0 {
+			endpoint.handler = mware.HeaderAuth(conf.AuthHeaders, l, endpoint.handler)
+		}
+		endpoint.handler = mware.AutoOptions(endpoint.handler)
+		if len(conf.Headers) > 0 {
+			endpoint.handler = mware.ExtraHeaders(conf.Headers, endpoint.handler)
+		}
+		if conf.CORS.Enabled {
+			allowedHeaders := append(utils.KeysOfMap(conf.AuthHeaders), ofrep.SdkIdHeader)
+			endpoint.handler = mware.CORS([]string{endpoint.method, http.MethodOptions}, conf.CORS.AllowedOrigins,
+				utils.KeysOfMap(conf.Headers), allowedHeaders, &conf.CORS.AllowedOriginsRegex, endpoint.handler)
+		}
+		if s.metrics != nil {
+			endpoint.handler = metrics.Measure(s.metrics, endpoint.handler)
+		}
+		if l.Level() == log.Debug {
+			endpoint.handler = mware.DebugLog(l, endpoint.handler)
+		}
+		s.router.HandlerFunc(endpoint.method, endpoint.path, endpoint.handler)
+		s.router.HandlerFunc(http.MethodOptions, endpoint.path, endpoint.handler)
+	}
+	l.Reportf("OFREP enabled, accepting requests on path: /ofrep/v1/*")
 }
