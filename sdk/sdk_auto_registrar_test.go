@@ -6,6 +6,7 @@ import (
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/diag/status"
 	"github.com/configcat/configcat-proxy/internal/testutils"
+	"github.com/configcat/configcat-proxy/internal/utils"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/model"
 	"github.com/configcat/go-sdk/v9/configcatcache"
@@ -174,8 +175,9 @@ func TestAutoRegistrar_Cache_Poll(t *testing.T) {
 		SDKs: map[string]*model.SdkConfigModel{"test": {SDKKey: sdkKey}},
 	}
 
-	autConfigCacheEntry, _ := json.Marshal(autoConfig)
-	_ = cache.Set("configcat-proxy-conf/test-reg", string(autConfigCacheEntry))
+	autoConfigJson, _ := json.Marshal(autoConfig)
+	autoConfigCacheEntry := cacheSegmentsToBytes("etag", autoConfigJson)
+	_ = cache.Set("configcat-proxy-conf/test-reg", string(autoConfigCacheEntry))
 
 	reg := NewTestAutoRegistrarWithCache(t, 1, extCache, log.NewNullLogger())
 
@@ -199,8 +201,9 @@ func TestAutoRegistrar_Cache_Poll(t *testing.T) {
 		SDKs: map[string]*model.SdkConfigModel{"test": {SDKKey: sdkKey}, "test2": {SDKKey: sdkKey2}},
 	}
 
-	autConfigCacheEntry, _ = json.Marshal(autoConfig)
-	_ = cache.Set("configcat-proxy-conf/test-reg", string(autConfigCacheEntry))
+	autoConfigJson, _ = json.Marshal(autoConfig)
+	autoConfigCacheEntry = cacheSegmentsToBytes("etag2", autoConfigJson)
+	_ = cache.Set("configcat-proxy-conf/test-reg", string(autoConfigCacheEntry))
 
 	testutils.WaitUntil(5*time.Second, func() bool {
 		return nil != reg.GetSdkOrNil("test2")
@@ -231,8 +234,9 @@ func TestAutoRegistrar_Cache_Refresh(t *testing.T) {
 		SDKs: map[string]*model.SdkConfigModel{"test": {SDKKey: sdkKey}},
 	}
 
-	autConfigCacheEntry, _ := json.Marshal(autoConfig)
-	_ = cache.Set("configcat-proxy-conf/test-reg", string(autConfigCacheEntry))
+	autoConfigJson, _ := json.Marshal(autoConfig)
+	autoConfigCacheEntry := cacheSegmentsToBytes("etag", autoConfigJson)
+	_ = cache.Set("configcat-proxy-conf/test-reg", string(autoConfigCacheEntry))
 
 	reg := NewTestAutoRegistrarWithCache(t, 60, extCache, log.NewNullLogger())
 
@@ -256,8 +260,9 @@ func TestAutoRegistrar_Cache_Refresh(t *testing.T) {
 		SDKs: map[string]*model.SdkConfigModel{"test": {SDKKey: sdkKey}, "test2": {SDKKey: sdkKey2}},
 	}
 
-	autConfigCacheEntry, _ = json.Marshal(autoConfig)
-	_ = cache.Set("configcat-proxy-conf/test-reg", string(autConfigCacheEntry))
+	autoConfigJson, _ = json.Marshal(autoConfig)
+	autoConfigCacheEntry = cacheSegmentsToBytes("etag2", autoConfigJson)
+	_ = cache.Set("configcat-proxy-conf/test-reg", string(autoConfigCacheEntry))
 
 	reg.Refresh()
 	testutils.WaitUntil(5*time.Second, func() bool {
@@ -289,8 +294,9 @@ func TestAutoRegistrar_Cache_When_Fail(t *testing.T) {
 		SDKs: map[string]*model.SdkConfigModel{"test": {SDKKey: sdkKey}},
 	}
 
-	autConfigCacheEntry, _ := json.Marshal(autoConfig)
-	_ = cache.Set("configcat-proxy-conf/test-reg", string(autConfigCacheEntry))
+	autoConfigJson, _ := json.Marshal(autoConfig)
+	autoConfigCacheEntry := cacheSegmentsToBytes("etag", autoConfigJson)
+	_ = cache.Set("configcat-proxy-conf/test-reg", string(autoConfigCacheEntry))
 
 	conf := config.Config{AutoSDK: config.AutoSDKConfig{Key: "test-reg", PollInterval: 60}}
 	reg, _ := newAutoRegistrar(&conf, nil, status.NewEmptyReporter(), extCache, log.NewNullLogger())
@@ -316,5 +322,7 @@ func TestAutoRegistrar_Saves_To_Cache(t *testing.T) {
 	assert.NotNil(t, sdkClient)
 
 	cached, _ := cache.Get("configcat-proxy-conf/test-reg")
-	assert.Equal(t, `{"SDKs":{"test":{"SDKKey":"`+sdkClient.sdkCtx.SDKConf.Key+`"}},"Options":{"PollInterval":60,"DataGovernance":"global"}}`, cached)
+	cachedBody, cachedEtag, _ := cacheSegmentsFromBytes([]byte(cached))
+	assert.Equal(t, `{"SDKs":{"test":{"SDKKey":"`+sdkClient.sdkCtx.SDKConf.Key+`"}},"Options":{"PollInterval":60,"DataGovernance":"global"}}`, string(cachedBody))
+	assert.Equal(t, utils.GenerateEtag(cachedBody), cachedEtag)
 }

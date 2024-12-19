@@ -1,6 +1,7 @@
 package sdk
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -29,6 +30,7 @@ type autoRegistrar struct {
 	refreshChan     chan struct{}
 	options         *model.OptionsModel
 	cacheKey        string
+	etag            string
 	sdkClients      *xsync.MapOf[string, Client]
 	httpClient      *http.Client
 	ctx             context.Context
@@ -71,6 +73,7 @@ func newAutoRegistrar(conf *config.Config, metricsReporter metrics.Reporter, sta
 		ctx:       ctx,
 		ctxCancel: cancel,
 		cacheKey:  "configcat-proxy-conf/" + conf.AutoSDK.Key,
+		etag:      "initial",
 	}
 
 	timeoutCtx, timeoutCancel := context.WithTimeout(ctx, time.Second*15)
@@ -153,7 +156,7 @@ func (r *autoRegistrar) refreshConfig() {
 	autoConfig, err := r.getConfig(r.ctx)
 	if err != nil {
 		r.log.Errorf("%v", err)
-	} else {
+	} else if autoConfig != nil {
 		existingKeys := utils.KeysOfSyncMap(r.sdkClients)
 		remoteKeys := utils.KeysOfMap(autoConfig.SDKs)
 
@@ -171,77 +174,75 @@ func (r *autoRegistrar) refreshConfig() {
 }
 
 func (r *autoRegistrar) getConfig(ctx context.Context) (*model.ProxyConfigModel, error) {
+	cachedConfig, cachedEtag, cacheErr := r.readCache(ctx)
 	if r.conf.GlobalOfflineConfig.Enabled {
-		if r.cache == nil {
-			return nil, fmt.Errorf("could not load auto sdk configuration: offline mode is enabled without an external cache")
+		if cacheErr != nil {
+			return nil, fmt.Errorf("could not load auto sdk configuration from cache: %s", cacheErr)
 		}
-		cached, err := r.cache.Get(ctx, r.cacheKey)
-		if err != nil {
-			return nil, fmt.Errorf("could not read a valid auto sdk configuration from cache: %v", err)
-		}
-		if len(cached) == 0 {
-			return nil, fmt.Errorf("no valid auto sdk configuration found in cache")
-		}
-		return r.parseConfig(cached)
+		return r.parseConfig(cachedConfig, cachedEtag)
 	}
-	fetched, err := r.fetchConfig(ctx)
-	if err != nil {
-		if r.cache == nil {
-			return nil, err
+	fetched, fetchedEtag, fetchErr := r.fetchConfig(ctx, cachedEtag)
+	if fetchErr != nil {
+		r.log.Errorf("could not fetch auto sdk configuration, falling back to cache: %v", fetchErr)
+		if cacheErr != nil {
+			return nil, fmt.Errorf("could not load auto sdk configuration from cache: %s", cacheErr)
 		}
-		r.log.Errorf("could not fetch auto sdk configuration, falling back to cache: %v", err)
-		cached, err := r.cache.Get(ctx, r.cacheKey)
-		if err != nil {
-			return nil, fmt.Errorf("could not read a valid auto sdk configuration from cache: %v", err)
-		}
-		if len(cached) == 0 {
-			return nil, fmt.Errorf("no valid auto sdk configuration found in cache")
-		}
-		return r.parseConfig(cached)
+		return r.parseConfig(cachedConfig, cachedEtag)
 	}
-	if r.cache != nil {
-		err = r.cache.Set(ctx, r.cacheKey, fetched)
+	if fetched == nil { // 304
+		return r.parseConfig(cachedConfig, cachedEtag)
+	} else { // 200
+		err := r.writeCache(ctx, fetched, fetchedEtag)
 		if err != nil {
-			r.log.Errorf("could not write the auto sdk configuration to cache: %v", err)
+			r.log.Errorf("could not write auto sdk configuration to cache: %v", err)
 		}
+		return r.parseConfig(fetched, fetchedEtag)
 	}
-	return r.parseConfig(fetched)
 }
 
-func (r *autoRegistrar) parseConfig(body []byte) (*model.ProxyConfigModel, error) {
+func (r *autoRegistrar) parseConfig(body []byte, etag string) (*model.ProxyConfigModel, error) {
+	if etag == r.etag {
+		return nil, nil
+	}
 	parsed := model.ProxyConfigModel{}
 	if err := json.Unmarshal(body, &parsed); err != nil {
 		return nil, fmt.Errorf("error during parsing auto sdk configuration: %v", err)
 	}
+	r.etag = etag
 	r.log.Debugf("auto sdk configuration loaded, got %d SDK keys", len(parsed.SDKs))
 	return &parsed, nil
 }
 
-func (r *autoRegistrar) fetchConfig(ctx context.Context) ([]byte, error) {
-	apiUrl := r.conf.AutoSDK.BaseUrl + "/v1/proxy/config"
-	r.log.Debugf("fetching remote configuration from %s?key=%s", apiUrl, r.conf.AutoSDK.Key)
+func (r *autoRegistrar) fetchConfig(ctx context.Context, etag string) ([]byte, string, error) {
+	apiUrl := r.conf.AutoSDK.BaseUrl + "/v1/proxy/config/" + r.conf.AutoSDK.Key
+	r.log.Debugf("fetching remote configuration from %s", apiUrl)
 	request, err := http.NewRequestWithContext(ctx, "GET", apiUrl, nil)
 	if err != nil {
-		return nil, fmt.Errorf("error during fetching remote configuration: %v", err)
+		return nil, "", fmt.Errorf("error during fetching remote configuration: %v", err)
 	}
-	query := request.URL.Query()
-	query.Add("key", r.conf.AutoSDK.Key)
-	request.URL.RawQuery = query.Encode()
+	if etag != "" {
+		request.Header.Set("If-None-Match", etag)
+	}
+	request.Header.Set("Authorization", "Bearer "+r.conf.AutoSDK.Secret)
 	response, err := r.httpClient.Do(request)
 	if err != nil {
-		return nil, fmt.Errorf("error during fetching remote configuration: %v", err)
+		return nil, "", fmt.Errorf("error during fetching remote configuration: %v", err)
 	}
 	defer func() {
 		_ = response.Body.Close()
 	}()
-	if response.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("error during fetching remote configuration, status code: %d", response.StatusCode)
+	if response.StatusCode == http.StatusNotModified {
+		return nil, "", nil
 	}
+	if response.StatusCode != http.StatusOK {
+		return nil, "", fmt.Errorf("error during fetching remote configuration, status code: %d", response.StatusCode)
+	}
+	receivedEtag := response.Header.Get("ETag")
 	body, err := io.ReadAll(response.Body)
 	if err != nil {
-		return nil, fmt.Errorf("error during reading configuration response: %v", err)
+		return nil, "", fmt.Errorf("error during reading configuration response: %v", err)
 	}
-	return body, nil
+	return body, receivedEtag, nil
 }
 
 func (r *autoRegistrar) buildSdkConfig(sdkId string, sdkModel *model.SdkConfigModel) *config.SDKConfig {
@@ -336,4 +337,57 @@ func (r *autoRegistrar) resetSdkClients(sdkIds []string, config *model.ProxyConf
 func (r *autoRegistrar) shouldUpdateOptions(options *model.OptionsModel) bool {
 	return r.options.PollInterval != options.PollInterval ||
 		r.options.DataGovernance != options.DataGovernance
+}
+
+func (r *autoRegistrar) readCache(ctx context.Context) (config []byte, eTag string, err error) {
+	if r.cache == nil {
+		return nil, "", fmt.Errorf("cache is not configured")
+	}
+	cached, err := r.cache.Get(ctx, r.cacheKey)
+	if err != nil {
+		return nil, "", err
+	}
+	if len(cached) == 0 {
+		return nil, "", fmt.Errorf("no valid auto sdk configuration found in cache")
+	}
+	return cacheSegmentsFromBytes(cached)
+}
+
+func (r *autoRegistrar) writeCache(ctx context.Context, config []byte, etag string) error {
+	if r.cache == nil {
+		return fmt.Errorf("cache is not configured")
+	}
+	err := r.cache.Set(ctx, r.cacheKey, cacheSegmentsToBytes(etag, config))
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+const newLineByte byte = '\n'
+
+func cacheSegmentsFromBytes(cacheBytes []byte) (config []byte, eTag string, err error) {
+	eTagIndex := bytes.IndexByte(cacheBytes, newLineByte)
+	if eTagIndex == -1 {
+		return nil, "", fmt.Errorf("number of values is fewer than expected")
+	}
+
+	eTagBytes := cacheBytes[:eTagIndex]
+	if len(eTagBytes) == 0 {
+		return nil, "", fmt.Errorf("empty eTag value")
+	}
+
+	configBytes := cacheBytes[eTagIndex+1:]
+	if len(configBytes) == 0 {
+		return nil, "", fmt.Errorf("empty configuration JSON")
+	}
+
+	return configBytes, string(eTagBytes), nil
+}
+
+func cacheSegmentsToBytes(eTag string, config []byte) []byte {
+	toCache := []byte(eTag)
+	toCache = append(toCache, newLineByte)
+	toCache = append(toCache, config...)
+	return toCache
 }

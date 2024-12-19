@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/diag/status"
+	"github.com/configcat/configcat-proxy/internal/utils"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/model"
 	"github.com/configcat/configcat-proxy/sdk/store"
@@ -141,8 +142,9 @@ func (h *TestSdkRegistrarHandler) ServeHTTP(w http.ResponseWriter, req *http.Req
 	}
 	h.mu.RLock()
 	defer h.mu.RUnlock()
-	w.Header().Set("Content-Type", "application/json")
 	body, _ := json.Marshal(h.result)
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("ETag", utils.GenerateEtag(body))
 	_, _ = w.Write(body)
 }
 

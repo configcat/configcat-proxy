@@ -5,8 +5,8 @@
 #    poll_interval: 300
 #    webhook_signing_key: "configcat_whsk_Dj59sEWxRmm+84izQ8Cbn9o4Pnjz7E+/hxcmyfEVT+A="
 auto_config:
-  key: 08dcec39-de57-4126-8496-3f194ac1e4dd
-  secret: "secret"
+  key: 08dd1f67-c86a-4de9-85d7-95040109ae6e
+  secret: trjy4kurNnbvbU18eqxgBE73ji9IHcst09TKW/ErB/g=
   base_url: "http://localhost:5200"
   poll_interval: 30
   log:
