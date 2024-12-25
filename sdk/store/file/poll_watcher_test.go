@@ -28,7 +28,7 @@ func TestPollWatcher_Stop(t *testing.T) {
 		}()
 		testutils.WithTimeout(2*time.Second, func() {
 			select {
-			case <-watcher.Closed():
+			case <-watcher.Context().Done():
 			case <-watcher.Modified():
 			}
 		})

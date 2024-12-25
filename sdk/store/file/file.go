@@ -73,7 +73,7 @@ func (f *fileStore) run() {
 			if f.reload() {
 				f.Notify()
 			}
-		case <-f.Closed():
+		case <-f.Notifier.Context().Done():
 			return
 		}
 	}

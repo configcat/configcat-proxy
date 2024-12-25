@@ -196,7 +196,7 @@ func TestRedisNotify_Close(t *testing.T) {
 	}()
 	testutils.WithTimeout(2*time.Second, func() {
 		select {
-		case <-srv.Closed():
+		case <-srv.Context().Done():
 		case <-srv.Modified():
 		}
 	})

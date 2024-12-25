@@ -13,7 +13,6 @@ type pollWatcher struct {
 	store.Notifier
 
 	log              log.Logger
-	poller           *time.Ticker
 	realFilePath     string
 	lastModifiedDate time.Time
 	lastSize         int64
@@ -33,21 +32,22 @@ func newPollWatcher(conf *config.LocalConfig, log log.Logger) (*pollWatcher, err
 	}
 	p := &pollWatcher{
 		Notifier:         store.NewNotifier(),
-		poller:           time.NewTicker(time.Duration(conf.PollInterval) * time.Second),
 		log:              fsLog,
 		realFilePath:     realPath,
 		lastModifiedDate: stat.ModTime(),
 		lastSize:         stat.Size(),
 	}
 	fsLog.Reportf("started watching %s", p.realFilePath)
-	go p.run()
+	go p.run(conf.PollInterval)
 	return p, nil
 }
 
-func (p *pollWatcher) run() {
+func (p *pollWatcher) run(interval int) {
+	poller := time.NewTicker(time.Duration(interval) * time.Second)
+	defer poller.Stop()
 	for {
 		select {
-		case <-p.poller.C:
+		case <-poller.C:
 			stat, err := os.Stat(p.realFilePath)
 			if err != nil {
 				p.log.Errorf("failed to read stat on %s: %s", p.realFilePath, err)
@@ -58,7 +58,7 @@ func (p *pollWatcher) run() {
 				p.lastSize = stat.Size()
 				p.Notify()
 			}
-		case <-p.Closed():
+		case <-p.Notifier.Context().Done():
 			return
 		}
 	}
@@ -66,6 +66,5 @@ func (p *pollWatcher) run() {
 
 func (p *pollWatcher) Close() {
 	p.Notifier.Close()
-	p.poller.Stop()
 	p.log.Reportf("shutdown complete")
 }

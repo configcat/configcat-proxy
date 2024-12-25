@@ -40,7 +40,6 @@ type autoRegistrar struct {
 	statusReporter  status.Reporter
 	cache           store.Cache
 	log             log.Logger
-	poller          *time.Ticker
 	pubsub.Publisher[string]
 }
 
@@ -56,7 +55,6 @@ func newAutoRegistrar(conf *config.Config, metricsReporter metrics.Reporter, sta
 			regLog.Reportf("using HTTP proxy: %s", conf.HttpProxy.Url)
 		}
 	}
-	ctx, cancel := context.WithCancel(context.Background())
 	registrar := &autoRegistrar{
 		refreshChan:     make(chan struct{}),
 		conf:            conf,
@@ -70,13 +68,12 @@ func newAutoRegistrar(conf *config.Config, metricsReporter metrics.Reporter, sta
 			Timeout:   30 * time.Second,
 			Transport: transport,
 		},
-		ctx:       ctx,
-		ctxCancel: cancel,
-		cacheKey:  "configcat-proxy-conf/" + conf.AutoSDK.Key,
-		etag:      "initial",
+		cacheKey: "configcat-proxy-conf/" + conf.AutoSDK.Key,
+		etag:     "initial",
 	}
+	registrar.ctx, registrar.ctxCancel = context.WithCancel(context.Background())
 
-	timeoutCtx, timeoutCancel := context.WithTimeout(ctx, time.Second*15)
+	timeoutCtx, timeoutCancel := context.WithTimeout(registrar.ctx, time.Second*15)
 	defer timeoutCancel()
 	autoConfig, err := registrar.getConfig(timeoutCtx)
 	if err != nil {
@@ -95,8 +92,7 @@ func newAutoRegistrar(conf *config.Config, metricsReporter metrics.Reporter, sta
 	} else {
 		interval = time.Duration(conf.AutoSDK.PollInterval) * time.Second
 	}
-	registrar.poller = time.NewTicker(interval)
-	go registrar.run()
+	go registrar.run(interval)
 	return registrar, nil
 }
 
@@ -128,9 +124,6 @@ func (r *autoRegistrar) Refresh() {
 func (r *autoRegistrar) Close() {
 	r.ctxCancel()
 	r.Publisher.Close()
-	if r.poller != nil {
-		r.poller.Stop()
-	}
 	r.sdkClients.Range(func(key string, value Client) bool {
 		value.Close()
 		r.sdkClients.Delete(key)
@@ -139,10 +132,12 @@ func (r *autoRegistrar) Close() {
 	r.log.Reportf("shutdown complete")
 }
 
-func (r *autoRegistrar) run() {
+func (r *autoRegistrar) run(interval time.Duration) {
+	poller := time.NewTicker(interval)
+	defer poller.Stop()
 	for {
 		select {
-		case <-r.poller.C:
+		case <-poller.C:
 			r.refreshConfig()
 		case <-r.refreshChan:
 			r.refreshConfig()

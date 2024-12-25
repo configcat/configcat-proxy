@@ -126,7 +126,7 @@ func TestFileStore_Stop(t *testing.T) {
 		}()
 		testutils.WithTimeout(2*time.Second, func() {
 			select {
-			case <-str.Closed():
+			case <-str.Context().Done():
 			case <-str.Modified():
 			}
 		})

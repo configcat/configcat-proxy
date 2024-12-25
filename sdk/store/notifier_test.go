@@ -11,7 +11,7 @@ func TestNotifier_Modified(t *testing.T) {
 		n.Notify()
 	}()
 	select {
-	case <-n.Closed():
+	case <-n.Context().Done():
 		assert.Fail(t, "modified expected")
 	case <-n.Modified():
 	}
@@ -23,7 +23,7 @@ func TestNotifier_Closed(t *testing.T) {
 		n.Close()
 	}()
 	select {
-	case <-n.Closed():
+	case <-n.Context().Done():
 	case <-n.Modified():
 		assert.Fail(t, "close expected")
 	}
