@@ -458,6 +458,46 @@ func TestVersion(t *testing.T) {
 	assert.Equal(t, "0.0.0", Version())
 }
 
+func TestSdk_Cache_Rebuild(t *testing.T) {
+	key := configcattest.RandomSDKKey()
+	var h configcattest.Handler
+	_ = h.SetFlags(key, map[string]*configcattest.Flag{
+		"flag": {
+			Default: true,
+		},
+	})
+	srv := httptest.NewServer(&h)
+	defer srv.Close()
+
+	redis := miniredis.RunT(t)
+	cacheKey := configcatcache.ProduceCacheKey(key, configcatcache.ConfigJSONName, configcatcache.ConfigJSONCacheVersion)
+	ctx := NewTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key, PollInterval: 1}, newRedisCache(redis.Addr()))
+	client := NewClient(ctx, log.NewNullLogger())
+	defer client.Close()
+
+	testutils.WaitUntil(2*time.Second, func() bool {
+		val, _ := redis.Get(cacheKey)
+		return len(val) > 0
+	})
+	val, _ := redis.Get(cacheKey)
+	_, etag, j, _ := configcatcache.CacheSegmentsFromBytes([]byte(val))
+	assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true,"s":null,"i":null,"d":null},"t":0,"r":[],"p":null}},"s":null,"p":null}`, string(j))
+
+	redis.Del(cacheKey)
+	val, _ = redis.Get(cacheKey)
+	assert.Empty(t, val)
+
+	testutils.WaitUntil(2*time.Second, func() bool {
+		val, _ := redis.Get(cacheKey)
+		return len(val) > 0
+	})
+
+	val, _ = redis.Get(cacheKey)
+	_, etag2, j, _ := configcatcache.CacheSegmentsFromBytes([]byte(val))
+	assert.Equal(t, etag, etag2)
+	assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true,"s":null,"i":null,"d":null},"t":0,"r":[],"p":null}},"s":null,"p":null}`, string(j))
+}
+
 func newRedisCache(addr string) store.Cache {
 	c, _ := cache.SetupExternalCache(context.Background(), &config.CacheConfig{Redis: config.RedisConfig{Enabled: true, Addresses: []string{addr}}}, log.NewNullLogger())
 	return c

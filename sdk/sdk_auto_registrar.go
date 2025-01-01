@@ -185,8 +185,10 @@ func (r *autoRegistrar) getConfig(ctx context.Context) (*model.ProxyConfigModel,
 		return r.parseConfig(cachedConfig, cachedEtag)
 	}
 	if fetched == nil { // 304
+		r.log.Debugf("auto sdk configuration not modified")
 		return r.parseConfig(cachedConfig, cachedEtag)
 	} else { // 200
+		r.log.Debugf("auto sdk configuration fetched")
 		err := r.writeCache(ctx, fetched, fetchedEtag)
 		if err != nil {
 			r.log.Errorf("could not write auto sdk configuration to cache: %v", err)

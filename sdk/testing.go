@@ -87,7 +87,7 @@ func NewTestSdkContext(conf *config.SDKConfig, cache store.Cache) *Context {
 }
 
 func NewTestAutoRegistrarWithAutoConfig(t *testing.T, autoConf config.AutoSDKConfig, logger log.Logger) (AutoRegistrar, *TestSdkRegistrarHandler) {
-	return NewTestAutoRegistrar(t, config.Config{AutoSDK: autoConf, GlobalOfflineConfig: config.GlobalOfflineConfig{}}, nil, logger)
+	return NewTestAutoRegistrar(t, config.Config{AutoSDK: autoConf}, nil, logger)
 }
 
 func NewTestAutoRegistrarWithCache(t *testing.T, cachePoll int, cache store.Cache, logger log.Logger) AutoRegistrar {
@@ -143,8 +143,14 @@ func (h *TestSdkRegistrarHandler) ServeHTTP(w http.ResponseWriter, req *http.Req
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 	body, _ := json.Marshal(h.result)
+	etag := utils.GenerateEtag(body)
+	w.Header().Set("ETag", etag)
+	receivedEtag := req.Header.Get("If-None-Match")
+	if receivedEtag == etag {
+		w.WriteHeader(http.StatusNotModified)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("ETag", utils.GenerateEtag(body))
 	_, _ = w.Write(body)
 }
 

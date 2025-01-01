@@ -326,3 +326,23 @@ func TestAutoRegistrar_Saves_To_Cache(t *testing.T) {
 	assert.Equal(t, `{"SDKs":{"test":{"SDKKey":"`+sdkClient.sdkCtx.SDKConf.Key+`"}},"Options":{"PollInterval":60,"DataGovernance":"global"}}`, string(cachedBody))
 	assert.Equal(t, utils.GenerateEtag(cachedBody), cachedEtag)
 }
+
+func TestAutoRegistrar_Cache_Rebuild(t *testing.T) {
+	cache := miniredis.RunT(t)
+	extCache := newRedisCache(cache.Addr())
+	cacheKey := "configcat-proxy-conf/test-reg"
+	conf := config.Config{AutoSDK: config.AutoSDKConfig{Key: "test-reg", PollInterval: 1}}
+	_, _ = NewTestAutoRegistrar(t, conf, extCache, log.NewNullLogger())
+
+	cached, _ := cache.Get(cacheKey)
+	assert.NotEmpty(t, cached)
+
+	cache.Del(cacheKey)
+	cached, _ = cache.Get(cacheKey)
+	assert.Empty(t, cached)
+
+	testutils.WaitUntil(2*time.Second, func() bool {
+		cached, _ := cache.Get(cacheKey)
+		return len(cached) > 0
+	})
+}
