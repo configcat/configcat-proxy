@@ -30,9 +30,10 @@ archives:
 
 dockers:
   - image_templates:
-    - "configcat/proxy:{{.Version}}"
-    - "configcat/proxy:v{{.Major}}"
-    - "configcat/proxy:latest"
+    - "configcat/proxy:{{.Version}}-amd64"
+    - "configcat/proxy:v{{.Major}}-amd64"
+    - "configcat/proxy:latest-amd64"
+    use: buildx
     goos: linux
     goarch: amd64
     dockerfile: Dockerfile.goreleaser
@@ -40,3 +41,36 @@ dockers:
     build_flag_templates:
       - "--pull"
       - "--platform=linux/amd64"
+  
+  - image_templates:
+    - "configcat/proxy:{{.Version}}-arm64"
+    - "configcat/proxy:v{{.Major}}-arm64"
+    - "configcat/proxy:latest-arm64"
+    use: buildx
+    goos: linux
+    goarch: arm64
+    dockerfile: Dockerfile.goreleaser
+    skip_push: false
+    build_flag_templates:
+      - "--pull"
+      - "--platform=linux/arm64"
+
+docker_manifests:
+  - name_template: "configcat/proxy:{{.Version}}"
+    skip_push: false
+    image_templates:
+    - "configcat/proxy:{{.Version}}-amd64"
+    - "configcat/proxy:{{.Version}}-arm64"
+  
+  - name_template: "configcat/proxy:v{{.Major}}"
+    skip_push: false
+    image_templates:
+    - "configcat/proxy:v{{.Major}}-amd64"
+    - "configcat/proxy:v{{.Major}}-arm64"
+
+  - name_template: "configcat/proxy:latest"
+    skip_push: false
+    image_templates:
+    - "configcat/proxy:latest-amd64"
+    - "configcat/proxy:latest-arm64"
+
