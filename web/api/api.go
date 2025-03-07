@@ -122,7 +122,7 @@ func (s *Server) parseRequest(r *http.Request, evalReq *model.EvalRequest) (sdk.
 	}
 	err = json.Unmarshal(reqBody, &evalReq)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse JSON body: " + err.Error()), http.StatusBadRequest
+		return nil, fmt.Errorf("failed to parse JSON body: %s", err), http.StatusBadRequest
 	}
 	sdkClient, err, code := s.getSDKClient(r.Context())
 	if err != nil {
