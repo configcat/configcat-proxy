@@ -225,7 +225,7 @@ func (s *Server) parseRequest(r *http.Request, evalReq *evaluationRequest) (sdk.
 	if len(reqBody) > 0 {
 		err = json.Unmarshal(reqBody, &evalReq)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse JSON body: " + err.Error()), InvalidContextErrorCode, http.StatusBadRequest
+			return nil, fmt.Errorf("failed to parse JSON body: %s", err), InvalidContextErrorCode, http.StatusBadRequest
 		}
 	}
 	sdkClient, err, errCode, code := s.getSDKClient(r)
