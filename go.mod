@@ -11,7 +11,7 @@ require (
 	github.com/configcat/go-sdk/v9 v9.0.7
 	github.com/fsnotify/fsnotify v1.8.0
 	github.com/julienschmidt/httprouter v1.3.0
-	github.com/open-feature/go-sdk v1.14.1
+	github.com/open-feature/go-sdk v1.13.1
 	github.com/open-feature/go-sdk-contrib/providers/ofrep v0.1.5
 	github.com/prometheus/client_golang v1.21.1
 	github.com/puzpuzpuz/xsync/v3 v3.5.1
