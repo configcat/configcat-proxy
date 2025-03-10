@@ -47,7 +47,7 @@ func TestOFREP_Integration(t *testing.T) {
 	provider := ofrepprovider.NewProvider(srv.URL, ofrepprovider.WithHeaderProvider(func() (string, string) {
 		return ofrep.SdkIdHeader, "test"
 	}), ofrepprovider.WithApiKeyAuth("secret"))
-	_ = openfeature.SetProvider(provider)
+	_ = openfeature.SetProviderAndWait(provider)
 	ctx := openfeature.NewEvaluationContext("id", nil)
 	client := openfeature.NewClient("cl")
 
