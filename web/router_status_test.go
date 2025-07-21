@@ -18,7 +18,7 @@ import (
 
 func TestStatus_Options(t *testing.T) {
 	router := newStatusRouter(t)
-	srv := httptest.NewServer(router.Handler())
+	srv := httptest.NewServer(router)
 	req, _ := http.NewRequest(http.MethodOptions, fmt.Sprintf("%s/status", srv.URL), http.NoBody)
 	resp, _ := http.DefaultClient.Do(req)
 	assert.Equal(t, http.StatusNoContent, resp.StatusCode)
@@ -26,7 +26,7 @@ func TestStatus_Options(t *testing.T) {
 
 func TestStatus_Get_Body(t *testing.T) {
 	router := newStatusRouter(t)
-	srv := httptest.NewServer(router.Handler())
+	srv := httptest.NewServer(router)
 	req, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/status", srv.URL), http.NoBody)
 	resp, _ := http.DefaultClient.Do(req)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -47,7 +47,7 @@ func TestStatus_Get_Body(t *testing.T) {
 
 func TestStatus_Not_Allowed_Methods(t *testing.T) {
 	router := newStatusRouter(t)
-	srv := httptest.NewServer(router.Handler())
+	srv := httptest.NewServer(router)
 
 	t.Run("put", func(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPut, fmt.Sprintf("%s/status", srv.URL), http.NoBody)
@@ -78,5 +78,5 @@ func newStatusRouter(t *testing.T) *HttpRouter {
 	testutils.WithTimeout(2*time.Second, func() {
 		<-client.Ready()
 	})
-	return NewRouter(reg, nil, reporter, &config.HttpConfig{Status: config.StatusConfig{Enabled: true}}, log.NewNullLogger())
+	return NewRouter(reg, nil, reporter, &config.HttpConfig{Status: config.StatusConfig{Enabled: true}}, &config.AutoSDKConfig{}, log.NewNullLogger())
 }

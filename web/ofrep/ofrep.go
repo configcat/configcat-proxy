@@ -10,7 +10,6 @@ import (
 	"github.com/configcat/configcat-proxy/model"
 	"github.com/configcat/configcat-proxy/sdk"
 	configcat "github.com/configcat/go-sdk/v9"
-	"github.com/julienschmidt/httprouter"
 	"hash/maphash"
 	"io"
 	"net/http"
@@ -118,8 +117,7 @@ func NewServer(sdkRegistrar sdk.Registrar, config *config.OFREPConfig, log log.L
 }
 
 func (s *Server) Eval(w http.ResponseWriter, r *http.Request) {
-	vars := httprouter.ParamsFromContext(r.Context())
-	key := vars.ByName("key")
+	key := r.PathValue("key")
 	if key == "" {
 		s.writeError(w, errorResponse{ErrorCode: GeneralErrorCode, ErrorDetails: "'key' path parameter must be set", Key: ""}, http.StatusBadRequest)
 		return

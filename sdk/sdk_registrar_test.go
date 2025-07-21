@@ -23,6 +23,15 @@ func TestRegistrar_GetSdkOrNil(t *testing.T) {
 	assert.NotNil(t, reg.GetSdkOrNil("test"))
 }
 
+func TestRegistrar_GetSdkByKeyOrNil(t *testing.T) {
+	reg, _ := NewRegistrar(&config.Config{
+		SDKs: map[string]*config.SDKConfig{"test": {Key: "key"}},
+	}, nil, status.NewEmptyReporter(), nil, log.NewNullLogger())
+	defer reg.Close()
+
+	assert.NotNil(t, reg.GetSdkByKeyOrNil("key"))
+}
+
 func TestRegistrar_All(t *testing.T) {
 	reg, _ := NewRegistrar(&config.Config{
 		SDKs: map[string]*config.SDKConfig{"test1": {Key: "key1"}, "test2": {Key: "key2"}},

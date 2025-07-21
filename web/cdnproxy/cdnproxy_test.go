@@ -19,7 +19,7 @@ func TestProxy_Get(t *testing.T) {
 		req := &http.Request{Method: http.MethodGet}
 
 		srv := newServer(t, config.CdnProxyConfig{Enabled: true})
-		testutils.AddSdkIdContextParam(req)
+		req.SetPathValue("path", "configcat-proxy/test")
 		srv.ServeHTTP(res, req)
 
 		assert.Equal(t, http.StatusOK, res.Code)
@@ -30,11 +30,11 @@ func TestProxy_Get(t *testing.T) {
 		req := &http.Request{Method: http.MethodGet}
 
 		srv := newErrorServer(t, config.CdnProxyConfig{Enabled: true})
-		testutils.AddSdkIdContextParam(req)
+		req.SetPathValue("path", "configcat-proxy/test")
 		srv.ServeHTTP(res, req)
 
 		assert.Equal(t, http.StatusInternalServerError, res.Code)
-		assert.Equal(t, "SDK with identifier 'test' is in an invalid state; please check the logs for more details\n", res.Body.String())
+		assert.Equal(t, "requested SDK is in an invalid state; please check the logs for more details\n", res.Body.String())
 	})
 	t.Run("offline", func(t *testing.T) {
 		testutils.UseTempFile(`{"f":{"flag":{"i":"","v":{"b":true},"t":0}}}`, func(path string) {
@@ -42,7 +42,7 @@ func TestProxy_Get(t *testing.T) {
 			req := &http.Request{Method: http.MethodGet}
 
 			srv := newOfflineServer(t, path, config.CdnProxyConfig{Enabled: true})
-			testutils.AddSdkIdContextParam(req)
+			req.SetPathValue("path", "configcat-proxy/test")
 			srv.ServeHTTP(res, req)
 
 			assert.Equal(t, http.StatusOK, res.Code)
@@ -55,11 +55,11 @@ func TestProxy_Get(t *testing.T) {
 			req := &http.Request{Method: http.MethodGet}
 
 			srv := newOfflineServer(t, path, config.CdnProxyConfig{Enabled: true})
-			testutils.AddSdkIdContextParam(req)
+			req.SetPathValue("path", "configcat-proxy/test")
 			srv.ServeHTTP(res, req)
 
 			assert.Equal(t, http.StatusInternalServerError, res.Code)
-			assert.Equal(t, "SDK with identifier 'test' is in an invalid state; please check the logs for more details\n", res.Body.String())
+			assert.Equal(t, "requested SDK is in an invalid state; please check the logs for more details\n", res.Body.String())
 		})
 	})
 	t.Run("etag", func(t *testing.T) {
@@ -67,7 +67,7 @@ func TestProxy_Get(t *testing.T) {
 		req := &http.Request{Method: http.MethodGet}
 
 		srv := newServer(t, config.CdnProxyConfig{Enabled: true})
-		testutils.AddSdkIdContextParam(req)
+		req.SetPathValue("path", "configcat-proxy/test")
 		srv.ServeHTTP(res, req)
 
 		assert.Equal(t, http.StatusOK, res.Code)
@@ -78,7 +78,7 @@ func TestProxy_Get(t *testing.T) {
 		res = httptest.NewRecorder()
 		req = &http.Request{Method: http.MethodGet, Header: map[string][]string{}}
 		req.Header.Set("If-None-Match", etag)
-		testutils.AddSdkIdContextParam(req)
+		req.SetPathValue("path", "configcat-proxy/test")
 		srv.ServeHTTP(res, req)
 
 		assert.Equal(t, http.StatusNotModified, res.Code)
@@ -89,7 +89,7 @@ func TestProxy_Get(t *testing.T) {
 		req := &http.Request{Method: http.MethodGet}
 
 		srv := newServer(t, config.CdnProxyConfig{Enabled: true})
-		testutils.AddSdkIdContextParam(req)
+		req.SetPathValue("path", "configcat-proxy/test")
 		srv.ServeHTTP(res, req)
 
 		assert.Equal(t, http.StatusOK, res.Code)
@@ -99,7 +99,7 @@ func TestProxy_Get(t *testing.T) {
 
 		res = httptest.NewRecorder()
 		req = &http.Request{Method: http.MethodGet, URL: &url.URL{RawQuery: "ccetag=" + etag}}
-		testutils.AddSdkIdContextParam(req)
+		req.SetPathValue("path", "configcat-proxy/test")
 		srv.ServeHTTP(res, req)
 
 		assert.Equal(t, http.StatusNotModified, res.Code)
@@ -110,7 +110,7 @@ func TestProxy_Get(t *testing.T) {
 		req := &http.Request{Method: http.MethodGet}
 
 		srv, h, key := newServerWithHandler(t, config.CdnProxyConfig{Enabled: true})
-		testutils.AddSdkIdContextParam(req)
+		req.SetPathValue("path", "configcat-proxy/test")
 		srv.ServeHTTP(res, req)
 
 		assert.Equal(t, http.StatusOK, res.Code)
@@ -121,7 +121,7 @@ func TestProxy_Get(t *testing.T) {
 		res = httptest.NewRecorder()
 		req = &http.Request{Method: http.MethodGet, Header: map[string][]string{}}
 		req.Header.Set("If-None-Match", etag)
-		testutils.AddSdkIdContextParam(req)
+		req.SetPathValue("path", "configcat-proxy/test")
 		srv.ServeHTTP(res, req)
 
 		assert.Equal(t, http.StatusNotModified, res.Code)
@@ -137,7 +137,7 @@ func TestProxy_Get(t *testing.T) {
 		res = httptest.NewRecorder()
 		req = &http.Request{Method: http.MethodGet, Header: map[string][]string{}}
 		req.Header.Set("If-None-Match", etag)
-		testutils.AddSdkIdContextParam(req)
+		req.SetPathValue("path", "configcat-proxy/test")
 		srv.ServeHTTP(res, req)
 
 		assert.Equal(t, http.StatusOK, res.Code)
@@ -148,7 +148,7 @@ func TestProxy_Get(t *testing.T) {
 		res = httptest.NewRecorder()
 		req = &http.Request{Method: http.MethodGet, Header: map[string][]string{}}
 		req.Header.Set("If-None-Match", etag)
-		testutils.AddSdkIdContextParam(req)
+		req.SetPathValue("path", "configcat-proxy/test")
 		srv.ServeHTTP(res, req)
 
 		assert.Equal(t, http.StatusNotModified, res.Code)
@@ -159,7 +159,7 @@ func TestProxy_Get(t *testing.T) {
 		req := &http.Request{Method: http.MethodGet}
 
 		srv := newServer(t, config.CdnProxyConfig{Enabled: true})
-		testutils.AddSdkIdContextParamWithSdkId(req, "non-existing")
+		req.SetPathValue("path", "configcat-proxy/non-existing")
 		srv.ServeHTTP(res, req)
 
 		assert.Equal(t, http.StatusNotFound, res.Code)
@@ -172,11 +172,11 @@ func TestProxy_Get(t *testing.T) {
 		req := &http.Request{Method: http.MethodGet}
 
 		srv := NewServer(reg, &config.CdnProxyConfig{Enabled: true}, log.NewNullLogger())
-		testutils.AddSdkIdContextParam(req)
+		req.SetPathValue("path", "configcat-proxy/test")
 		srv.ServeHTTP(res, req)
 
 		assert.Equal(t, http.StatusInternalServerError, res.Code)
-		assert.Equal(t, "SDK with identifier 'test' is in an invalid state; please check the logs for more details\n", res.Body.String())
+		assert.Equal(t, "requested SDK is in an invalid state; please check the logs for more details\n", res.Body.String())
 	})
 }
 

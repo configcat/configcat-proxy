@@ -3,8 +3,6 @@
 package testutils
 
 import (
-	"context"
-	"github.com/julienschmidt/httprouter"
 	"net/http"
 	"sync"
 	"time"
@@ -45,15 +43,9 @@ func WaitUntil(timeout time.Duration, f func() bool) {
 }
 
 func AddSdkIdContextParam(r *http.Request) {
-	AddContextParam(r, "sdkId", "test")
+	r.SetPathValue("sdkId", "test")
 }
 
 func AddSdkIdContextParamWithSdkId(r *http.Request, sdkId string) {
-	AddContextParam(r, "sdkId", sdkId)
-}
-
-func AddContextParam(r *http.Request, key string, value string) {
-	params := httprouter.Params{httprouter.Param{Key: key, Value: value}}
-	ctx := context.WithValue(context.Background(), httprouter.ParamsKey, params)
-	*r = *r.WithContext(ctx)
+	r.SetPathValue("sdkId", sdkId)
 }

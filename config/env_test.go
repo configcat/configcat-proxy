@@ -54,7 +54,10 @@ func TestAutoSDKs_ENV(t *testing.T) {
 	t.Setenv("CONFIGCAT_AUTO_CONFIG_KEY", `key`)
 	t.Setenv("CONFIGCAT_AUTO_CONFIG_SECRET", `secret`)
 	t.Setenv("CONFIGCAT_AUTO_CONFIG_BASE_URL", `https://base.com`)
+	t.Setenv("CONFIGCAT_AUTO_CONFIG_SDK_BASE_URL", `https://sdk-base.com`)
 	t.Setenv("CONFIGCAT_AUTO_CONFIG_POLL_INTERVAL", "300")
+	t.Setenv("CONFIGCAT_AUTO_CONFIG_WEBHOOK_SIGNING_KEY", "key")
+	t.Setenv("CONFIGCAT_AUTO_CONFIG_WEBHOOK_SIGNATURE_VALID_FOR", "600")
 	t.Setenv("CONFIGCAT_AUTO_CONFIG_LOG_LEVEL", "info")
 
 	conf, err := LoadConfigFromFileAndEnvironment("")
@@ -63,7 +66,10 @@ func TestAutoSDKs_ENV(t *testing.T) {
 	assert.Equal(t, "key", conf.AutoSDK.Key)
 	assert.Equal(t, "secret", conf.AutoSDK.Secret)
 	assert.Equal(t, "https://base.com", conf.AutoSDK.BaseUrl)
+	assert.Equal(t, "https://sdk-base.com", conf.AutoSDK.SdkBaseUrl)
 	assert.Equal(t, 300, conf.AutoSDK.PollInterval)
+	assert.Equal(t, "key", conf.AutoSDK.WebhookSigningKey)
+	assert.Equal(t, 600, conf.AutoSDK.WebhookSignatureValidFor)
 	assert.Equal(t, log.Info, conf.AutoSDK.Log.GetLevel())
 }
 

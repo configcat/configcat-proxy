@@ -18,7 +18,7 @@ import (
 )
 
 func TestAutoRegistrar_Poll(t *testing.T) {
-	reg, h := NewTestAutoRegistrarWithAutoConfig(t, config.AutoSDKConfig{PollInterval: 1}, log.NewNullLogger())
+	reg, h, _ := NewTestAutoRegistrarWithAutoConfig(t, config.AutoSDKConfig{PollInterval: 1}, log.NewNullLogger())
 
 	sub := make(chan string)
 	reg.Subscribe(sub)
@@ -59,7 +59,7 @@ func TestAutoRegistrar_Poll(t *testing.T) {
 }
 
 func TestAutoRegistrar_Refresh(t *testing.T) {
-	reg, h := NewTestAutoRegistrarWithAutoConfig(t, config.AutoSDKConfig{PollInterval: 60}, log.NewNullLogger())
+	reg, h, _ := NewTestAutoRegistrarWithAutoConfig(t, config.AutoSDKConfig{PollInterval: 60}, log.NewNullLogger())
 
 	sub := make(chan string)
 	reg.Subscribe(sub)
@@ -102,7 +102,7 @@ func TestAutoRegistrar_Refresh(t *testing.T) {
 }
 
 func TestAutoRegistrar_Modify_Global_Opts(t *testing.T) {
-	reg, h := NewTestAutoRegistrarWithAutoConfig(t, config.AutoSDKConfig{PollInterval: 60}, log.NewNullLogger())
+	reg, h, _ := NewTestAutoRegistrarWithAutoConfig(t, config.AutoSDKConfig{PollInterval: 60}, log.NewNullLogger())
 
 	sub := make(chan string)
 	reg.Subscribe(sub)
@@ -133,7 +133,7 @@ func TestAutoRegistrar_Modify_Global_Opts(t *testing.T) {
 }
 
 func TestAutoRegistrar_Config(t *testing.T) {
-	reg, _ := NewTestAutoRegistrar(t, config.Config{
+	reg, _, _ := NewTestAutoRegistrar(t, config.Config{
 		SDKs: map[string]*config.SDKConfig{"test": {
 			PollInterval:   10,
 			BaseUrl:        "https://something-unexpected",
@@ -316,7 +316,7 @@ func TestAutoRegistrar_Saves_To_Cache(t *testing.T) {
 	extCache := newRedisCache(cache.Addr())
 
 	conf := config.Config{AutoSDK: config.AutoSDKConfig{Key: "test-reg", PollInterval: 60}}
-	reg, _ := NewTestAutoRegistrar(t, conf, extCache, log.NewNullLogger())
+	reg, _, _ := NewTestAutoRegistrar(t, conf, extCache, log.NewNullLogger())
 
 	sdkClient := reg.GetSdkOrNil("test").(*client)
 	assert.NotNil(t, sdkClient)
@@ -332,7 +332,7 @@ func TestAutoRegistrar_Cache_Rebuild(t *testing.T) {
 	extCache := newRedisCache(cache.Addr())
 	cacheKey := "configcat-proxy-conf/test-reg"
 	conf := config.Config{AutoSDK: config.AutoSDKConfig{Key: "test-reg", PollInterval: 1}}
-	_, _ = NewTestAutoRegistrar(t, conf, extCache, log.NewNullLogger())
+	_, _, _ = NewTestAutoRegistrar(t, conf, extCache, log.NewNullLogger())
 
 	cached, _ := cache.Get(cacheKey)
 	assert.NotEmpty(t, cached)
@@ -345,4 +345,20 @@ func TestAutoRegistrar_Cache_Rebuild(t *testing.T) {
 		cached, _ := cache.Get(cacheKey)
 		return len(cached) > 0
 	})
+}
+
+func TestAutoRegistrar_GetBySdkKey(t *testing.T) {
+	cache := miniredis.RunT(t)
+	extCache := newRedisCache(cache.Addr())
+
+	conf := config.Config{AutoSDK: config.AutoSDKConfig{Key: "test-reg", PollInterval: 60}}
+	reg, _, sdkKey := NewTestAutoRegistrar(t, conf, extCache, log.NewNullLogger())
+
+	sdkClient := reg.GetSdkByKeyOrNil(sdkKey).(*client)
+	assert.NotNil(t, sdkClient)
+
+	cached, _ := cache.Get("configcat-proxy-conf/test-reg")
+	cachedBody, cachedEtag, _ := cacheSegmentsFromBytes([]byte(cached))
+	assert.Equal(t, `{"SDKs":{"test":{"SDKKey":"`+sdkClient.sdkCtx.SDKConf.Key+`"}},"Options":{"PollInterval":60,"DataGovernance":"global"}}`, string(cachedBody))
+	assert.Equal(t, utils.GenerateEtag(cachedBody), cachedEtag)
 }

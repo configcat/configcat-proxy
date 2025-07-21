@@ -9,7 +9,6 @@ import (
 	"github.com/configcat/configcat-proxy/model"
 	"github.com/configcat/configcat-proxy/sdk"
 	"github.com/configcat/configcat-proxy/stream"
-	"github.com/julienschmidt/httprouter"
 	"net/http"
 )
 
@@ -129,13 +128,13 @@ func prepareResponse(w http.ResponseWriter, r *http.Request, dataMustSet bool) (
 	w.Header().Set("Connection", "keep-alive")
 	w.Header().Add("X-Accel-Buffering", "no")
 
-	vars := httprouter.ParamsFromContext(r.Context())
-	sdkId := vars.ByName("sdkId")
+	sdkId := r.PathValue("sdkId")
 	if sdkId == "" {
 		http.Error(w, "'sdkId' path parameter must be set", http.StatusBadRequest)
 		return nil, ""
 	}
-	streamData := vars.ByName("data")
+
+	streamData := r.PathValue(streamDataName)
 	if streamData == "" {
 		if dataMustSet {
 			http.Error(w, "'"+streamDataName+"' path parameter must be set", http.StatusBadRequest)

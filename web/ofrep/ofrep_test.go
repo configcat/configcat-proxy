@@ -20,7 +20,7 @@ func TestOFREP_Eval(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPost, "/", http.NoBody)
 		req.Header.Set(SdkIdHeader, "test")
 		srv := newServer(t, config.OFREPConfig{Enabled: true})
-		testutils.AddContextParam(req, "key", "flag")
+		req.SetPathValue("key", "flag")
 		srv.Eval(res, req)
 
 		assert.Equal(t, "application/json", res.Header().Get("Content-Type"))
@@ -43,7 +43,7 @@ func TestOFREP_Eval(t *testing.T) {
 				}},
 			},
 		})
-		testutils.AddContextParam(req, "key", "flag")
+		req.SetPathValue("key", "flag")
 		srv.Eval(res, req)
 
 		assert.Equal(t, "application/json", res.Header().Get("Content-Type"))
@@ -55,7 +55,7 @@ func TestOFREP_Eval(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPost, "/", http.NoBody)
 		req.Header.Set(SdkIdHeader, "test")
 		srv := newServer(t, config.OFREPConfig{Enabled: true})
-		testutils.AddContextParam(req, "key", "non-existing")
+		req.SetPathValue("key", "non-existing")
 		srv.Eval(res, req)
 
 		assert.Equal(t, "application/json", res.Header().Get("Content-Type"))
@@ -67,7 +67,7 @@ func TestOFREP_Eval(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPost, "/", http.NoBody)
 		req.Header.Set(SdkIdHeader, "test")
 		srv := newErrorServer(t, config.OFREPConfig{Enabled: true})
-		testutils.AddContextParam(req, "key", "flag")
+		req.SetPathValue("key", "flag")
 		srv.Eval(res, req)
 
 		assert.Equal(t, "application/json", res.Header().Get("Content-Type"))
@@ -79,7 +79,7 @@ func TestOFREP_Eval(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"context":{"targetingKey":false}}`))
 		req.Header.Set(SdkIdHeader, "test")
 		srv := newServer(t, config.OFREPConfig{Enabled: true})
-		testutils.AddContextParam(req, "key", "flag")
+		req.SetPathValue("key", "flag")
 		srv.Eval(res, req)
 
 		assert.Equal(t, "application/json", res.Header().Get("Content-Type"))
@@ -92,7 +92,7 @@ func TestOFREP_Eval(t *testing.T) {
 			req, _ := http.NewRequest(http.MethodPost, "/", http.NoBody)
 			req.Header.Set(SdkIdHeader, "test")
 			srv := newOfflineServer(t, path, config.OFREPConfig{Enabled: true})
-			testutils.AddContextParam(req, "key", "flag")
+			req.SetPathValue("key", "flag")
 			srv.Eval(res, req)
 
 			assert.Equal(t, "application/json", res.Header().Get("Content-Type"))
@@ -106,7 +106,7 @@ func TestOFREP_Eval(t *testing.T) {
 			req, _ := http.NewRequest(http.MethodPost, "/", http.NoBody)
 			req.Header.Set(SdkIdHeader, "test")
 			srv := newOfflineServer(t, path, config.OFREPConfig{Enabled: true})
-			testutils.AddContextParam(req, "key", "flag")
+			req.SetPathValue("key", "flag")
 			srv.Eval(res, req)
 
 			assert.Equal(t, "application/json", res.Header().Get("Content-Type"))
@@ -281,7 +281,7 @@ func TestOFREP_WrongSdkId(t *testing.T) {
 
 		srv := newServer(t, config.OFREPConfig{Enabled: true})
 		req.Header.Set(SdkIdHeader, "non-existing")
-		testutils.AddContextParam(req, "key", "flag")
+		req.SetPathValue("key", "flag")
 		srv.Eval(res, req)
 
 		assert.Equal(t, "application/json", res.Header().Get("Content-Type"))
@@ -310,7 +310,7 @@ func TestOFREP_WrongSDKState(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPost, "/", http.NoBody)
 		req.Header.Set(SdkIdHeader, "test")
 		srv := NewServer(reg, &config.OFREPConfig{Enabled: true}, log.NewNullLogger())
-		testutils.AddContextParam(req, "key", "flag")
+		req.SetPathValue("key", "flag")
 		srv.Eval(res, req)
 
 		assert.Equal(t, "application/json", res.Header().Get("Content-Type"))

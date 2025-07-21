@@ -3,6 +3,7 @@ import { b64encode } from 'k6/encoding';
 import { sleep } from 'k6';
 
 export const options = {
+    insecureSkipTLSVerify: true,
     vus: 5000,
     duration: '30s',
 };

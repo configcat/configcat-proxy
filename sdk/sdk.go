@@ -34,6 +34,7 @@ type Client interface {
 	Ready() <-chan struct{}
 	Refresh() error
 	Close()
+	SdkKey() string
 	WebhookSigningKey() string
 	WebhookSignatureValidFor() int
 	IsInValidState() bool
@@ -64,7 +65,7 @@ type client struct {
 }
 
 func NewClient(sdkCtx *Context, log log.Logger) Client {
-	sdkLog := log.WithLevel(sdkCtx.SDKConf.Log.GetLevel()).WithPrefix("sdk-" + sdkCtx.SdkId)
+	sdkLog := log.WithLevel(sdkCtx.SDKConf.Log.GetLevel()).WithPrefix(sdkCtx.SdkId)
 
 	offline := sdkCtx.SDKConf.Offline.Enabled
 	key := sdkCtx.SDKConf.Key
@@ -217,6 +218,10 @@ func (c *client) Refresh() error {
 
 func (c *client) Ready() <-chan struct{} {
 	return c.configCatClient.Ready()
+}
+
+func (c *client) SdkKey() string {
+	return c.sdkCtx.SDKConf.Key
 }
 
 func (c *client) WebhookSigningKey() string {

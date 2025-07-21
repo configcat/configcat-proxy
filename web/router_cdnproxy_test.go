@@ -16,7 +16,7 @@ import (
 
 func TestCDNProxy_Options_CORS(t *testing.T) {
 	router := newCDNProxyRouter(t, config.CdnProxyConfig{Enabled: true, CORS: config.CORSConfig{Enabled: true}, Headers: map[string]string{"h1": "v1"}})
-	srv := httptest.NewServer(router.Handler())
+	srv := httptest.NewServer(router)
 	req, _ := http.NewRequest(http.MethodOptions, fmt.Sprintf("%s/configuration-files/configcat-proxy/test/config_v6.json", srv.URL), http.NoBody)
 	resp, _ := http.DefaultClient.Do(req)
 	assert.Equal(t, http.StatusNoContent, resp.StatusCode)
@@ -32,7 +32,7 @@ func TestCDNProxy_Options_CORS(t *testing.T) {
 
 func TestCDNProxy_Options_NO_CORS(t *testing.T) {
 	router := newCDNProxyRouter(t, config.CdnProxyConfig{Enabled: true, CORS: config.CORSConfig{Enabled: false}})
-	srv := httptest.NewServer(router.Handler())
+	srv := httptest.NewServer(router)
 	req, _ := http.NewRequest(http.MethodOptions, fmt.Sprintf("%s/configuration-files/configcat-proxy/test/config_v6.json", srv.URL), http.NoBody)
 	resp, _ := http.DefaultClient.Do(req)
 	assert.Equal(t, http.StatusNoContent, resp.StatusCode)
@@ -48,7 +48,7 @@ func TestCDNProxy_Options_NO_CORS(t *testing.T) {
 
 func TestCDNProxy_GET_CORS(t *testing.T) {
 	router := newCDNProxyRouter(t, config.CdnProxyConfig{Enabled: true, CORS: config.CORSConfig{Enabled: true}, Headers: map[string]string{"h1": "v1"}})
-	srv := httptest.NewServer(router.Handler())
+	srv := httptest.NewServer(router)
 	req, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/configuration-files/configcat-proxy/test/config_v6.json", srv.URL), http.NoBody)
 	resp, _ := http.DefaultClient.Do(req)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -64,7 +64,7 @@ func TestCDNProxy_GET_CORS(t *testing.T) {
 
 func TestCDNProxy_GET_NO_CORS(t *testing.T) {
 	router := newCDNProxyRouter(t, config.CdnProxyConfig{Enabled: true, CORS: config.CORSConfig{Enabled: false}})
-	srv := httptest.NewServer(router.Handler())
+	srv := httptest.NewServer(router)
 	req, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/configuration-files/configcat-proxy/test/config_v6.json", srv.URL), http.NoBody)
 	resp, _ := http.DefaultClient.Do(req)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -80,7 +80,7 @@ func TestCDNProxy_GET_NO_CORS(t *testing.T) {
 
 func TestCDNProxy_Not_Allowed_Methods(t *testing.T) {
 	router := newCDNProxyRouter(t, config.CdnProxyConfig{Enabled: true, CORS: config.CORSConfig{Enabled: true}})
-	srv := httptest.NewServer(router.Handler())
+	srv := httptest.NewServer(router)
 
 	t.Run("put", func(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPut, fmt.Sprintf("%s/configuration-files/configcat-proxy/test/config_v6.json", srv.URL), http.NoBody)
@@ -106,8 +106,20 @@ func TestCDNProxy_Not_Allowed_Methods(t *testing.T) {
 
 func TestCDNProxy_Get_Body(t *testing.T) {
 	router := newCDNProxyRouter(t, config.CdnProxyConfig{Enabled: true, CORS: config.CORSConfig{Enabled: true}, Headers: map[string]string{"h1": "v1"}})
-	srv := httptest.NewServer(router.Handler())
+	srv := httptest.NewServer(router)
 	req, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/configuration-files/configcat-proxy/test/config_v6.json", srv.URL), http.NoBody)
+	resp, _ := http.DefaultClient.Do(req)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	body, _ := io.ReadAll(resp.Body)
+	_ = resp.Body.Close()
+	assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true,"s":null,"i":null,"d":null},"t":0,"r":[{"s":{"v":{"b":false,"s":null,"i":null,"d":null},"i":"v0_flag"},"c":[{"u":{"a":"Identifier","s":"test","d":null,"l":null,"c":28},"s":null,"p":null}],"p":null}],"p":null}},"s":null,"p":null}`, string(body))
+	assert.Equal(t, "v1", resp.Header.Get("h1"))
+}
+
+func TestCDNProxy_GetByKey_Body(t *testing.T) {
+	router, sdkKey := newCDNProxyRouterWithSdkKey(t, config.CdnProxyConfig{Enabled: true, CORS: config.CORSConfig{Enabled: true}, Headers: map[string]string{"h1": "v1"}})
+	srv := httptest.NewServer(router)
+	req, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/configuration-files/%s/config_v6.json", srv.URL, sdkKey), http.NoBody)
 	resp, _ := http.DefaultClient.Do(req)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	body, _ := io.ReadAll(resp.Body)
@@ -118,7 +130,7 @@ func TestCDNProxy_Get_Body(t *testing.T) {
 
 func TestCDNProxy_Get_Body_GZip(t *testing.T) {
 	router := newCDNProxyRouter(t, config.CdnProxyConfig{Enabled: true, CORS: config.CORSConfig{Enabled: true}, Headers: map[string]string{"h1": "v1"}})
-	srv := httptest.NewServer(router.Handler())
+	srv := httptest.NewServer(router)
 	req, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/configuration-files/configcat-proxy/test/config_v6.json", srv.URL), http.NoBody)
 	req.Header.Set("Accept-Encoding", "gzip")
 	resp, _ := http.DefaultClient.Do(req)
@@ -133,5 +145,10 @@ func TestCDNProxy_Get_Body_GZip(t *testing.T) {
 
 func newCDNProxyRouter(t *testing.T, conf config.CdnProxyConfig) *HttpRouter {
 	reg, _, _ := sdk.NewTestRegistrarT(t)
-	return NewRouter(reg, nil, status.NewEmptyReporter(), &config.HttpConfig{CdnProxy: conf}, log.NewNullLogger())
+	return NewRouter(reg, nil, status.NewEmptyReporter(), &config.HttpConfig{CdnProxy: conf}, &config.AutoSDKConfig{}, log.NewNullLogger())
+}
+
+func newCDNProxyRouterWithSdkKey(t *testing.T, conf config.CdnProxyConfig) (*HttpRouter, string) {
+	reg, _, sdkKey := sdk.NewTestRegistrarT(t)
+	return NewRouter(reg, nil, status.NewEmptyReporter(), &config.HttpConfig{CdnProxy: conf}, &config.AutoSDKConfig{}, log.NewNullLogger()), sdkKey
 }

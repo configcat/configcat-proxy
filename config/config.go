@@ -16,9 +16,17 @@ import (
 	"time"
 )
 
-const defaultConfigName = "options.yml"
-const defaultVendorName = "configcat"
-const defaultProductName = "proxy"
+const (
+	defaultConfigName  = "options.yml"
+	defaultVendorName  = "configcat"
+	defaultProductName = "proxy"
+
+	DefaultWebhookSignatureValidFor = 300
+
+	defaultSdkPollInterval     = 60
+	defaultCachePollInterval   = 5
+	defaultAutoSdkPollInterval = 300
+)
 
 var allowedLogLevels = map[string]log.Level{
 	"debug": log.Debug,
@@ -61,12 +69,14 @@ type SDKConfig struct {
 }
 
 type AutoSDKConfig struct {
-	Key          string
-	Secret       string
-	BaseUrl      string `yaml:"base_url"`
-	SdkBaseUrl   string `yaml:"sdk_base_url"`
-	PollInterval int    `yaml:"poll_interval"`
-	Log          LogConfig
+	Key                      string
+	Secret                   string
+	BaseUrl                  string `yaml:"base_url"`
+	SdkBaseUrl               string `yaml:"sdk_base_url"`
+	PollInterval             int    `yaml:"poll_interval"`
+	WebhookSignatureValidFor int    `yaml:"webhook_signature_valid_for"`
+	WebhookSigningKey        string `yaml:"webhook_signing_key"`
+	Log                      LogConfig
 }
 
 type GrpcConfig struct {
@@ -333,6 +343,8 @@ func (c *Config) setDefaults() {
 	c.Cache.MongoDb.Collection = "cache"
 
 	c.Cache.DynamoDb.Table = "configcat_proxy_cache"
+
+	c.AutoSDK.BaseUrl = "https://api.configcat.com"
 }
 
 func (c *Config) fixupDefaults() {
@@ -341,26 +353,26 @@ func (c *Config) fixupDefaults() {
 			continue
 		}
 		if sdk.WebhookSignatureValidFor == 0 {
-			sdk.WebhookSignatureValidFor = 300
+			sdk.WebhookSignatureValidFor = DefaultWebhookSignatureValidFor
 		}
 		if sdk.PollInterval == 0 {
-			sdk.PollInterval = 30
+			sdk.PollInterval = defaultSdkPollInterval
 		}
 		if sdk.Offline.Local.PollInterval == 0 {
-			sdk.Offline.Local.PollInterval = 5
+			sdk.Offline.Local.PollInterval = defaultCachePollInterval
 		}
 		if sdk.Offline.CachePollInterval == 0 {
-			sdk.Offline.CachePollInterval = 5
+			sdk.Offline.CachePollInterval = defaultCachePollInterval
 		}
 	}
 	if c.GlobalOfflineConfig.CachePollInterval == 0 {
-		c.GlobalOfflineConfig.CachePollInterval = 5
-	}
-	if c.AutoSDK.BaseUrl == "" {
-		c.AutoSDK.BaseUrl = "https://api.configcat.com"
+		c.GlobalOfflineConfig.CachePollInterval = defaultCachePollInterval
 	}
 	if c.AutoSDK.PollInterval == 0 {
-		c.AutoSDK.PollInterval = 60 * 5
+		c.AutoSDK.PollInterval = defaultAutoSdkPollInterval
+	}
+	if c.AutoSDK.WebhookSignatureValidFor == 0 {
+		c.AutoSDK.WebhookSignatureValidFor = DefaultWebhookSignatureValidFor
 	}
 }
 

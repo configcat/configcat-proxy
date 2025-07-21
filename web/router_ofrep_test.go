@@ -40,8 +40,8 @@ func TestOFREP_Integration(t *testing.T) {
 			Rules:   []configcattest.Rule{{ComparisonAttribute: "Identifier", ComparisonValue: "id", Comparator: configcat.OpEq, Value: 3.14}},
 		},
 	})
-	router := NewRouter(reg, nil, status.NewEmptyReporter(), &config.HttpConfig{OFREP: config.OFREPConfig{Enabled: true, AuthHeaders: map[string]string{"X-API-Key": "secret"}}}, log.NewNullLogger())
-	srv := httptest.NewServer(router.Handler())
+	router := NewRouter(reg, nil, status.NewEmptyReporter(), &config.HttpConfig{OFREP: config.OFREPConfig{Enabled: true, AuthHeaders: map[string]string{"X-API-Key": "secret"}}}, &config.AutoSDKConfig{}, log.NewNullLogger())
+	srv := httptest.NewServer(router)
 	defer srv.Close()
 
 	provider := ofrepprovider.NewProvider(srv.URL, ofrepprovider.WithHeaderProvider(func() (string, string) {
@@ -78,7 +78,7 @@ func TestOFREP_Integration(t *testing.T) {
 
 func TestOFREP_Eval(t *testing.T) {
 	router := newOFREPRouter(t, config.OFREPConfig{Enabled: true, CORS: config.CORSConfig{Enabled: true}, Headers: map[string]string{"h1": "v1"}, AuthHeaders: map[string]string{"X-AUTH": "key"}})
-	srv := httptest.NewServer(router.Handler())
+	srv := httptest.NewServer(router)
 	path := fmt.Sprintf("%s/ofrep/v1/evaluate/flags/flag", srv.URL)
 
 	t.Run("options cors", func(t *testing.T) {
@@ -157,7 +157,7 @@ func TestOFREP_Eval(t *testing.T) {
 
 func TestOFREP_Eval_Headers(t *testing.T) {
 	router := newOFREPRouter(t, config.OFREPConfig{Enabled: true, CORS: config.CORSConfig{Enabled: false}, AuthHeaders: map[string]string{"X-AUTH": "key"}})
-	srv := httptest.NewServer(router.Handler())
+	srv := httptest.NewServer(router)
 	path := fmt.Sprintf("%s/ofrep/v1/evaluate/flags/flag", srv.URL)
 
 	t.Run("options", func(t *testing.T) {
@@ -190,7 +190,7 @@ func TestOFREP_Eval_Headers(t *testing.T) {
 
 func TestOFREP_EvalAll(t *testing.T) {
 	router := newOFREPRouter(t, config.OFREPConfig{Enabled: true, CORS: config.CORSConfig{Enabled: true}, Headers: map[string]string{"h1": "v1"}, AuthHeaders: map[string]string{"X-AUTH": "key"}})
-	srv := httptest.NewServer(router.Handler())
+	srv := httptest.NewServer(router)
 	path := fmt.Sprintf("%s/ofrep/v1/evaluate/flags", srv.URL)
 
 	t.Run("options cors", func(t *testing.T) {
@@ -269,7 +269,7 @@ func TestOFREP_EvalAll(t *testing.T) {
 
 func TestOFREP_EvalAll_Headers(t *testing.T) {
 	router := newOFREPRouter(t, config.OFREPConfig{Enabled: true, CORS: config.CORSConfig{Enabled: false}, AuthHeaders: map[string]string{"X-AUTH": "key"}})
-	srv := httptest.NewServer(router.Handler())
+	srv := httptest.NewServer(router)
 	path := fmt.Sprintf("%s/ofrep/v1/evaluate/flags", srv.URL)
 
 	t.Run("options", func(t *testing.T) {
@@ -302,7 +302,7 @@ func TestOFREP_EvalAll_Headers(t *testing.T) {
 
 func TestOFREP_GetConfiguration(t *testing.T) {
 	router := newOFREPRouter(t, config.OFREPConfig{Enabled: true, CORS: config.CORSConfig{Enabled: true}, Headers: map[string]string{"h1": "v1"}, AuthHeaders: map[string]string{"X-AUTH": "key"}})
-	srv := httptest.NewServer(router.Handler())
+	srv := httptest.NewServer(router)
 	path := fmt.Sprintf("%s/ofrep/v1/configuration", srv.URL)
 
 	t.Run("options cors", func(t *testing.T) {
@@ -377,7 +377,7 @@ func TestOFREP_GetConfiguration(t *testing.T) {
 
 func TestOFREP_GetConfiguration_Headers(t *testing.T) {
 	router := newOFREPRouter(t, config.OFREPConfig{Enabled: true, CORS: config.CORSConfig{Enabled: false}, AuthHeaders: map[string]string{"X-AUTH": "key"}})
-	srv := httptest.NewServer(router.Handler())
+	srv := httptest.NewServer(router)
 	path := fmt.Sprintf("%s/ofrep/v1/configuration", srv.URL)
 
 	t.Run("options", func(t *testing.T) {
@@ -408,5 +408,5 @@ func TestOFREP_GetConfiguration_Headers(t *testing.T) {
 
 func newOFREPRouter(t *testing.T, conf config.OFREPConfig) *HttpRouter {
 	reg, _, _ := sdk.NewTestRegistrarT(t)
-	return NewRouter(reg, nil, status.NewEmptyReporter(), &config.HttpConfig{OFREP: conf}, log.NewNullLogger())
+	return NewRouter(reg, nil, status.NewEmptyReporter(), &config.HttpConfig{OFREP: conf}, &config.AutoSDKConfig{}, log.NewNullLogger())
 }

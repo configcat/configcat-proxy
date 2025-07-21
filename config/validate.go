@@ -209,8 +209,11 @@ func (g *GrpcConfig) validate() error {
 }
 
 func (a *AutoSDKConfig) validate() error {
-	if a.PollInterval < 30 {
-		return fmt.Errorf("sdk: auto configuration poll interval cannot be less than 30 seconds")
+	if a.PollInterval < 5 {
+		return fmt.Errorf("sdk: auto configuration poll interval cannot be less than 5 seconds")
+	}
+	if a.WebhookSigningKey != "" && a.WebhookSignatureValidFor < 5 {
+		return fmt.Errorf("sdk: webhook signature validity check must be greater than 5 seconds")
 	}
 	return nil
 }

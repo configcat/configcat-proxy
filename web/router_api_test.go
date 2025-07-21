@@ -17,7 +17,7 @@ import (
 
 func TestAPI_Eval(t *testing.T) {
 	router := newAPIRouter(t, config.ApiConfig{Enabled: true, CORS: config.CORSConfig{Enabled: true}, Headers: map[string]string{"h1": "v1"}, AuthHeaders: map[string]string{"X-AUTH": "key"}})
-	srv := httptest.NewServer(router.Handler())
+	srv := httptest.NewServer(router)
 	path := fmt.Sprintf("%s/api/test/eval", srv.URL)
 
 	t.Run("options cors", func(t *testing.T) {
@@ -92,7 +92,7 @@ func TestAPI_Eval(t *testing.T) {
 
 func TestAPI_Eval_Headers(t *testing.T) {
 	router := newAPIRouter(t, config.ApiConfig{Enabled: true, CORS: config.CORSConfig{Enabled: false}, AuthHeaders: map[string]string{"X-AUTH": "key"}})
-	srv := httptest.NewServer(router.Handler())
+	srv := httptest.NewServer(router)
 	path := fmt.Sprintf("%s/api/test/eval", srv.URL)
 
 	t.Run("options", func(t *testing.T) {
@@ -123,7 +123,7 @@ func TestAPI_Eval_Headers(t *testing.T) {
 
 func TestAPI_EvalAll(t *testing.T) {
 	router := newAPIRouter(t, config.ApiConfig{Enabled: true, CORS: config.CORSConfig{Enabled: true}, Headers: map[string]string{"h1": "v1"}, AuthHeaders: map[string]string{"X-AUTH": "key"}})
-	srv := httptest.NewServer(router.Handler())
+	srv := httptest.NewServer(router)
 	path := fmt.Sprintf("%s/api/test/eval-all", srv.URL)
 
 	t.Run("options cors", func(t *testing.T) {
@@ -198,7 +198,7 @@ func TestAPI_EvalAll(t *testing.T) {
 
 func TestAPI_EvalAll_Headers(t *testing.T) {
 	router := newAPIRouter(t, config.ApiConfig{Enabled: true, CORS: config.CORSConfig{Enabled: false}, AuthHeaders: map[string]string{"X-AUTH": "key"}})
-	srv := httptest.NewServer(router.Handler())
+	srv := httptest.NewServer(router)
 	path := fmt.Sprintf("%s/api/test/eval-all", srv.URL)
 
 	t.Run("options", func(t *testing.T) {
@@ -229,7 +229,7 @@ func TestAPI_EvalAll_Headers(t *testing.T) {
 
 func TestAPI_Keys(t *testing.T) {
 	router := newAPIRouter(t, config.ApiConfig{Enabled: true, CORS: config.CORSConfig{Enabled: true}, Headers: map[string]string{"h1": "v1"}, AuthHeaders: map[string]string{"X-AUTH": "key"}})
-	srv := httptest.NewServer(router.Handler())
+	srv := httptest.NewServer(router)
 	path := fmt.Sprintf("%s/api/test/keys", srv.URL)
 
 	t.Run("options cors", func(t *testing.T) {
@@ -304,7 +304,7 @@ func TestAPI_Keys(t *testing.T) {
 
 func TestAPI_Keys_Headers(t *testing.T) {
 	router := newAPIRouter(t, config.ApiConfig{Enabled: true, CORS: config.CORSConfig{Enabled: false}, AuthHeaders: map[string]string{"X-AUTH": "key"}})
-	srv := httptest.NewServer(router.Handler())
+	srv := httptest.NewServer(router)
 	path := fmt.Sprintf("%s/api/test/keys", srv.URL)
 
 	t.Run("options", func(t *testing.T) {
@@ -335,7 +335,7 @@ func TestAPI_Keys_Headers(t *testing.T) {
 
 func TestAPI_Refresh(t *testing.T) {
 	router := newAPIRouter(t, config.ApiConfig{Enabled: true, CORS: config.CORSConfig{Enabled: true}, Headers: map[string]string{"h1": "v1"}, AuthHeaders: map[string]string{"X-AUTH": "key"}})
-	srv := httptest.NewServer(router.Handler())
+	srv := httptest.NewServer(router)
 	path := fmt.Sprintf("%s/api/test/refresh", srv.URL)
 
 	t.Run("options cors", func(t *testing.T) {
@@ -395,7 +395,7 @@ func TestAPI_Refresh(t *testing.T) {
 
 func TestAPI_Refresh_Headers(t *testing.T) {
 	router := newAPIRouter(t, config.ApiConfig{Enabled: true, CORS: config.CORSConfig{Enabled: false}, AuthHeaders: map[string]string{"X-AUTH": "key"}})
-	srv := httptest.NewServer(router.Handler())
+	srv := httptest.NewServer(router)
 	path := fmt.Sprintf("%s/api/test/refresh", srv.URL)
 
 	t.Run("options", func(t *testing.T) {
@@ -426,5 +426,5 @@ func TestAPI_Refresh_Headers(t *testing.T) {
 
 func newAPIRouter(t *testing.T, conf config.ApiConfig) *HttpRouter {
 	reg, _, _ := sdk.NewTestRegistrarT(t)
-	return NewRouter(reg, nil, status.NewEmptyReporter(), &config.HttpConfig{Api: conf}, log.NewNullLogger())
+	return NewRouter(reg, nil, status.NewEmptyReporter(), &config.HttpConfig{Api: conf}, &config.AutoSDKConfig{}, log.NewNullLogger())
 }

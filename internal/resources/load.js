@@ -2,6 +2,7 @@ import http from 'k6/http';
 import { sleep } from 'k6';
 
 export const options = {
+    insecureSkipTLSVerify: true,
     scenarios: {
         spike: {
             executor: "ramping-arrival-rate",
@@ -22,8 +23,8 @@ export const options = {
 };
 
 export default function () {
-    const BASE_URL1 = "https://localhost:8050/api/sdk1";
-    const BASE_URL2 = "https://localhost:8050/api/sdk2";
+    const BASE_URL1 = "https://localhost:8050/api/sdk-342";
+    const BASE_URL2 = "https://localhost:8050/api/sdk-344";
 
     const payload = JSON.stringify({
         user: {
@@ -45,7 +46,7 @@ export default function () {
             "POST",
             `${BASE_URL1}/eval`,
             JSON.stringify({
-                key: "awesomeFeature",
+                key: "test1",
                 user: {
                     Identifier: "09c63c8ad682"
                 }
@@ -69,7 +70,7 @@ export default function () {
             "POST",
             `${BASE_URL2}/eval`,
             JSON.stringify({
-                key: "feature1",
+                key: "test2",
                 user: {
                     Identifier: "09c63c8ad682"
                 }

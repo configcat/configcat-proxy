@@ -10,6 +10,7 @@ import (
 
 type Registrar interface {
 	GetSdkOrNil(sdkId string) Client
+	GetSdkByKeyOrNil(sdkKey string) Client
 	GetAll() map[string]Client
 	Close()
 }
@@ -27,6 +28,7 @@ func NewRegistrar(conf *config.Config, metricsReporter metrics.Reporter, statusR
 }
 
 func newManualRegistrar(conf *config.Config, metricsReporter metrics.Reporter, statusReporter status.Reporter, externalCache store.Cache, log log.Logger) (*manualRegistrar, error) {
+	regLog := log.WithPrefix("sdk-registrar").WithLevel(conf.AutoSDK.Log.GetLevel())
 	sdkClients := make(map[string]Client, len(conf.SDKs))
 	for key, sdkConf := range conf.SDKs {
 		statusReporter.RegisterSdk(key, sdkConf)
@@ -38,13 +40,22 @@ func newManualRegistrar(conf *config.Config, metricsReporter metrics.Reporter, s
 			GlobalDefaultAttrs: conf.DefaultAttrs,
 			SdkId:              key,
 			ExternalCache:      externalCache,
-		}, log)
+		}, regLog)
 	}
 	return &manualRegistrar{sdkClients: sdkClients}, nil
 }
 
 func (r *manualRegistrar) GetSdkOrNil(sdkId string) Client {
 	return r.sdkClients[sdkId]
+}
+
+func (r *manualRegistrar) GetSdkByKeyOrNil(sdkKey string) Client {
+	for _, sdkClient := range r.sdkClients {
+		if sdkClient.SdkKey() == sdkKey {
+			return sdkClient
+		}
+	}
+	return nil
 }
 
 func (r *manualRegistrar) GetAll() map[string]Client {

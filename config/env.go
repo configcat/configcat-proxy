@@ -124,6 +124,11 @@ func (a *AutoSDKConfig) loadEnv(prefix string) error {
 	readEnvString(prefix, "KEY", &a.Key)
 	readEnvString(prefix, "SECRET", &a.Secret)
 	readEnvString(prefix, "BASE_URL", &a.BaseUrl)
+	readEnvString(prefix, "SDK_BASE_URL", &a.SdkBaseUrl)
+	readEnvString(prefix, "WEBHOOK_SIGNING_KEY", &a.WebhookSigningKey)
+	if err := readEnv(prefix, "WEBHOOK_SIGNATURE_VALID_FOR", &a.WebhookSignatureValidFor, toInt); err != nil {
+		return err
+	}
 	if err := readEnv(prefix, "POLL_INTERVAL", &a.PollInterval, toInt); err != nil {
 		return err
 	}

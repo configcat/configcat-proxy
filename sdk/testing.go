@@ -86,7 +86,7 @@ func NewTestSdkContext(conf *config.SDKConfig, cache store.Cache) *Context {
 	}
 }
 
-func NewTestAutoRegistrarWithAutoConfig(t *testing.T, autoConf config.AutoSDKConfig, logger log.Logger) (AutoRegistrar, *TestSdkRegistrarHandler) {
+func NewTestAutoRegistrarWithAutoConfig(t *testing.T, autoConf config.AutoSDKConfig, logger log.Logger) (AutoRegistrar, *TestSdkRegistrarHandler, string) {
 	return NewTestAutoRegistrar(t, config.Config{AutoSDK: autoConf}, nil, logger)
 }
 
@@ -100,7 +100,7 @@ func NewTestAutoRegistrarWithCache(t *testing.T, cachePoll int, cache store.Cach
 	return reg
 }
 
-func NewTestAutoRegistrar(t *testing.T, conf config.Config, cache store.Cache, logger log.Logger) (AutoRegistrar, *TestSdkRegistrarHandler) {
+func NewTestAutoRegistrar(t *testing.T, conf config.Config, cache store.Cache, logger log.Logger) (AutoRegistrar, *TestSdkRegistrarHandler, string) {
 	sdkKey := configcattest.RandomSDKKey()
 	var sdkHandler configcattest.Handler
 	_ = sdkHandler.SetFlags(sdkKey, map[string]*configcattest.Flag{
@@ -126,7 +126,7 @@ func NewTestAutoRegistrar(t *testing.T, conf config.Config, cache store.Cache, l
 		configSrv.Close()
 		reg.Close()
 	})
-	return reg, &h
+	return reg, &h, sdkKey
 }
 
 type TestSdkRegistrarHandler struct {

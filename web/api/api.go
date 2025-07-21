@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,7 +9,6 @@ import (
 	"github.com/configcat/configcat-proxy/model"
 	"github.com/configcat/configcat-proxy/sdk"
 	configcat "github.com/configcat/go-sdk/v9"
-	"github.com/julienschmidt/httprouter"
 	"io"
 	"net/http"
 )
@@ -83,7 +81,7 @@ func (s *Server) EvalAll(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) Keys(w http.ResponseWriter, r *http.Request) {
-	sdkClient, err, code := s.getSDKClient(r.Context())
+	sdkClient, err, code := s.getSDKClient(r)
 	if err != nil {
 		http.Error(w, err.Error(), code)
 		return
@@ -99,7 +97,7 @@ func (s *Server) Keys(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) Refresh(w http.ResponseWriter, r *http.Request) {
-	sdkClient, err, code := s.getSDKClient(r.Context())
+	sdkClient, err, code := s.getSDKClient(r)
 	if err != nil {
 		http.Error(w, err.Error(), code)
 		return
@@ -124,16 +122,15 @@ func (s *Server) parseRequest(r *http.Request, evalReq *model.EvalRequest) (sdk.
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse JSON body: %s", err), http.StatusBadRequest
 	}
-	sdkClient, err, code := s.getSDKClient(r.Context())
+	sdkClient, err, code := s.getSDKClient(r)
 	if err != nil {
 		return nil, err, code
 	}
 	return sdkClient, nil, http.StatusOK
 }
 
-func (s *Server) getSDKClient(ctx context.Context) (sdk.Client, error, int) {
-	vars := httprouter.ParamsFromContext(ctx)
-	sdkId := vars.ByName("sdkId")
+func (s *Server) getSDKClient(r *http.Request) (sdk.Client, error, int) {
+	sdkId := r.PathValue("sdkId")
 	if sdkId == "" {
 		return nil, fmt.Errorf("'sdkId' path parameter must be set"), http.StatusNotFound
 	}

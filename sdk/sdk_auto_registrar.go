@@ -103,6 +103,18 @@ func (r *autoRegistrar) GetSdkOrNil(sdkId string) Client {
 	return nil
 }
 
+func (r *autoRegistrar) GetSdkByKeyOrNil(sdkKey string) Client {
+	var sdkClient Client
+	r.sdkClients.Range(func(key string, value Client) bool {
+		if value.SdkKey() == sdkKey {
+			sdkClient = value
+			return false
+		}
+		return true
+	})
+	return sdkClient
+}
+
 func (r *autoRegistrar) GetAll() map[string]Client {
 	all := make(map[string]Client, r.sdkClients.Size())
 	r.sdkClients.Range(func(key string, value Client) bool {
@@ -244,11 +256,13 @@ func (r *autoRegistrar) fetchConfig(ctx context.Context, etag string) ([]byte, s
 
 func (r *autoRegistrar) buildSdkConfig(sdkId string, sdkModel *model.SdkConfigModel) *config.SDKConfig {
 	sdkConfig := &config.SDKConfig{
-		BaseUrl:        r.conf.AutoSDK.SdkBaseUrl,
-		Key:            sdkModel.SDKKey,
-		PollInterval:   r.options.PollInterval,
-		DataGovernance: r.options.DataGovernance,
-		Log:            r.conf.AutoSDK.Log,
+		BaseUrl:                  r.conf.AutoSDK.SdkBaseUrl,
+		Key:                      sdkModel.SDKKey,
+		PollInterval:             r.options.PollInterval,
+		DataGovernance:           r.options.DataGovernance,
+		Log:                      r.conf.AutoSDK.Log,
+		WebhookSigningKey:        r.conf.AutoSDK.WebhookSigningKey,
+		WebhookSignatureValidFor: r.conf.AutoSDK.WebhookSignatureValidFor,
 	}
 	if localSdkConfig, ok := r.conf.SDKs[sdkId]; ok {
 		sdkConfig.DefaultAttrs = localSdkConfig.DefaultAttrs

@@ -61,6 +61,9 @@ func TestConfig_Defaults(t *testing.T) {
 
 	assert.Equal(t, "https://api.configcat.com", conf.AutoSDK.BaseUrl)
 
+	assert.Equal(t, 300, conf.AutoSDK.PollInterval)
+	assert.Equal(t, 300, conf.AutoSDK.WebhookSignatureValidFor)
+
 	assert.Nil(t, conf.DefaultAttrs)
 }
 
@@ -223,7 +226,10 @@ auto_config:
   key: key
   secret: secret
   base_url: "https://base.com"
+  sdk_base_url: "https://sdk-base.com"
   poll_interval: 300
+  webhook_signing_key: "key"
+  webhook_signature_valid_for: 600
   log:
     level: "debug"
 `, func(file string) {
@@ -233,7 +239,10 @@ auto_config:
 		assert.Equal(t, "key", conf.AutoSDK.Key)
 		assert.Equal(t, "secret", conf.AutoSDK.Secret)
 		assert.Equal(t, "https://base.com", conf.AutoSDK.BaseUrl)
+		assert.Equal(t, "https://sdk-base.com", conf.AutoSDK.SdkBaseUrl)
 		assert.Equal(t, 300, conf.AutoSDK.PollInterval)
+		assert.Equal(t, "key", conf.AutoSDK.WebhookSigningKey)
+		assert.Equal(t, 600, conf.AutoSDK.WebhookSignatureValidFor)
 		assert.Equal(t, log.Debug, conf.AutoSDK.Log.GetLevel())
 	})
 }
