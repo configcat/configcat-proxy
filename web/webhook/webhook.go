@@ -39,7 +39,6 @@ func (s *Server) ServeWebhookTest(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Signature validation failed", http.StatusBadRequest)
 			return
 		}
-		s.logger.Debugf("signature validation passed")
 	}
 
 	s.logger.Infof("webhook request received")
@@ -62,7 +61,6 @@ func (s *Server) ServeWebhookSdkId(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Signature validation failed", http.StatusBadRequest)
 			return
 		}
-		s.logger.Debugf("signature validation passed")
 	}
 
 	// Everything OK, refresh
