@@ -426,5 +426,5 @@ func TestAPI_Refresh_Headers(t *testing.T) {
 
 func newAPIRouter(t *testing.T, conf config.ApiConfig) *HttpRouter {
 	reg, _, _ := sdk.NewTestRegistrarT(t)
-	return NewRouter(reg, nil, status.NewEmptyReporter(), &config.HttpConfig{Api: conf}, &config.AutoSDKConfig{}, log.NewNullLogger())
+	return NewRouter(reg, nil, status.NewEmptyReporter(), &config.HttpConfig{Api: conf}, &config.ProfileConfig{}, log.NewNullLogger())
 }

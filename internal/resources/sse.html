@@ -7,13 +7,13 @@
 <body>
 <script>
     const user = {
-        key: "awesomeFeature",
+        key: "test1",
         user: {
             Identifier: "09c63c8ad682"
         }
     }
     const data = btoa(JSON.stringify(user))
-    const evtSource = new EventSource("https://localhost:8050/sse/sdk1/eval/" + data);
+    const evtSource = new EventSource("https://localhost:8050/sse/sdk-342/eval/" + data);
     evtSource.onmessage = (event) => {
         console.log(event.data);
     };

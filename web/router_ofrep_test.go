@@ -40,7 +40,7 @@ func TestOFREP_Integration(t *testing.T) {
 			Rules:   []configcattest.Rule{{ComparisonAttribute: "Identifier", ComparisonValue: "id", Comparator: configcat.OpEq, Value: 3.14}},
 		},
 	})
-	router := NewRouter(reg, nil, status.NewEmptyReporter(), &config.HttpConfig{OFREP: config.OFREPConfig{Enabled: true, AuthHeaders: map[string]string{"X-API-Key": "secret"}}}, &config.AutoSDKConfig{}, log.NewNullLogger())
+	router := NewRouter(reg, nil, status.NewEmptyReporter(), &config.HttpConfig{OFREP: config.OFREPConfig{Enabled: true, AuthHeaders: map[string]string{"X-API-Key": "secret"}}}, &config.ProfileConfig{}, log.NewNullLogger())
 	srv := httptest.NewServer(router)
 	defer srv.Close()
 
@@ -300,113 +300,7 @@ func TestOFREP_EvalAll_Headers(t *testing.T) {
 	})
 }
 
-func TestOFREP_GetConfiguration(t *testing.T) {
-	router := newOFREPRouter(t, config.OFREPConfig{Enabled: true, CORS: config.CORSConfig{Enabled: true}, Headers: map[string]string{"h1": "v1"}, AuthHeaders: map[string]string{"X-AUTH": "key"}})
-	srv := httptest.NewServer(router)
-	path := fmt.Sprintf("%s/ofrep/v1/configuration", srv.URL)
-
-	t.Run("options cors", func(t *testing.T) {
-		req, _ := http.NewRequest(http.MethodOptions, path, http.NoBody)
-		resp, _ := http.DefaultClient.Do(req)
-		assert.Equal(t, http.StatusNoContent, resp.StatusCode)
-
-		assert.Equal(t, "GET,OPTIONS", resp.Header.Get("Access-Control-Allow-Methods"))
-		assert.Equal(t, "false", resp.Header.Get("Access-Control-Allow-Credentials"))
-		assert.Equal(t, "Cache-Control,Content-Type,Content-Length,Accept-Encoding,If-None-Match,X-AUTH,"+ofrep.SdkIdHeader, resp.Header.Get("Access-Control-Allow-Headers"))
-		assert.Equal(t, "600", resp.Header.Get("Access-Control-Max-Age"))
-		assert.Equal(t, "*", resp.Header.Get("Access-Control-Allow-Origin"))
-		assert.Equal(t, "Content-Length,ETag,Date,Content-Encoding,h1", resp.Header.Get("Access-Control-Expose-Headers"))
-		assert.Equal(t, "v1", resp.Header.Get("h1"))
-	})
-	t.Run("missing auth", func(t *testing.T) {
-		req, _ := http.NewRequest(http.MethodGet, path, http.NoBody)
-		resp, _ := http.DefaultClient.Do(req)
-		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
-		assert.Equal(t, "*", resp.Header.Get("Access-Control-Allow-Origin"))
-		assert.Equal(t, "Content-Length,ETag,Date,Content-Encoding,h1", resp.Header.Get("Access-Control-Expose-Headers"))
-		assert.Equal(t, "v1", resp.Header.Get("h1"))
-	})
-	t.Run("ok", func(t *testing.T) {
-		req, _ := http.NewRequest(http.MethodGet, path, http.NoBody)
-		req.Header.Set("X-AUTH", "key")
-		resp, _ := http.DefaultClient.Do(req)
-		assert.Equal(t, http.StatusOK, resp.StatusCode)
-		body, _ := io.ReadAll(resp.Body)
-		_ = resp.Body.Close()
-		assert.Equal(t, `{"name":"`+ofrep.ServerName+`","capabilities":{"cacheInvalidation":{"polling":{"enabled":true}},"flagEvaluation":{"supportedTypes":["string","boolean","int","float"]}}}`, string(body))
-		assert.Equal(t, "*", resp.Header.Get("Access-Control-Allow-Origin"))
-		assert.Equal(t, "Content-Length,ETag,Date,Content-Encoding,h1", resp.Header.Get("Access-Control-Expose-Headers"))
-		assert.Equal(t, "v1", resp.Header.Get("h1"))
-	})
-	t.Run("ok gzip", func(t *testing.T) {
-		req, _ := http.NewRequest(http.MethodGet, path, http.NoBody)
-		req.Header.Set("X-AUTH", "key")
-		req.Header.Set("Accept-Encoding", "gzip")
-		resp, _ := http.DefaultClient.Do(req)
-		assert.Equal(t, http.StatusOK, resp.StatusCode)
-		assert.Equal(t, "gzip", resp.Header.Get("Content-Encoding"))
-		gzipReader, err := gzip.NewReader(resp.Body)
-		assert.NoError(t, err)
-		body, _ := io.ReadAll(gzipReader)
-		assert.Equal(t, `{"name":"`+ofrep.ServerName+`","capabilities":{"cacheInvalidation":{"polling":{"enabled":true}},"flagEvaluation":{"supportedTypes":["string","boolean","int","float"]}}}`, string(body))
-		assert.Equal(t, "*", resp.Header.Get("Access-Control-Allow-Origin"))
-		assert.Equal(t, "Content-Length,ETag,Date,Content-Encoding,h1", resp.Header.Get("Access-Control-Expose-Headers"))
-		assert.Equal(t, "v1", resp.Header.Get("h1"))
-	})
-	t.Run("post not allowed", func(t *testing.T) {
-		req, _ := http.NewRequest(http.MethodPost, path, http.NoBody)
-		resp, _ := http.DefaultClient.Do(req)
-		assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
-	})
-	t.Run("put not allowed", func(t *testing.T) {
-		req, _ := http.NewRequest(http.MethodPut, path, http.NoBody)
-		resp, _ := http.DefaultClient.Do(req)
-		assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
-	})
-	t.Run("patch not allowed", func(t *testing.T) {
-		req, _ := http.NewRequest(http.MethodPatch, path, http.NoBody)
-		resp, _ := http.DefaultClient.Do(req)
-		assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
-	})
-	t.Run("delete not allowed", func(t *testing.T) {
-		req, _ := http.NewRequest(http.MethodDelete, path, http.NoBody)
-		resp, _ := http.DefaultClient.Do(req)
-		assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
-	})
-}
-
-func TestOFREP_GetConfiguration_Headers(t *testing.T) {
-	router := newOFREPRouter(t, config.OFREPConfig{Enabled: true, CORS: config.CORSConfig{Enabled: false}, AuthHeaders: map[string]string{"X-AUTH": "key"}})
-	srv := httptest.NewServer(router)
-	path := fmt.Sprintf("%s/ofrep/v1/configuration", srv.URL)
-
-	t.Run("options", func(t *testing.T) {
-		req, _ := http.NewRequest(http.MethodOptions, path, http.NoBody)
-		resp, _ := http.DefaultClient.Do(req)
-		assert.Equal(t, http.StatusNoContent, resp.StatusCode)
-		assert.Empty(t, resp.Header.Get("Access-Control-Allow-Methods"))
-		assert.Empty(t, resp.Header.Get("Access-Control-Allow-Credentials"))
-		assert.Empty(t, resp.Header.Get("Access-Control-Allow-Headers"))
-		assert.Empty(t, resp.Header.Get("Access-Control-Max-Age"))
-		assert.Empty(t, resp.Header.Get("Access-Control-Allow-Origin"))
-		assert.Empty(t, resp.Header.Get("Access-Control-Expose-Headers"))
-		assert.Empty(t, resp.Header.Get("h1"))
-	})
-	t.Run("ok", func(t *testing.T) {
-		req, _ := http.NewRequest(http.MethodGet, path, http.NoBody)
-		req.Header.Set("X-AUTH", "key")
-		resp, _ := http.DefaultClient.Do(req)
-		assert.Equal(t, http.StatusOK, resp.StatusCode)
-		body, _ := io.ReadAll(resp.Body)
-		_ = resp.Body.Close()
-		assert.Equal(t, `{"name":"`+ofrep.ServerName+`","capabilities":{"cacheInvalidation":{"polling":{"enabled":true}},"flagEvaluation":{"supportedTypes":["string","boolean","int","float"]}}}`, string(body))
-		assert.Empty(t, resp.Header.Get("Access-Control-Allow-Origin"))
-		assert.Empty(t, resp.Header.Get("Access-Control-Expose-Headers"))
-		assert.Empty(t, resp.Header.Get("h1"))
-	})
-}
-
 func newOFREPRouter(t *testing.T, conf config.OFREPConfig) *HttpRouter {
 	reg, _, _ := sdk.NewTestRegistrarT(t)
-	return NewRouter(reg, nil, status.NewEmptyReporter(), &config.HttpConfig{OFREP: conf}, &config.AutoSDKConfig{}, log.NewNullLogger())
+	return NewRouter(reg, nil, status.NewEmptyReporter(), &config.HttpConfig{OFREP: conf}, &config.ProfileConfig{}, log.NewNullLogger())
 }

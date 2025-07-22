@@ -86,12 +86,12 @@ func NewTestSdkContext(conf *config.SDKConfig, cache store.Cache) *Context {
 	}
 }
 
-func NewTestAutoRegistrarWithAutoConfig(t *testing.T, autoConf config.AutoSDKConfig, logger log.Logger) (AutoRegistrar, *TestSdkRegistrarHandler, string) {
-	return NewTestAutoRegistrar(t, config.Config{AutoSDK: autoConf}, nil, logger)
+func NewTestAutoRegistrarWithAutoConfig(t *testing.T, autoConf config.ProfileConfig, logger log.Logger) (AutoRegistrar, *TestSdkRegistrarHandler, string) {
+	return NewTestAutoRegistrar(t, config.Config{Profile: autoConf}, nil, logger)
 }
 
 func NewTestAutoRegistrarWithCache(t *testing.T, cachePoll int, cache store.Cache, logger log.Logger) AutoRegistrar {
-	conf := config.Config{AutoSDK: config.AutoSDKConfig{Key: "test-reg", PollInterval: 60}, GlobalOfflineConfig: config.GlobalOfflineConfig{
+	conf := config.Config{Profile: config.ProfileConfig{Key: "test-reg", PollInterval: 60}, GlobalOfflineConfig: config.GlobalOfflineConfig{
 		CachePollInterval: cachePoll,
 		Enabled:           true,
 	}}
@@ -118,8 +118,8 @@ func NewTestAutoRegistrar(t *testing.T, conf config.Config, cache store.Cache, l
 	}, sdkHandler: &sdkHandler}
 	configSrv := httptest.NewServer(&h)
 
-	conf.AutoSDK.SdkBaseUrl = sdkSrv.URL
-	conf.AutoSDK.BaseUrl = configSrv.URL
+	conf.Profile.SDKs.BaseUrl = sdkSrv.URL
+	conf.Profile.BaseUrl = configSrv.URL
 	reg, _ := newAutoRegistrar(&conf, nil, status.NewEmptyReporter(), cache, logger)
 	t.Cleanup(func() {
 		sdkSrv.Close()

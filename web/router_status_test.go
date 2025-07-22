@@ -78,5 +78,5 @@ func newStatusRouter(t *testing.T) *HttpRouter {
 	testutils.WithTimeout(2*time.Second, func() {
 		<-client.Ready()
 	})
-	return NewRouter(reg, nil, reporter, &config.HttpConfig{Status: config.StatusConfig{Enabled: true}}, &config.AutoSDKConfig{}, log.NewNullLogger())
+	return NewRouter(reg, nil, reporter, &config.HttpConfig{Status: config.StatusConfig{Enabled: true}}, &config.ProfileConfig{}, log.NewNullLogger())
 }

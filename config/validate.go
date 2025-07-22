@@ -7,11 +7,11 @@ import (
 )
 
 func (c *Config) Validate() error {
-	if len(c.SDKs) == 0 && !c.AutoSDK.IsSet() {
+	if len(c.SDKs) == 0 && !c.Profile.IsSet() {
 		return fmt.Errorf("sdk: at least 1 SDK must be configured")
 	}
-	if c.AutoSDK.IsSet() {
-		if err := c.AutoSDK.validate(); err != nil {
+	if c.Profile.IsSet() {
+		if err := c.Profile.validate(); err != nil {
 			return err
 		}
 	}
@@ -208,9 +208,9 @@ func (g *GrpcConfig) validate() error {
 	return nil
 }
 
-func (a *AutoSDKConfig) validate() error {
-	if a.PollInterval < 5 {
-		return fmt.Errorf("sdk: auto configuration poll interval cannot be less than 5 seconds")
+func (a *ProfileConfig) validate() error {
+	if a.PollInterval < 30 {
+		return fmt.Errorf("sdk: auto configuration poll interval cannot be less than 30 seconds")
 	}
 	if a.WebhookSigningKey != "" && a.WebhookSignatureValidFor < 5 {
 		return fmt.Errorf("sdk: webhook signature validity check must be greater than 5 seconds")

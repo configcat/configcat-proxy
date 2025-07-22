@@ -185,5 +185,5 @@ func TestSSE_EvalAllFlags_Not_Allowed_Methods(t *testing.T) {
 
 func newSSERouter(t *testing.T, conf config.SseConfig) *HttpRouter {
 	reg, _, _ := sdk.NewTestRegistrarT(t)
-	return NewRouter(reg, nil, status.NewEmptyReporter(), &config.HttpConfig{Sse: conf}, &config.AutoSDKConfig{}, log.NewNullLogger())
+	return NewRouter(reg, nil, status.NewEmptyReporter(), &config.HttpConfig{Sse: conf}, &config.ProfileConfig{}, log.NewNullLogger())
 }

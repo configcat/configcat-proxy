@@ -18,7 +18,7 @@ import (
 )
 
 func TestAutoRegistrar_Poll(t *testing.T) {
-	reg, h, _ := NewTestAutoRegistrarWithAutoConfig(t, config.AutoSDKConfig{PollInterval: 1}, log.NewNullLogger())
+	reg, h, _ := NewTestAutoRegistrarWithAutoConfig(t, config.ProfileConfig{PollInterval: 1}, log.NewNullLogger())
 
 	sub := make(chan string)
 	reg.Subscribe(sub)
@@ -59,7 +59,7 @@ func TestAutoRegistrar_Poll(t *testing.T) {
 }
 
 func TestAutoRegistrar_Refresh(t *testing.T) {
-	reg, h, _ := NewTestAutoRegistrarWithAutoConfig(t, config.AutoSDKConfig{PollInterval: 60}, log.NewNullLogger())
+	reg, h, _ := NewTestAutoRegistrarWithAutoConfig(t, config.ProfileConfig{PollInterval: 60}, log.NewNullLogger())
 
 	sub := make(chan string)
 	reg.Subscribe(sub)
@@ -102,7 +102,7 @@ func TestAutoRegistrar_Refresh(t *testing.T) {
 }
 
 func TestAutoRegistrar_Modify_Global_Opts(t *testing.T) {
-	reg, h, _ := NewTestAutoRegistrarWithAutoConfig(t, config.AutoSDKConfig{PollInterval: 60}, log.NewNullLogger())
+	reg, h, _ := NewTestAutoRegistrarWithAutoConfig(t, config.ProfileConfig{PollInterval: 60}, log.NewNullLogger())
 
 	sub := make(chan string)
 	reg.Subscribe(sub)
@@ -146,7 +146,7 @@ func TestAutoRegistrar_Config(t *testing.T) {
 				UseCache:          true,
 			},
 		}},
-		AutoSDK: config.AutoSDKConfig{
+		Profile: config.ProfileConfig{
 			PollInterval: 10,
 		},
 	}, nil, log.NewNullLogger())
@@ -177,7 +177,7 @@ func TestAutoRegistrar_Cache_Poll(t *testing.T) {
 
 	autoConfigJson, _ := json.Marshal(autoConfig)
 	autoConfigCacheEntry := cacheSegmentsToBytes("etag", autoConfigJson)
-	_ = cache.Set("configcat-proxy-conf/test-reg", string(autoConfigCacheEntry))
+	_ = cache.Set("configcat-proxy-profile-test-reg", string(autoConfigCacheEntry))
 
 	reg := NewTestAutoRegistrarWithCache(t, 1, extCache, log.NewNullLogger())
 
@@ -203,7 +203,7 @@ func TestAutoRegistrar_Cache_Poll(t *testing.T) {
 
 	autoConfigJson, _ = json.Marshal(autoConfig)
 	autoConfigCacheEntry = cacheSegmentsToBytes("etag2", autoConfigJson)
-	_ = cache.Set("configcat-proxy-conf/test-reg", string(autoConfigCacheEntry))
+	_ = cache.Set("configcat-proxy-profile-test-reg", string(autoConfigCacheEntry))
 
 	testutils.WaitUntil(5*time.Second, func() bool {
 		return nil != reg.GetSdkOrNil("test2")
@@ -236,7 +236,7 @@ func TestAutoRegistrar_Cache_Refresh(t *testing.T) {
 
 	autoConfigJson, _ := json.Marshal(autoConfig)
 	autoConfigCacheEntry := cacheSegmentsToBytes("etag", autoConfigJson)
-	_ = cache.Set("configcat-proxy-conf/test-reg", string(autoConfigCacheEntry))
+	_ = cache.Set("configcat-proxy-profile-test-reg", string(autoConfigCacheEntry))
 
 	reg := NewTestAutoRegistrarWithCache(t, 60, extCache, log.NewNullLogger())
 
@@ -262,7 +262,7 @@ func TestAutoRegistrar_Cache_Refresh(t *testing.T) {
 
 	autoConfigJson, _ = json.Marshal(autoConfig)
 	autoConfigCacheEntry = cacheSegmentsToBytes("etag2", autoConfigJson)
-	_ = cache.Set("configcat-proxy-conf/test-reg", string(autoConfigCacheEntry))
+	_ = cache.Set("configcat-proxy-profile-test-reg", string(autoConfigCacheEntry))
 
 	reg.Refresh()
 	testutils.WaitUntil(5*time.Second, func() bool {
@@ -296,9 +296,9 @@ func TestAutoRegistrar_Cache_When_Fail(t *testing.T) {
 
 	autoConfigJson, _ := json.Marshal(autoConfig)
 	autoConfigCacheEntry := cacheSegmentsToBytes("etag", autoConfigJson)
-	_ = cache.Set("configcat-proxy-conf/test-reg", string(autoConfigCacheEntry))
+	_ = cache.Set("configcat-proxy-profile-test-reg", string(autoConfigCacheEntry))
 
-	conf := config.Config{AutoSDK: config.AutoSDKConfig{Key: "test-reg", PollInterval: 60}}
+	conf := config.Config{Profile: config.ProfileConfig{Key: "test-reg", PollInterval: 60}}
 	reg, _ := newAutoRegistrar(&conf, nil, status.NewEmptyReporter(), extCache, log.NewNullLogger())
 	defer reg.Close()
 
@@ -315,23 +315,23 @@ func TestAutoRegistrar_Saves_To_Cache(t *testing.T) {
 	cache := miniredis.RunT(t)
 	extCache := newRedisCache(cache.Addr())
 
-	conf := config.Config{AutoSDK: config.AutoSDKConfig{Key: "test-reg", PollInterval: 60}}
+	conf := config.Config{Profile: config.ProfileConfig{Key: "test-reg", PollInterval: 60}}
 	reg, _, _ := NewTestAutoRegistrar(t, conf, extCache, log.NewNullLogger())
 
 	sdkClient := reg.GetSdkOrNil("test").(*client)
 	assert.NotNil(t, sdkClient)
 
-	cached, _ := cache.Get("configcat-proxy-conf/test-reg")
+	cached, _ := cache.Get("configcat-proxy-profile-test-reg")
 	cachedBody, cachedEtag, _ := cacheSegmentsFromBytes([]byte(cached))
 	assert.Equal(t, `{"SDKs":{"test":{"SDKKey":"`+sdkClient.sdkCtx.SDKConf.Key+`"}},"Options":{"PollInterval":60,"DataGovernance":"global"}}`, string(cachedBody))
-	assert.Equal(t, utils.GenerateEtag(cachedBody), cachedEtag)
+	assert.Equal(t, utils.GenerateEtag(cachedBody), "W/"+cachedEtag)
 }
 
 func TestAutoRegistrar_Cache_Rebuild(t *testing.T) {
 	cache := miniredis.RunT(t)
 	extCache := newRedisCache(cache.Addr())
-	cacheKey := "configcat-proxy-conf/test-reg"
-	conf := config.Config{AutoSDK: config.AutoSDKConfig{Key: "test-reg", PollInterval: 1}}
+	cacheKey := "configcat-proxy-profile-test-reg"
+	conf := config.Config{Profile: config.ProfileConfig{Key: "test-reg", PollInterval: 1}}
 	_, _, _ = NewTestAutoRegistrar(t, conf, extCache, log.NewNullLogger())
 
 	cached, _ := cache.Get(cacheKey)
@@ -351,14 +351,14 @@ func TestAutoRegistrar_GetBySdkKey(t *testing.T) {
 	cache := miniredis.RunT(t)
 	extCache := newRedisCache(cache.Addr())
 
-	conf := config.Config{AutoSDK: config.AutoSDKConfig{Key: "test-reg", PollInterval: 60}}
+	conf := config.Config{Profile: config.ProfileConfig{Key: "test-reg", PollInterval: 60}}
 	reg, _, sdkKey := NewTestAutoRegistrar(t, conf, extCache, log.NewNullLogger())
 
 	sdkClient := reg.GetSdkByKeyOrNil(sdkKey).(*client)
 	assert.NotNil(t, sdkClient)
 
-	cached, _ := cache.Get("configcat-proxy-conf/test-reg")
+	cached, _ := cache.Get("configcat-proxy-profile-test-reg")
 	cachedBody, cachedEtag, _ := cacheSegmentsFromBytes([]byte(cached))
 	assert.Equal(t, `{"SDKs":{"test":{"SDKKey":"`+sdkClient.sdkCtx.SDKConf.Key+`"}},"Options":{"PollInterval":60,"DataGovernance":"global"}}`, string(cachedBody))
-	assert.Equal(t, utils.GenerateEtag(cachedBody), cachedEtag)
+	assert.Equal(t, utils.GenerateEtag(cachedBody), "W/"+cachedEtag)
 }

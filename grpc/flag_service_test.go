@@ -82,7 +82,7 @@ func TestGrpc_EvalFlagStream(t *testing.T) {
 }
 
 func TestGrpc_EvalFlagStream_SdkRemoved(t *testing.T) {
-	reg, h, _ := sdk.NewTestAutoRegistrarWithAutoConfig(t, config.AutoSDKConfig{PollInterval: 60}, log.NewNullLogger())
+	reg, h, _ := sdk.NewTestAutoRegistrarWithAutoConfig(t, config.ProfileConfig{PollInterval: 60}, log.NewNullLogger())
 	flagSrv := newFlagService(reg, nil, log.NewNullLogger())
 
 	lis := bufconn.Listen(1024 * 1024)
@@ -203,7 +203,7 @@ func TestGrpc_EvalAllFlagsStream(t *testing.T) {
 }
 
 func TestGrpc_EvalAllFlagsStream_SdkRemoved(t *testing.T) {
-	reg, h, _ := sdk.NewTestAutoRegistrarWithAutoConfig(t, config.AutoSDKConfig{PollInterval: 60}, log.NewNullLogger())
+	reg, h, _ := sdk.NewTestAutoRegistrarWithAutoConfig(t, config.ProfileConfig{PollInterval: 60}, log.NewNullLogger())
 	flagSrv := newFlagService(reg, nil, log.NewNullLogger())
 
 	lis := bufconn.Listen(1024 * 1024)

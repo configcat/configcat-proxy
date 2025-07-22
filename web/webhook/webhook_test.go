@@ -21,7 +21,7 @@ import (
 
 func TestWebhook_Signature_Bad(t *testing.T) {
 	reg, _, _ := newRegistrar(t, "test-key", 300)
-	srv := NewServer(&config.AutoSDKConfig{}, reg, log.NewNullLogger())
+	srv := NewServer(&config.ProfileConfig{}, reg, log.NewNullLogger())
 
 	t.Run("headers missing", func(t *testing.T) {
 		res := httptest.NewRecorder()
@@ -55,7 +55,7 @@ func TestWebhook_Signature_Bad(t *testing.T) {
 func TestWebhook_Signature_Ok(t *testing.T) {
 	t.Run("signature OK GET", func(t *testing.T) {
 		reg, h, key := newRegistrar(t, "test-key", 300)
-		srv := NewServer(&config.AutoSDKConfig{}, reg, log.NewNullLogger())
+		srv := NewServer(&config.ProfileConfig{}, reg, log.NewNullLogger())
 
 		res := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -83,7 +83,7 @@ func TestWebhook_Signature_Ok(t *testing.T) {
 	})
 	t.Run("signature OK POST", func(t *testing.T) {
 		reg, h, key := newRegistrar(t, "test-key", 300)
-		srv := NewServer(&config.AutoSDKConfig{}, reg, log.NewNullLogger())
+		srv := NewServer(&config.ProfileConfig{}, reg, log.NewNullLogger())
 
 		id := "1"
 		timestamp := strconv.FormatInt(time.Now().Unix(), 10)
@@ -114,7 +114,7 @@ func TestWebhook_Signature_Ok(t *testing.T) {
 
 func TestWebhook_Signature_Replay_Reject(t *testing.T) {
 	reg, _, _ := newRegistrar(t, "test-key", 1)
-	srv := NewServer(&config.AutoSDKConfig{}, reg, log.NewNullLogger())
+	srv := NewServer(&config.ProfileConfig{}, reg, log.NewNullLogger())
 
 	id := "1"
 	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
@@ -135,7 +135,7 @@ func TestWebhook_Signature_Replay_Reject(t *testing.T) {
 }
 
 func TestWebhook_TestEndpoint(t *testing.T) {
-	srv := NewServer(&config.AutoSDKConfig{WebhookSigningKey: "test-key", WebhookSignatureValidFor: 1}, nil, log.NewNullLogger())
+	srv := NewServer(&config.ProfileConfig{WebhookSigningKey: "test-key", WebhookSignatureValidFor: 1}, nil, log.NewNullLogger())
 
 	t.Run("signature OK", func(t *testing.T) {
 		timestamp := strconv.FormatInt(time.Now().Unix(), 10)

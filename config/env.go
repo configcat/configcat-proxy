@@ -69,7 +69,7 @@ func (c *Config) loadEnv() error {
 		}
 		c.SDKs[sdkId] = sdkConf
 	}
-	if err := c.AutoSDK.loadEnv(envPrefix); err != nil {
+	if err := c.Profile.loadEnv(envPrefix); err != nil {
 		return err
 	}
 	if err := c.Http.loadEnv(envPrefix); err != nil {
@@ -119,12 +119,11 @@ func (s *SDKConfig) loadEnv(prefix string) error {
 	return s.Log.loadEnv(prefix)
 }
 
-func (a *AutoSDKConfig) loadEnv(prefix string) error {
-	prefix = concatPrefix(prefix, "AUTO_CONFIG")
+func (a *ProfileConfig) loadEnv(prefix string) error {
+	prefix = concatPrefix(prefix, "PROFILE")
 	readEnvString(prefix, "KEY", &a.Key)
 	readEnvString(prefix, "SECRET", &a.Secret)
 	readEnvString(prefix, "BASE_URL", &a.BaseUrl)
-	readEnvString(prefix, "SDK_BASE_URL", &a.SdkBaseUrl)
 	readEnvString(prefix, "WEBHOOK_SIGNING_KEY", &a.WebhookSigningKey)
 	if err := readEnv(prefix, "WEBHOOK_SIGNATURE_VALID_FOR", &a.WebhookSignatureValidFor, toInt); err != nil {
 		return err
@@ -132,7 +131,16 @@ func (a *AutoSDKConfig) loadEnv(prefix string) error {
 	if err := readEnv(prefix, "POLL_INTERVAL", &a.PollInterval, toInt); err != nil {
 		return err
 	}
+	if err := a.SDKs.loadEnv(prefix); err != nil {
+		return err
+	}
 	return a.Log.loadEnv(prefix)
+}
+
+func (p *ProfileSDKConfig) loadEnv(prefix string) error {
+	prefix = concatPrefix(prefix, "SDKS")
+	readEnvString(prefix, "BASE_URL", &p.BaseUrl)
+	return p.Log.loadEnv(prefix)
 }
 
 func (h *HttpConfig) loadEnv(prefix string) error {

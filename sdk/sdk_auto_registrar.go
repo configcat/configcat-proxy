@@ -17,6 +17,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 )
 
@@ -44,7 +45,7 @@ type autoRegistrar struct {
 }
 
 func newAutoRegistrar(conf *config.Config, metricsReporter metrics.Reporter, statusReporter status.Reporter, cache store.Cache, log log.Logger) (*autoRegistrar, error) {
-	regLog := log.WithPrefix("auto-sdk-registrar").WithLevel(conf.AutoSDK.Log.GetLevel())
+	regLog := log.WithPrefix("profile-sdk-registrar").WithLevel(conf.Profile.Log.GetLevel())
 	var transport = http.DefaultTransport.(*http.Transport)
 	if !conf.GlobalOfflineConfig.Enabled && conf.HttpProxy.Url != "" {
 		proxyUrl, err := url.Parse(conf.HttpProxy.Url)
@@ -54,6 +55,10 @@ func newAutoRegistrar(conf *config.Config, metricsReporter metrics.Reporter, sta
 			transport.Proxy = http.ProxyURL(proxyUrl)
 			regLog.Reportf("using HTTP proxy: %s", conf.HttpProxy.Url)
 		}
+	}
+	var roundTripper http.RoundTripper = transport
+	if metricsReporter != nil {
+		roundTripper = metrics.InterceptProxyProfile(conf.Profile.Key, metricsReporter, roundTripper)
 	}
 	registrar := &autoRegistrar{
 		refreshChan:     make(chan struct{}),
@@ -66,9 +71,9 @@ func newAutoRegistrar(conf *config.Config, metricsReporter metrics.Reporter, sta
 		Publisher:       pubsub.NewPublisher[string](),
 		httpClient: &http.Client{
 			Timeout:   30 * time.Second,
-			Transport: transport,
+			Transport: roundTripper,
 		},
-		cacheKey: "configcat-proxy-conf/" + conf.AutoSDK.Key,
+		cacheKey: "configcat-proxy-profile-" + conf.Profile.Key,
 		etag:     "initial",
 	}
 	registrar.ctx, registrar.ctxCancel = context.WithCancel(context.Background())
@@ -90,7 +95,7 @@ func newAutoRegistrar(conf *config.Config, metricsReporter metrics.Reporter, sta
 	if conf.GlobalOfflineConfig.Enabled {
 		interval = time.Duration(conf.GlobalOfflineConfig.CachePollInterval) * time.Second
 	} else {
-		interval = time.Duration(conf.AutoSDK.PollInterval) * time.Second
+		interval = time.Duration(conf.Profile.PollInterval) * time.Second
 	}
 	go registrar.run(interval)
 	return registrar, nil
@@ -184,26 +189,26 @@ func (r *autoRegistrar) getConfig(ctx context.Context) (*model.ProxyConfigModel,
 	cachedConfig, cachedEtag, cacheErr := r.readCache(ctx)
 	if r.conf.GlobalOfflineConfig.Enabled {
 		if cacheErr != nil {
-			return nil, fmt.Errorf("could not load auto sdk configuration from cache: %s", cacheErr)
+			return nil, fmt.Errorf("could not load proxy profile from cache: %s", cacheErr)
 		}
 		return r.parseConfig(cachedConfig, cachedEtag)
 	}
 	fetched, fetchedEtag, fetchErr := r.fetchConfig(ctx, cachedEtag)
 	if fetchErr != nil {
-		r.log.Errorf("could not fetch auto sdk configuration, falling back to cache: %v", fetchErr)
+		r.log.Errorf("could not fetch proxy profile, falling back to cache: %v", fetchErr)
 		if cacheErr != nil {
-			return nil, fmt.Errorf("could not load auto sdk configuration from cache: %s", cacheErr)
+			return nil, fmt.Errorf("could not load proxy profile from cache: %s", cacheErr)
 		}
 		return r.parseConfig(cachedConfig, cachedEtag)
 	}
 	if fetched == nil { // 304
-		r.log.Debugf("auto sdk configuration not modified")
+		r.log.Debugf("proxy profile not modified")
 		return r.parseConfig(cachedConfig, cachedEtag)
 	} else { // 200
-		r.log.Debugf("auto sdk configuration fetched")
+		r.log.Debugf("proxy profile fetched with etag %s", fetchedEtag)
 		err := r.writeCache(ctx, fetched, fetchedEtag)
 		if err != nil {
-			r.log.Errorf("could not write auto sdk configuration to cache: %v", err)
+			r.log.Errorf("could not write proxy profile to cache: %v", err)
 		}
 		return r.parseConfig(fetched, fetchedEtag)
 	}
@@ -215,27 +220,27 @@ func (r *autoRegistrar) parseConfig(body []byte, etag string) (*model.ProxyConfi
 	}
 	parsed := model.ProxyConfigModel{}
 	if err := json.Unmarshal(body, &parsed); err != nil {
-		return nil, fmt.Errorf("error during parsing auto sdk configuration: %v", err)
+		return nil, fmt.Errorf("error during parsing proxy profile: %v", err)
 	}
 	r.etag = etag
-	r.log.Debugf("auto sdk configuration loaded, got %d SDK keys", len(parsed.SDKs))
+	r.log.Debugf("proxy profile loaded, got %d SDK keys", len(parsed.SDKs))
 	return &parsed, nil
 }
 
 func (r *autoRegistrar) fetchConfig(ctx context.Context, etag string) ([]byte, string, error) {
-	apiUrl := r.conf.AutoSDK.BaseUrl + "/v1/proxy/config/" + r.conf.AutoSDK.Key
-	r.log.Debugf("fetching remote configuration from %s", apiUrl)
+	apiUrl := r.conf.Profile.BaseUrl + "/v1/proxy/config/" + r.conf.Profile.Key
+	r.log.Debugf("fetching proxy profile from %s with etag %s", apiUrl, etag)
 	request, err := http.NewRequestWithContext(ctx, "GET", apiUrl, nil)
 	if err != nil {
-		return nil, "", fmt.Errorf("error during fetching remote configuration: %v", err)
+		return nil, "", fmt.Errorf("error during fetching proxy profile: %v", err)
 	}
 	if etag != "" {
 		request.Header.Set("If-None-Match", etag)
 	}
-	request.Header.Set("Authorization", "Bearer "+r.conf.AutoSDK.Secret)
+	request.Header.Set("Authorization", "Bearer "+r.conf.Profile.Secret)
 	response, err := r.httpClient.Do(request)
 	if err != nil {
-		return nil, "", fmt.Errorf("error during fetching remote configuration: %v", err)
+		return nil, "", fmt.Errorf("error during fetching proxy profile: %v", err)
 	}
 	defer func() {
 		_ = response.Body.Close()
@@ -244,25 +249,28 @@ func (r *autoRegistrar) fetchConfig(ctx context.Context, etag string) ([]byte, s
 		return nil, "", nil
 	}
 	if response.StatusCode != http.StatusOK {
-		return nil, "", fmt.Errorf("error during fetching remote configuration, status code: %d", response.StatusCode)
+		return nil, "", fmt.Errorf("error during fetching proxy profile, status code: %d", response.StatusCode)
 	}
 	receivedEtag := response.Header.Get("ETag")
+	if strings.HasPrefix(receivedEtag, "W/") {
+		receivedEtag = receivedEtag[2:]
+	}
 	body, err := io.ReadAll(response.Body)
 	if err != nil {
-		return nil, "", fmt.Errorf("error during reading configuration response: %v", err)
+		return nil, "", fmt.Errorf("error during reading proxy profile response: %v", err)
 	}
 	return body, receivedEtag, nil
 }
 
 func (r *autoRegistrar) buildSdkConfig(sdkId string, sdkModel *model.SdkConfigModel) *config.SDKConfig {
 	sdkConfig := &config.SDKConfig{
-		BaseUrl:                  r.conf.AutoSDK.SdkBaseUrl,
+		BaseUrl:                  r.conf.Profile.SDKs.BaseUrl,
 		Key:                      sdkModel.SDKKey,
 		PollInterval:             r.options.PollInterval,
 		DataGovernance:           r.options.DataGovernance,
-		Log:                      r.conf.AutoSDK.Log,
-		WebhookSigningKey:        r.conf.AutoSDK.WebhookSigningKey,
-		WebhookSignatureValidFor: r.conf.AutoSDK.WebhookSignatureValidFor,
+		Log:                      r.conf.Profile.SDKs.Log,
+		WebhookSigningKey:        r.conf.Profile.WebhookSigningKey,
+		WebhookSignatureValidFor: r.conf.Profile.WebhookSignatureValidFor,
 	}
 	if localSdkConfig, ok := r.conf.SDKs[sdkId]; ok {
 		sdkConfig.DefaultAttrs = localSdkConfig.DefaultAttrs
@@ -352,14 +360,14 @@ func (r *autoRegistrar) shouldUpdateOptions(options *model.OptionsModel) bool {
 
 func (r *autoRegistrar) readCache(ctx context.Context) (config []byte, eTag string, err error) {
 	if r.cache == nil {
-		return nil, "", fmt.Errorf("cache is not configured")
+		return nil, r.etag, fmt.Errorf("cache is not configured")
 	}
 	cached, err := r.cache.Get(ctx, r.cacheKey)
 	if err != nil {
 		return nil, "", err
 	}
 	if len(cached) == 0 {
-		return nil, "", fmt.Errorf("no valid auto sdk configuration found in cache")
+		return nil, "", fmt.Errorf("no valid proxy profile found in cache")
 	}
 	return cacheSegmentsFromBytes(cached)
 }

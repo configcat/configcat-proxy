@@ -70,9 +70,9 @@ func TestNewRegistrar(t *testing.T) {
 		SDKs: map[string]*model.SdkConfigModel{"test": {SDKKey: configcattest.RandomSDKKey()}},
 	})
 	autConfigCacheEntry := cacheSegmentsToBytes("etag", autConfigCacheJson)
-	_ = cache.Set("configcat-proxy-conf/test-reg", string(autConfigCacheEntry))
+	_ = cache.Set("configcat-proxy-profile-test-reg", string(autConfigCacheEntry))
 	reg, _ := NewRegistrar(&config.Config{
-		AutoSDK: config.AutoSDKConfig{Key: "test-reg", Secret: "secret", PollInterval: 60},
+		Profile: config.ProfileConfig{Key: "test-reg", Secret: "secret", PollInterval: 60},
 	}, nil, status.NewEmptyReporter(), extCache, log.NewDebugLogger())
 	defer reg.Close()
 	assert.IsType(t, &autoRegistrar{}, reg)

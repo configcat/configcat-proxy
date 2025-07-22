@@ -145,10 +145,10 @@ func TestCDNProxy_Get_Body_GZip(t *testing.T) {
 
 func newCDNProxyRouter(t *testing.T, conf config.CdnProxyConfig) *HttpRouter {
 	reg, _, _ := sdk.NewTestRegistrarT(t)
-	return NewRouter(reg, nil, status.NewEmptyReporter(), &config.HttpConfig{CdnProxy: conf}, &config.AutoSDKConfig{}, log.NewNullLogger())
+	return NewRouter(reg, nil, status.NewEmptyReporter(), &config.HttpConfig{CdnProxy: conf}, &config.ProfileConfig{}, log.NewNullLogger())
 }
 
 func newCDNProxyRouterWithSdkKey(t *testing.T, conf config.CdnProxyConfig) (*HttpRouter, string) {
 	reg, _, sdkKey := sdk.NewTestRegistrarT(t)
-	return NewRouter(reg, nil, status.NewEmptyReporter(), &config.HttpConfig{CdnProxy: conf}, &config.AutoSDKConfig{}, log.NewNullLogger()), sdkKey
+	return NewRouter(reg, nil, status.NewEmptyReporter(), &config.HttpConfig{CdnProxy: conf}, &config.ProfileConfig{}, log.NewNullLogger()), sdkKey
 }

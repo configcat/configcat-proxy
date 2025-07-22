@@ -273,7 +273,7 @@ func newServer(t *testing.T, conf *config.SseConfig) *Server {
 }
 
 func newServerWithAutoRegistrar(t *testing.T, conf *config.SseConfig) (*Server, *sdk.TestSdkRegistrarHandler) {
-	reg, h, _ := sdk.NewTestAutoRegistrarWithAutoConfig(t, config.AutoSDKConfig{PollInterval: 1}, log.NewNullLogger())
+	reg, h, _ := sdk.NewTestAutoRegistrarWithAutoConfig(t, config.ProfileConfig{PollInterval: 1}, log.NewNullLogger())
 	server := NewServer(reg, nil, conf, log.NewNullLogger())
 	t.Cleanup(func() {
 		server.Close()

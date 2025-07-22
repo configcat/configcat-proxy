@@ -9,14 +9,23 @@
 
 
 
-auto_config:
+profile:
   key: 08ddb657-51e9-4b6a-848e-017939e290fe
   secret: WxiC5C5Fb5lvI4K1ce7N5RDD6YRBVPDOo0n3mCddsdk=
   base_url: "https://test-api.configcat.com"
-  sdk_base_url: "https://test-cdn-global.configcat.com"
   poll_interval: 30
+  sdks:
+    base_url: "https://test-cdn-global.configcat.com"
   log:
     level: "debug"
+
+offline:
+  enabled: true
+
+cache:
+  redis:
+    enabled: true
+    addresses: ["127.0.0.1:6379"]
 
 log:
   level: "error"

@@ -21,10 +21,10 @@ const timestampHeader = "X-ConfigCat-Webhook-Timestamp"
 type Server struct {
 	sdkRegistrar  sdk.Registrar
 	logger        log.Logger
-	autoSdkConfig *config.AutoSDKConfig
+	autoSdkConfig *config.ProfileConfig
 }
 
-func NewServer(autoSdkConfig *config.AutoSDKConfig, sdkRegistrar sdk.Registrar, log log.Logger) *Server {
+func NewServer(autoSdkConfig *config.ProfileConfig, sdkRegistrar sdk.Registrar, log log.Logger) *Server {
 	whLogger := log.WithPrefix("webhook")
 	return &Server{
 		sdkRegistrar:  sdkRegistrar,

@@ -27,30 +27,7 @@ const (
 	TargetingMatchReason reason = "TARGETING_MATCH"
 
 	SdkIdHeader = "X-ConfigCat-SdkId"
-	ServerName  = "configcat-proxy"
 )
-
-type ofrepConfiguration struct {
-	Name         string       `json:"name"`
-	Capabilities capabilities `json:"capabilities"`
-}
-
-type capabilities struct {
-	CacheInvalidation featureCacheInvalidation `json:"cacheInvalidation"`
-	FlagEvaluation    flagEvaluation           `json:"flagEvaluation"`
-}
-
-type flagEvaluation struct {
-	SupportedTypes []string `json:"supportedTypes"`
-}
-
-type featureCacheInvalidation struct {
-	Polling featureCacheInvalidationPolling `json:"polling"`
-}
-
-type featureCacheInvalidationPolling struct {
-	Enabled bool `json:"enabled"`
-}
 
 type evaluationRequest struct {
 	Context model.UserAttrs `json:"context"`
@@ -83,36 +60,19 @@ type generalErrorResponse struct {
 }
 
 type Server struct {
-	sdkRegistrar  sdk.Registrar
-	config        *config.OFREPConfig
-	logger        log.Logger
-	ofrepConf     []byte
-	ofrepConfETag string
-	seed          maphash.Seed
+	sdkRegistrar sdk.Registrar
+	config       *config.OFREPConfig
+	logger       log.Logger
+	seed         maphash.Seed
 }
 
 func NewServer(sdkRegistrar sdk.Registrar, config *config.OFREPConfig, log log.Logger) *Server {
 	cdnLogger := log.WithPrefix("api")
-	ofrepConf, _ := json.Marshal(ofrepConfiguration{
-		Name: ServerName,
-		Capabilities: capabilities{
-			CacheInvalidation: featureCacheInvalidation{
-				Polling: featureCacheInvalidationPolling{
-					Enabled: true,
-				},
-			},
-			FlagEvaluation: flagEvaluation{
-				SupportedTypes: []string{"string", "boolean", "int", "float"},
-			},
-		},
-	})
 	return &Server{
-		sdkRegistrar:  sdkRegistrar,
-		config:        config,
-		logger:        cdnLogger,
-		ofrepConf:     ofrepConf,
-		ofrepConfETag: utils.GenerateEtag(ofrepConf),
-		seed:          maphash.MakeSeed(),
+		sdkRegistrar: sdkRegistrar,
+		config:       config,
+		logger:       cdnLogger,
+		seed:         maphash.MakeSeed(),
 	}
 }
 
@@ -193,19 +153,6 @@ func (s *Server) EvalAll(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("ETag", genEtag)
 	w.Header().Set("Content-Type", "application/json")
 	_, _ = w.Write(data)
-}
-
-func (s *Server) GetConfiguration(w http.ResponseWriter, r *http.Request) {
-	etag := r.Header.Get("If-None-Match")
-	if etag != "" && etag == s.ofrepConfETag {
-		w.Header().Set("ETag", s.ofrepConfETag)
-		w.WriteHeader(http.StatusNotModified)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("ETag", s.ofrepConfETag)
-	_, _ = w.Write(s.ofrepConf)
 }
 
 func (s *Server) writeError(w http.ResponseWriter, body interface{}, code int) {

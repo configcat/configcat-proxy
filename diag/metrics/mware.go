@@ -72,3 +72,28 @@ func (i *clientInterceptor) RoundTrip(r *http.Request) (*http.Response, error) {
 	i.metricsHandler.(*reporter).sdkResponseTime.WithLabelValues(i.sdkId, r.URL.String(), stat).Observe(duration.Seconds())
 	return resp, err
 }
+
+type profileInterceptor struct {
+	http.RoundTripper
+
+	metricsHandler Reporter
+	key            string
+}
+
+func InterceptProxyProfile(key string, metricsHandler Reporter, transport http.RoundTripper) http.RoundTripper {
+	return &profileInterceptor{metricsHandler: metricsHandler, RoundTripper: transport, key: key}
+}
+
+func (p *profileInterceptor) RoundTrip(r *http.Request) (*http.Response, error) {
+	start := time.Now()
+	resp, err := p.RoundTripper.RoundTrip(r)
+	duration := time.Since(start)
+	var stat string
+	if err != nil {
+		stat = err.Error()
+	} else {
+		stat = resp.Status
+	}
+	p.metricsHandler.(*reporter).profileResponseTime.WithLabelValues(p.key, r.URL.String(), stat).Observe(duration.Seconds())
+	return resp, err
+}

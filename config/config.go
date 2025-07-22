@@ -53,7 +53,7 @@ type Config struct {
 	HttpProxy           HttpProxyConfig     `yaml:"http_proxy"`
 	GlobalOfflineConfig GlobalOfflineConfig `yaml:"offline"`
 	DefaultAttrs        model.UserAttrs     `yaml:"default_user_attributes"`
-	AutoSDK             AutoSDKConfig       `yaml:"auto_config"`
+	Profile             ProfileConfig       `yaml:"profile"`
 }
 
 type SDKConfig struct {
@@ -68,15 +68,20 @@ type SDKConfig struct {
 	Log                      LogConfig
 }
 
-type AutoSDKConfig struct {
+type ProfileConfig struct {
 	Key                      string
 	Secret                   string
 	BaseUrl                  string `yaml:"base_url"`
-	SdkBaseUrl               string `yaml:"sdk_base_url"`
 	PollInterval             int    `yaml:"poll_interval"`
 	WebhookSignatureValidFor int    `yaml:"webhook_signature_valid_for"`
 	WebhookSigningKey        string `yaml:"webhook_signing_key"`
 	Log                      LogConfig
+	SDKs                     ProfileSDKConfig
+}
+
+type ProfileSDKConfig struct {
+	BaseUrl string `yaml:"base_url"`
+	Log     LogConfig
 }
 
 type GrpcConfig struct {
@@ -344,7 +349,7 @@ func (c *Config) setDefaults() {
 
 	c.Cache.DynamoDb.Table = "configcat_proxy_cache"
 
-	c.AutoSDK.BaseUrl = "https://api.configcat.com"
+	c.Profile.BaseUrl = "https://api.configcat.com"
 }
 
 func (c *Config) fixupDefaults() {
@@ -368,11 +373,11 @@ func (c *Config) fixupDefaults() {
 	if c.GlobalOfflineConfig.CachePollInterval == 0 {
 		c.GlobalOfflineConfig.CachePollInterval = defaultCachePollInterval
 	}
-	if c.AutoSDK.PollInterval == 0 {
-		c.AutoSDK.PollInterval = defaultAutoSdkPollInterval
+	if c.Profile.PollInterval == 0 {
+		c.Profile.PollInterval = defaultAutoSdkPollInterval
 	}
-	if c.AutoSDK.WebhookSignatureValidFor == 0 {
-		c.AutoSDK.WebhookSignatureValidFor = DefaultWebhookSignatureValidFor
+	if c.Profile.WebhookSignatureValidFor == 0 {
+		c.Profile.WebhookSignatureValidFor = DefaultWebhookSignatureValidFor
 	}
 }
 
@@ -394,8 +399,11 @@ func (c *Config) fixupOffline() {
 }
 
 func (c *Config) fixupLogLevels(defLevel string) {
-	if c.AutoSDK.Log.GetLevel() == log.None {
-		c.AutoSDK.Log.Level = defLevel
+	if c.Profile.Log.GetLevel() == log.None {
+		c.Profile.Log.Level = defLevel
+	}
+	if c.Profile.SDKs.Log.GetLevel() == log.None {
+		c.Profile.SDKs.Log.Level = defLevel
 	}
 	for _, sdk := range c.SDKs {
 		if sdk == nil {
@@ -491,7 +499,7 @@ func (c *CacheConfig) IsSet() bool {
 	return c.Redis.Enabled || c.MongoDb.Enabled || c.DynamoDb.Enabled
 }
 
-func (a *AutoSDKConfig) IsSet() bool {
+func (a *ProfileConfig) IsSet() bool {
 	return a.Key != "" && a.Secret != ""
 }
 

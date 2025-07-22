@@ -59,10 +59,10 @@ func TestConfig_Defaults(t *testing.T) {
 	assert.Equal(t, uint16(tls.VersionTLS12), conf.Cache.Redis.Tls.GetVersion())
 	assert.Equal(t, uint16(tls.VersionTLS12), conf.Cache.MongoDb.Tls.GetVersion())
 
-	assert.Equal(t, "https://api.configcat.com", conf.AutoSDK.BaseUrl)
+	assert.Equal(t, "https://api.configcat.com", conf.Profile.BaseUrl)
 
-	assert.Equal(t, 300, conf.AutoSDK.PollInterval)
-	assert.Equal(t, 300, conf.AutoSDK.WebhookSignatureValidFor)
+	assert.Equal(t, 300, conf.Profile.PollInterval)
+	assert.Equal(t, 300, conf.Profile.WebhookSignatureValidFor)
 
 	assert.Nil(t, conf.DefaultAttrs)
 }
@@ -99,7 +99,7 @@ log:
 			assert.Equal(t, log.Info, conf.Http.Sse.Log.GetLevel())
 			assert.Equal(t, log.Info, conf.Grpc.Log.GetLevel())
 			assert.Equal(t, log.Info, conf.GlobalOfflineConfig.Log.GetLevel())
-			assert.Equal(t, log.Info, conf.AutoSDK.Log.GetLevel())
+			assert.Equal(t, log.Info, conf.Profile.Log.GetLevel())
 		})
 	})
 
@@ -222,28 +222,32 @@ sdks:
 
 func TestConfig_AutoSDKs(t *testing.T) {
 	testutils.UseTempFile(`
-auto_config:
+profile:
   key: key
   secret: secret
   base_url: "https://base.com"
-  sdk_base_url: "https://sdk-base.com"
   poll_interval: 300
   webhook_signing_key: "key"
   webhook_signature_valid_for: 600
   log:
     level: "debug"
+  sdks:
+    base_url: "https://sdk-base.com"
+    log:
+      level: "debug"
 `, func(file string) {
 		conf, err := LoadConfigFromFileAndEnvironment(file)
 		require.NoError(t, err)
 
-		assert.Equal(t, "key", conf.AutoSDK.Key)
-		assert.Equal(t, "secret", conf.AutoSDK.Secret)
-		assert.Equal(t, "https://base.com", conf.AutoSDK.BaseUrl)
-		assert.Equal(t, "https://sdk-base.com", conf.AutoSDK.SdkBaseUrl)
-		assert.Equal(t, 300, conf.AutoSDK.PollInterval)
-		assert.Equal(t, "key", conf.AutoSDK.WebhookSigningKey)
-		assert.Equal(t, 600, conf.AutoSDK.WebhookSignatureValidFor)
-		assert.Equal(t, log.Debug, conf.AutoSDK.Log.GetLevel())
+		assert.Equal(t, "key", conf.Profile.Key)
+		assert.Equal(t, "secret", conf.Profile.Secret)
+		assert.Equal(t, "https://base.com", conf.Profile.BaseUrl)
+		assert.Equal(t, "https://sdk-base.com", conf.Profile.SDKs.BaseUrl)
+		assert.Equal(t, log.Debug, conf.Profile.SDKs.Log.GetLevel())
+		assert.Equal(t, 300, conf.Profile.PollInterval)
+		assert.Equal(t, "key", conf.Profile.WebhookSigningKey)
+		assert.Equal(t, 600, conf.Profile.WebhookSignatureValidFor)
+		assert.Equal(t, log.Debug, conf.Profile.Log.GetLevel())
 	})
 }
 

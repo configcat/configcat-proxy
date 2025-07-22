@@ -252,28 +252,6 @@ func TestOFREP_EvalAll(t *testing.T) {
 	})
 }
 
-func TestOFREP_GetConfiguration(t *testing.T) {
-	res := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodPost, "/", http.NoBody)
-	srv := newServer(t, config.OFREPConfig{Enabled: true})
-	srv.GetConfiguration(res, req)
-
-	etag := res.Header().Get("ETag")
-	assert.Equal(t, "application/json", res.Header().Get("Content-Type"))
-	assert.Equal(t, `W/"9aa2e27dcc8ce90b"`, etag)
-	assert.Equal(t, 200, res.Code)
-	assert.Equal(t, `{"name":"`+ServerName+`","capabilities":{"cacheInvalidation":{"polling":{"enabled":true}},"flagEvaluation":{"supportedTypes":["string","boolean","int","float"]}}}`, res.Body.String())
-
-	res = httptest.NewRecorder()
-	req, _ = http.NewRequest(http.MethodPost, "/", http.NoBody)
-	req.Header.Set("If-None-Match", etag)
-
-	srv.GetConfiguration(res, req)
-	etag2 := res.Header().Get("ETag")
-	assert.Equal(t, etag, etag2)
-	assert.Equal(t, 304, res.Code)
-}
-
 func TestOFREP_WrongSdkId(t *testing.T) {
 	t.Run("Eval", func(t *testing.T) {
 		res := httptest.NewRecorder()

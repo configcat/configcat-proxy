@@ -16,12 +16,13 @@ type Reporter interface {
 }
 
 type reporter struct {
-	registry          *prometheus.Registry
-	httpResponseTime  *prometheus.HistogramVec
-	grpcResponseTime  *prometheus.HistogramVec
-	sdkResponseTime   *prometheus.HistogramVec
-	connections       *prometheus.GaugeVec
-	streamMessageSent *prometheus.CounterVec
+	registry            *prometheus.Registry
+	httpResponseTime    *prometheus.HistogramVec
+	grpcResponseTime    *prometheus.HistogramVec
+	sdkResponseTime     *prometheus.HistogramVec
+	profileResponseTime *prometheus.HistogramVec
+	connections         *prometheus.GaugeVec
+	streamMessageSent   *prometheus.CounterVec
 }
 
 func NewReporter() Reporter {
@@ -48,6 +49,13 @@ func NewReporter() Reporter {
 		Buckets:   prometheus.DefBuckets,
 	}, []string{"sdk", "route", "status"})
 
+	profileResponseTime := prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Namespace: "configcat",
+		Name:      "profile_http_request_duration_seconds",
+		Help:      "Histogram of Proxy profile HTTP response time in seconds.",
+		Buckets:   prometheus.DefBuckets,
+	}, []string{"key", "route", "status"})
+
 	connections := prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: "configcat",
 		Name:      "stream_connections",
@@ -66,17 +74,19 @@ func NewReporter() Reporter {
 		httpRespTime,
 		grpcRespTime,
 		sdkRespTime,
+		profileResponseTime,
 		connections,
 		streamMessageSent,
 	)
 
 	return &reporter{
-		registry:          reg,
-		httpResponseTime:  httpRespTime,
-		grpcResponseTime:  grpcRespTime,
-		sdkResponseTime:   sdkRespTime,
-		connections:       connections,
-		streamMessageSent: streamMessageSent,
+		registry:            reg,
+		httpResponseTime:    httpRespTime,
+		grpcResponseTime:    grpcRespTime,
+		sdkResponseTime:     sdkRespTime,
+		profileResponseTime: profileResponseTime,
+		connections:         connections,
+		streamMessageSent:   streamMessageSent,
 	}
 }
 

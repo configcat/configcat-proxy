@@ -26,7 +26,7 @@ type HttpRouter struct {
 	metrics        metrics.Reporter
 }
 
-func NewRouter(sdkRegistrar sdk.Registrar, metrics metrics.Reporter, reporter status.Reporter, conf *config.HttpConfig, autoSdkConfig *config.AutoSDKConfig, log log.Logger) *HttpRouter {
+func NewRouter(sdkRegistrar sdk.Registrar, metrics metrics.Reporter, reporter status.Reporter, conf *config.HttpConfig, autoSdkConfig *config.ProfileConfig, log log.Logger) *HttpRouter {
 	httpLog := log.WithLevel(conf.Log.GetLevel()).WithPrefix("http")
 
 	r := &HttpRouter{
@@ -93,7 +93,7 @@ func (s *HttpRouter) setupSSERoutes(conf *config.SseConfig, sdkRegistrar sdk.Reg
 	l.Reportf("SSE enabled, accepting requests on path: /sse/{sdkId}/*")
 }
 
-func (s *HttpRouter) setupWebhookRoutes(conf *config.WebhookConfig, autoSdkConfig *config.AutoSDKConfig, sdkRegistrar sdk.Registrar, l log.Logger) {
+func (s *HttpRouter) setupWebhookRoutes(conf *config.WebhookConfig, autoSdkConfig *config.ProfileConfig, sdkRegistrar sdk.Registrar, l log.Logger) {
 	s.webhookServer = webhook.NewServer(autoSdkConfig, sdkRegistrar, l)
 	path := "/hook/{sdkId}"
 	testPath := "/hook-test"
@@ -197,7 +197,6 @@ func (s *HttpRouter) setupOFREPRoutes(conf *config.OFREPConfig, sdkRegistrar sdk
 	endpoints := []endpoint{
 		{path: "/ofrep/v1/evaluate/flags/{key}", handler: mware.GZip(s.ofrepServer.Eval), method: http.MethodPost},
 		{path: "/ofrep/v1/evaluate/flags", handler: mware.GZip(s.ofrepServer.EvalAll), method: http.MethodPost},
-		{path: "/ofrep/v1/configuration", handler: mware.GZip(s.ofrepServer.GetConfiguration), method: http.MethodGet},
 	}
 	for _, endpoint := range endpoints {
 		if len(conf.AuthHeaders) > 0 {
@@ -221,7 +220,7 @@ func (s *HttpRouter) setupOFREPRoutes(conf *config.OFREPConfig, sdkRegistrar sdk
 		s.router.HandleFunc(addHttpMethod(endpoint.path, endpoint.method), endpoint.handler)
 		s.router.HandleFunc(addHttpMethod(endpoint.path, http.MethodOptions), endpoint.handler)
 	}
-	l.Reportf("OFREP enabled, accepting requests on path: /ofrep/v1/*")
+	l.Reportf("OFREP enabled, accepting requests on path: /ofrep/v1/evaluate/flags/*")
 }
 
 func addHttpMethod(path string, method string) string {

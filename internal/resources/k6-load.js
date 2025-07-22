@@ -3,26 +3,11 @@ import { sleep } from 'k6';
 
 export const options = {
     insecureSkipTLSVerify: true,
-    scenarios: {
-        spike: {
-            executor: "ramping-arrival-rate",
-            preAllocatedVUs: 3000,
-            timeUnit: "0.5s",
-            stages: [
-                { duration: "10s", target: 10 },
-                { duration: "1m", target: 140 },
-                { duration: "10s", target: 260 },
-                { duration: "5m", target: 260 },
-                { duration: "10s", target: 100 },
-                { duration: "1m", target: 10 },
-                { duration: "10s", target: 0 },
-            ],
-            gracefulStop: "2m",
-        },
-    },
+    vus: 500,
+    duration: '30s',
 };
 
-export default function () {
+export default () => {
     const BASE_URL1 = "https://localhost:8050/api/sdk-342";
     const BASE_URL2 = "https://localhost:8050/api/sdk-344";
 

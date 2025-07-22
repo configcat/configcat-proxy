@@ -12,7 +12,7 @@ configs:
     file: internal/resources/monitor/grafana_ds.yml
   grafana_dashboards_2:
     file: internal/resources/monitor/dashboards.yml
-  grafana_dashboard_10:
+  grafana_dashboard_12:
     file: internal/resources/monitor/proxy_dashboard.json
 
 services:
@@ -26,11 +26,12 @@ services:
 #      - CONFIGCAT_LOG_LEVEL=debug
       - CONFIGCAT_GRPC_KEEP_ALIVE_MAX_CONNECTION_IDLE=15
       - CONFIGCAT_GRPC_SERVER_REFLECTION_ENABLED=true
-      - CONFIGCAT_AUTO_CONFIG_KEY=08ddb657-51e9-4b6a-848e-017939e290fe
-      - CONFIGCAT_AUTO_CONFIG_SECRET=WxiC5C5Fb5lvI4K1ce7N5RDD6YRBVPDOo0n3mCddsdk=
-      - CONFIGCAT_AUTO_CONFIG_BASE_URL=https://test-api.configcat.com
-      - CONFIGCAT_AUTO_CONFIG_SDK_BASE_URL=https://test-cdn-global.configcat.com
-      - CONFIGCAT_AUTO_CONFIG_POLL_INTERVAL=5
+      - CONFIGCAT_PROFILE_KEY=08ddb657-51e9-4b6a-848e-017939e290fe
+      - CONFIGCAT_PROFILE_SECRET=WxiC5C5Fb5lvI4K1ce7N5RDD6YRBVPDOo0n3mCddsdk=
+      - CONFIGCAT_PROFILE_BASE_URL=https://test-api.configcat.com
+      - CONFIGCAT_PROFILE_SDKS_BASE_URL=https://test-cdn-global.configcat.com
+      - CONFIGCAT_PROFILE_POLL_INTERVAL=30
+      - CONFIGCAT_PROFILE_LOG_LEVEL=debug
 #      - CONFIGCAT_SDKS={"sdk1":"XxPbCKmzIUGORk4vsufpzw/iC_KABprDEueeQs3yovVnQ", "sdk2":"XxPbCKmzIUGORk4vsufpzw/6ft7XQudcEuIXY49grZM9w"}
 #      - CONFIGCAT_SDK1_BASE_URL=https://test-cdn-global.configcat.com
 #      - CONFIGCAT_SDK1_LOG_LEVEL=error
@@ -85,7 +86,7 @@ services:
         target: /etc/grafana/provisioning/datasources/prometheus.yml
       - source: grafana_dashboards_2
         target: /etc/grafana/provisioning/dashboards/dashboards.yml
-      - source: grafana_dashboard_10
+      - source: grafana_dashboard_12
         target: /etc/grafana/provisioning/dashboards/proxy/proxy_dashboard.json
     depends_on:
       - configcat_proxy

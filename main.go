@@ -88,7 +88,7 @@ func run(closeSignal chan os.Signal) int {
 	var httpServer *web.Server
 	var router *web.HttpRouter
 	if conf.Http.Enabled {
-		router = web.NewRouter(sdkRegistrar, metricsReporter, statusReporter, &conf.Http, &conf.AutoSDK, logger)
+		router = web.NewRouter(sdkRegistrar, metricsReporter, statusReporter, &conf.Http, &conf.Profile, logger)
 		httpServer, err = web.NewServer(router, logger, &conf, errorChan)
 		if err != nil {
 			return exitFailure

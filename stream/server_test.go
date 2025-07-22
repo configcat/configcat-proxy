@@ -27,7 +27,7 @@ func TestServer_GetStreamOrNil(t *testing.T) {
 }
 
 func TestServer_AutoRegistrar(t *testing.T) {
-	reg, h, _ := sdk.NewTestAutoRegistrarWithAutoConfig(t, config.AutoSDKConfig{PollInterval: 60}, log.NewNullLogger())
+	reg, h, _ := sdk.NewTestAutoRegistrarWithAutoConfig(t, config.ProfileConfig{PollInterval: 60}, log.NewNullLogger())
 	srv := NewServer(reg, nil, log.NewNullLogger(), "test").(*server)
 
 	str := srv.GetStreamOrNil("test")
