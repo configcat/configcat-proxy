@@ -252,7 +252,7 @@ func TestSdk_Signal_Offline_Redis_Watch(t *testing.T) {
 	j := client.GetCachedJson()
 	assert.NoError(t, data.Error)
 	assert.True(t, data.Value.(bool))
-	assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true,"s":null,"i":null,"d":null},"t":0,"r":null,"p":null}},"s":null,"p":null}`, string(j.ConfigJson))
+	assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true},"t":0}}}`, string(j.ConfigJson))
 	assert.Equal(t, "etag", j.ETag)
 
 	cacheEntry = configcatcache.CacheSegmentsToBytes(time.Now(), "etag2", []byte(`{"f":{"flag":{"a":"","i":"v_flag","v":{"b":false},"t":0}}}`))
@@ -264,7 +264,7 @@ func TestSdk_Signal_Offline_Redis_Watch(t *testing.T) {
 	j = client.GetCachedJson()
 	assert.NoError(t, data.Error)
 	assert.False(t, data.Value.(bool))
-	assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":false,"s":null,"i":null,"d":null},"t":0,"r":null,"p":null}},"s":null,"p":null}`, string(j.ConfigJson))
+	assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":false},"t":0}}}`, string(j.ConfigJson))
 	assert.Equal(t, "etag2", j.ETag)
 }
 

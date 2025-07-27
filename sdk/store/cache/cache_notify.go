@@ -77,8 +77,7 @@ func (n *notifyingCacheStore) reload() bool {
 		n.reporter.ReportError(n.sdkId, "failed to parse JSON from cache")
 		return false
 	}
-	ser, _ := json.Marshal(root) // Re-serialize to enforce the JSON schema
-	n.CacheEntryStore.StoreEntry(ser, fetchTime, eTag)
+	n.CacheEntryStore.StoreEntry(configJson, fetchTime, eTag)
 	n.reporter.ReportOk(n.sdkId, "reload from cache succeeded")
 	return true
 }

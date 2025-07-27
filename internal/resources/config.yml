@@ -11,7 +11,7 @@
 
 profile:
   key: 08ddb657-51e9-4b6a-848e-017939e290fe
-  secret: WxiC5C5Fb5lvI4K1ce7N5RDD6YRBVPDOo0n3mCddsdk=
+  secret: Vy8/4HVvluqncWMYENBK0iObSYNoDGG7uUN5m1p/Bhs=
   base_url: "https://test-api.configcat.com"
   poll_interval: 30
   sdks:

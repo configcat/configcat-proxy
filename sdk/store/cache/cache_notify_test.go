@@ -35,8 +35,8 @@ func TestRedisNotify(t *testing.T) {
 	res, err := srv.Get(context.Background(), "")
 	_, _, j, _ := configcatcache.CacheSegmentsFromBytes(res)
 	assert.NoError(t, err)
-	assert.Equal(t, `{"f":{"flag":{"a":"","i":"","v":{"b":true,"s":null,"i":null,"d":null},"t":0,"r":null,"p":null}},"s":null,"p":null}`, string(j))
-	assert.Equal(t, `{"f":{"flag":{"a":"","i":"","v":{"b":true,"s":null,"i":null,"d":null},"t":0,"r":null,"p":null}},"s":null,"p":null}`, string(r.LoadEntry().ConfigJson))
+	assert.Equal(t, `{"f":{"flag":{"v":{"b":true}}},"p":null}`, string(j))
+	assert.Equal(t, `{"f":{"flag":{"v":{"b":true}}},"p":null}`, string(r.LoadEntry().ConfigJson))
 }
 
 func TestRedisNotify_Initial(t *testing.T) {
@@ -54,8 +54,8 @@ func TestRedisNotify_Initial(t *testing.T) {
 	res, err := srv.Get(context.Background(), "")
 	_, _, j, _ := configcatcache.CacheSegmentsFromBytes(res)
 	assert.NoError(t, err)
-	assert.Equal(t, `{"f":{"flag":{"a":"","i":"","v":{"b":true,"s":null,"i":null,"d":null},"t":0,"r":null,"p":null}},"s":null,"p":null}`, string(j))
-	assert.Equal(t, `{"f":{"flag":{"a":"","i":"","v":{"b":true,"s":null,"i":null,"d":null},"t":0,"r":null,"p":null}},"s":null,"p":null}`, string(r.LoadEntry().ConfigJson))
+	assert.Equal(t, `{"f":{"flag":{"v":{"b":true}}},"p":null}`, string(j))
+	assert.Equal(t, `{"f":{"flag":{"v":{"b":true}}},"p":null}`, string(r.LoadEntry().ConfigJson))
 }
 
 func TestRedisNotify_Notify(t *testing.T) {
@@ -73,8 +73,8 @@ func TestRedisNotify_Notify(t *testing.T) {
 	res, err := srv.Get(context.Background(), "")
 	_, _, j, _ := configcatcache.CacheSegmentsFromBytes(res)
 	assert.NoError(t, err)
-	assert.Equal(t, `{"f":{"flag":{"a":"","i":"","v":{"b":false,"s":null,"i":null,"d":null},"t":0,"r":null,"p":null}},"s":null,"p":null}`, string(j))
-	assert.Equal(t, `{"f":{"flag":{"a":"","i":"","v":{"b":false,"s":null,"i":null,"d":null},"t":0,"r":null,"p":null}},"s":null,"p":null}`, string(r.LoadEntry().ConfigJson))
+	assert.Equal(t, `{"f":{"flag":{"v":{"b":false}}},"p":null}`, string(j))
+	assert.Equal(t, `{"f":{"flag":{"v":{"b":false}}},"p":null}`, string(r.LoadEntry().ConfigJson))
 
 	cacheEntry = configcatcache.CacheSegmentsToBytes(time.Now(), "etag2", []byte(`{"f":{"flag":{"v":{"b":true}}},"p":null}`))
 	err = s.Set(cacheKey, string(cacheEntry))
@@ -84,8 +84,8 @@ func TestRedisNotify_Notify(t *testing.T) {
 	res, err = srv.Get(context.Background(), "")
 	_, _, j, _ = configcatcache.CacheSegmentsFromBytes(res)
 	assert.NoError(t, err)
-	assert.Equal(t, `{"f":{"flag":{"a":"","i":"","v":{"b":true,"s":null,"i":null,"d":null},"t":0,"r":null,"p":null}},"s":null,"p":null}`, string(j))
-	assert.Equal(t, `{"f":{"flag":{"a":"","i":"","v":{"b":true,"s":null,"i":null,"d":null},"t":0,"r":null,"p":null}},"s":null,"p":null}`, string(r.LoadEntry().ConfigJson))
+	assert.Equal(t, `{"f":{"flag":{"v":{"b":true}}},"p":null}`, string(j))
+	assert.Equal(t, `{"f":{"flag":{"v":{"b":true}}},"p":null}`, string(r.LoadEntry().ConfigJson))
 }
 
 func TestRedisNotify_BadJson(t *testing.T) {
