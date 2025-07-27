@@ -7,12 +7,106 @@ import (
 	"github.com/configcat/configcat-proxy/diag/status"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/sdk"
+	configcat "github.com/configcat/go-sdk/v9"
+	"github.com/configcat/go-sdk/v9/configcattest"
 	"github.com/stretchr/testify/assert"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 )
+
+func TestCDNProxy_Integration(t *testing.T) {
+	reg, h, key := sdk.NewTestRegistrarT(t)
+	_ = h.SetFlags(key, map[string]*configcattest.Flag{
+		"bool": {
+			Default: false,
+			Rules:   []configcattest.Rule{{ComparisonAttribute: "Identifier", ComparisonValue: "id", Comparator: configcat.OpEq, Value: true}},
+		},
+		"str": {
+			Default: "default",
+			Rules:   []configcattest.Rule{{ComparisonAttribute: "Identifier", ComparisonValue: "id", Comparator: configcat.OpEq, Value: "test"}},
+		},
+		"int": {
+			Default: 0,
+			Rules:   []configcattest.Rule{{ComparisonAttribute: "Identifier", ComparisonValue: "id", Comparator: configcat.OpEq, Value: 42}},
+		},
+		"double": {
+			Default: 0.0,
+			Rules:   []configcattest.Rule{{ComparisonAttribute: "Identifier", ComparisonValue: "id", Comparator: configcat.OpEq, Value: 3.14}},
+		},
+	})
+
+	router := NewRouter(reg, nil, status.NewEmptyReporter(), &config.HttpConfig{CdnProxy: config.CdnProxyConfig{Enabled: true, CORS: config.CORSConfig{Enabled: true}, Headers: map[string]string{"h1": "v1"}}}, &config.ProfileConfig{}, log.NewNullLogger())
+	srv := httptest.NewServer(router)
+	defer srv.Close()
+
+	user := &configcat.UserData{Identifier: "id"}
+
+	t.Run("sdk-key", func(t *testing.T) {
+		client := configcat.NewCustomClient(configcat.Config{
+			BaseURL: srv.URL,
+			SDKKey:  key,
+		})
+		defer client.Close()
+
+		boolVal := client.GetBoolValueDetails("bool", false, user)
+		assert.True(t, boolVal.Value)
+		assert.Equal(t, "v0_bool", boolVal.Data.VariationID)
+		assert.NotNil(t, boolVal.Data.MatchedTargetingRule)
+		assert.Equal(t, "bool", boolVal.Data.Key)
+
+		strVal := client.GetStringValueDetails("str", "", user)
+		assert.Equal(t, "test", strVal.Value)
+		assert.Equal(t, "v0_str", strVal.Data.VariationID)
+		assert.NotNil(t, strVal.Data.MatchedTargetingRule)
+		assert.Equal(t, "str", strVal.Data.Key)
+
+		intVal := client.GetIntValueDetails("int", 0, user)
+		assert.Equal(t, 42, intVal.Value)
+		assert.Equal(t, "v0_int", intVal.Data.VariationID)
+		assert.NotNil(t, intVal.Data.MatchedTargetingRule)
+		assert.Equal(t, "int", intVal.Data.Key)
+
+		doubleVal := client.GetFloatValueDetails("double", 0.0, user)
+		assert.Equal(t, 3.14, doubleVal.Value)
+		assert.Equal(t, "v0_double", doubleVal.Data.VariationID)
+		assert.NotNil(t, doubleVal.Data.MatchedTargetingRule)
+		assert.Equal(t, "double", doubleVal.Data.Key)
+	})
+
+	t.Run("sdk-id", func(t *testing.T) {
+		client := configcat.NewCustomClient(configcat.Config{
+			BaseURL: srv.URL,
+			SDKKey:  "configcat-proxy/test",
+		})
+		defer client.Close()
+
+		boolVal := client.GetBoolValueDetails("bool", false, user)
+		assert.True(t, boolVal.Value)
+		assert.Equal(t, "v0_bool", boolVal.Data.VariationID)
+		assert.NotNil(t, boolVal.Data.MatchedTargetingRule)
+		assert.Equal(t, "bool", boolVal.Data.Key)
+
+		strVal := client.GetStringValueDetails("str", "", user)
+		assert.Equal(t, "test", strVal.Value)
+		assert.Equal(t, "v0_str", strVal.Data.VariationID)
+		assert.NotNil(t, strVal.Data.MatchedTargetingRule)
+		assert.Equal(t, "str", strVal.Data.Key)
+
+		intVal := client.GetIntValueDetails("int", 0, user)
+		assert.Equal(t, 42, intVal.Value)
+		assert.Equal(t, "v0_int", intVal.Data.VariationID)
+		assert.NotNil(t, intVal.Data.MatchedTargetingRule)
+		assert.Equal(t, "int", intVal.Data.Key)
+
+		doubleVal := client.GetFloatValueDetails("double", 0.0, user)
+		assert.Equal(t, 3.14, doubleVal.Value)
+		assert.Equal(t, "v0_double", doubleVal.Data.VariationID)
+		assert.NotNil(t, doubleVal.Data.MatchedTargetingRule)
+		assert.Equal(t, "double", doubleVal.Data.Key)
+	})
+}
 
 func TestCDNProxy_Options_CORS(t *testing.T) {
 	router := newCDNProxyRouter(t, config.CdnProxyConfig{Enabled: true, CORS: config.CORSConfig{Enabled: true}, Headers: map[string]string{"h1": "v1"}})
