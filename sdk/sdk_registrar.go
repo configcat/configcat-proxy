@@ -11,6 +11,7 @@ import (
 type Registrar interface {
 	GetSdkOrNil(sdkId string) Client
 	GetSdkByKeyOrNil(sdkKey string) Client
+	RefreshAll()
 	GetAll() map[string]Client
 	Close()
 }
@@ -57,6 +58,12 @@ func (r *manualRegistrar) GetSdkByKeyOrNil(sdkKey string) Client {
 		}
 	}
 	return nil
+}
+
+func (r *manualRegistrar) RefreshAll() {
+	for _, sdkClient := range r.sdkClients {
+		_ = sdkClient.Refresh()
+	}
 }
 
 func (r *manualRegistrar) GetAll() map[string]Client {

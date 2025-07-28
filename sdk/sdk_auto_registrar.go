@@ -121,6 +121,13 @@ func (r *autoRegistrar) GetSdkByKeyOrNil(sdkKey string) Client {
 	return sdkClient
 }
 
+func (r *autoRegistrar) RefreshAll() {
+	r.sdkClients.Range(func(key string, value Client) bool {
+		_ = value.Refresh()
+		return true
+	})
+}
+
 func (r *autoRegistrar) GetAll() map[string]Client {
 	all := make(map[string]Client, r.sdkClients.Size())
 	r.sdkClients.Range(func(key string, value Client) bool {

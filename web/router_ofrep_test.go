@@ -40,6 +40,8 @@ func TestOFREP_Integration(t *testing.T) {
 			Rules:   []configcattest.Rule{{ComparisonAttribute: "Identifier", ComparisonValue: "id", Comparator: configcat.OpEq, Value: 3.14}},
 		},
 	})
+
+	reg.RefreshAll()
 	router := NewRouter(reg, nil, status.NewEmptyReporter(), &config.HttpConfig{OFREP: config.OFREPConfig{Enabled: true, AuthHeaders: map[string]string{"X-API-Key": "secret"}}}, &config.ProfileConfig{}, log.NewNullLogger())
 	srv := httptest.NewServer(router)
 	defer srv.Close()
