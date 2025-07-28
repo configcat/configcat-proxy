@@ -51,7 +51,8 @@ func (r *manualRegistrar) GetSdkOrNil(sdkId string) Client {
 
 func (r *manualRegistrar) GetSdkByKeyOrNil(sdkKey string) Client {
 	for _, sdkClient := range r.sdkClients {
-		if sdkClient.SdkKey() == sdkKey {
+		key1, key2 := sdkClient.SdkKeys()
+		if key1 == sdkKey || (key2 != nil && len(*key2) > 0 && *key2 == sdkKey) {
 			return sdkClient
 		}
 	}

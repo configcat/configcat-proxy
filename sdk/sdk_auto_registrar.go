@@ -89,7 +89,7 @@ func newAutoRegistrar(conf *config.Config, metricsReporter metrics.Reporter, sta
 	for sdkId, sdkModel := range autoConfig.SDKs {
 		sdkConfig := registrar.buildSdkConfig(sdkId, sdkModel)
 		statusReporter.RegisterSdk(sdkId, sdkConfig)
-		registrar.sdkClients.Store(sdkId, registrar.buildSdkClient(sdkId, sdkConfig))
+		registrar.sdkClients.Store(sdkId, registrar.buildSdkClient(sdkId, sdkConfig, sdkModel))
 	}
 	var interval time.Duration
 	if conf.GlobalOfflineConfig.Enabled {
@@ -111,7 +111,8 @@ func (r *autoRegistrar) GetSdkOrNil(sdkId string) Client {
 func (r *autoRegistrar) GetSdkByKeyOrNil(sdkKey string) Client {
 	var sdkClient Client
 	r.sdkClients.Range(func(key string, value Client) bool {
-		if value.SdkKey() == sdkKey {
+		key1, key2 := value.SdkKeys()
+		if key1 == sdkKey || (key2 != nil && len(*key2) > 0 && *key2 == sdkKey) {
 			sdkClient = value
 			return false
 		}
@@ -174,12 +175,32 @@ func (r *autoRegistrar) refreshConfig() {
 
 		toAddKeys := utils.Except(remoteKeys, existingKeys)
 		toDeleteKeys := utils.Except(existingKeys, remoteKeys)
+		remainingKeys := utils.Except(remoteKeys, toAddKeys)
 
 		r.deleteSdkClients(toDeleteKeys)
-		if r.shouldUpdateOptions(&autoConfig.Options) {
+		if r.shouldUpdateOptions(&autoConfig.Options) { // Global options changed, reset all remaining SDKs
 			r.options = &autoConfig.Options
-			resetKeys := utils.Except(remoteKeys, toAddKeys)
-			r.resetSdkClients(resetKeys, autoConfig)
+			r.resetSdkClients(remainingKeys, autoConfig)
+		} else { // Check SDK keys and update them if needed
+			var resetKeys []string
+			for _, sdkId := range remainingKeys {
+				if sdkClient, ok := r.sdkClients.Load(sdkId); ok {
+					if sdkConfig, ok := autoConfig.SDKs[sdkId]; ok {
+						key1, key2 := sdkClient.SdkKeys()
+						if key1 != sdkConfig.Key1 { // Primary SDK key changed, reset client
+							resetKeys = append(resetKeys, sdkId)
+							continue
+						}
+						if (key2 == nil && sdkConfig.Key2 != "") ||
+							(key2 != nil && *key2 != sdkConfig.Key2) { // Secondary SDK key changed, update client
+							sdkClient.SetSecondarySdkKey(sdkConfig.Key2)
+						}
+					}
+				}
+			}
+			if len(resetKeys) > 0 {
+				r.resetSdkClients(resetKeys, autoConfig)
+			}
 		}
 		r.addSdkClients(toAddKeys, autoConfig)
 	}
@@ -265,7 +286,7 @@ func (r *autoRegistrar) fetchConfig(ctx context.Context, etag string) ([]byte, s
 func (r *autoRegistrar) buildSdkConfig(sdkId string, sdkModel *model.SdkConfigModel) *config.SDKConfig {
 	sdkConfig := &config.SDKConfig{
 		BaseUrl:                  r.conf.Profile.SDKs.BaseUrl,
-		Key:                      sdkModel.SDKKey,
+		Key:                      sdkModel.Key1,
 		PollInterval:             r.options.PollInterval,
 		DataGovernance:           r.options.DataGovernance,
 		Log:                      r.conf.Profile.SDKs.Log,
@@ -286,8 +307,8 @@ func (r *autoRegistrar) buildSdkConfig(sdkId string, sdkModel *model.SdkConfigMo
 	return sdkConfig
 }
 
-func (r *autoRegistrar) buildSdkClient(sdkId string, sdkConfig *config.SDKConfig) Client {
-	return NewClient(&Context{
+func (r *autoRegistrar) buildSdkClient(sdkId string, sdkConfig *config.SDKConfig, sdkModel *model.SdkConfigModel) Client {
+	ctx := &Context{
 		SDKConf:            sdkConfig,
 		MetricsReporter:    r.metricsReporter,
 		StatusReporter:     r.statusReporter,
@@ -295,7 +316,11 @@ func (r *autoRegistrar) buildSdkClient(sdkId string, sdkConfig *config.SDKConfig
 		GlobalDefaultAttrs: r.conf.DefaultAttrs,
 		SdkId:              sdkId,
 		ExternalCache:      r.cache,
-	}, r.log)
+	}
+	if len(sdkModel.Key2) > 0 {
+		ctx.SecondarySdkKey.Store(&sdkModel.Key2)
+	}
+	return NewClient(ctx, r.log)
 }
 
 func (r *autoRegistrar) deleteSdkClients(sdkIds []string) {
@@ -325,7 +350,7 @@ func (r *autoRegistrar) addSdkClients(sdkIds []string, config *model.ProxyConfig
 		if sdkModel, ok := config.SDKs[sdkId]; ok {
 			sdkConfig := r.buildSdkConfig(sdkId, sdkModel)
 			if _, loaded := r.sdkClients.LoadOrCompute(sdkId, func() Client {
-				return r.buildSdkClient(sdkId, sdkConfig)
+				return r.buildSdkClient(sdkId, sdkConfig, sdkModel)
 			}); !loaded {
 				r.statusReporter.RegisterSdk(sdkId, sdkConfig)
 				r.Publish(sdkId)
@@ -344,7 +369,7 @@ func (r *autoRegistrar) resetSdkClients(sdkIds []string, config *model.ProxyConf
 	for _, sdkId := range sdkIds {
 		if sdkModel, ok := config.SDKs[sdkId]; ok {
 			sdkConfig := r.buildSdkConfig(sdkId, sdkModel)
-			sdkClient := r.buildSdkClient(sdkId, sdkConfig)
+			sdkClient := r.buildSdkClient(sdkId, sdkConfig, sdkModel)
 			if existing, loaded := r.sdkClients.LoadAndStore(sdkId, sdkClient); loaded {
 				existing.Close()
 				r.Publish(sdkId)

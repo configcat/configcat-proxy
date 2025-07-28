@@ -67,7 +67,7 @@ func TestNewRegistrar(t *testing.T) {
 	cache := miniredis.RunT(t)
 	extCache := newRedisCache(cache.Addr())
 	autConfigCacheJson, _ := json.Marshal(model.ProxyConfigModel{
-		SDKs: map[string]*model.SdkConfigModel{"test": {SDKKey: configcattest.RandomSDKKey()}},
+		SDKs: map[string]*model.SdkConfigModel{"test": {Key1: configcattest.RandomSDKKey()}},
 	})
 	autConfigCacheEntry := cacheSegmentsToBytes("etag", autConfigCacheJson)
 	_ = cache.Set("configcat-proxy-profile-test-reg", string(autConfigCacheEntry))

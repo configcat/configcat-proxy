@@ -56,6 +56,37 @@ func TestAutoRegistrar_Poll(t *testing.T) {
 
 	sdks := reg.GetAll()
 	assert.Len(t, sdks, 1)
+
+	sdkKey1 := h.AddSdk("test3")
+	testutils.WaitUntil(5*time.Second, func() bool {
+		return nil != reg.GetSdkByKeyOrNil(sdkKey1)
+	})
+	testutils.WaitUntil(5*time.Second, func() bool {
+		return "test3" == <-sub
+	})
+
+	sdkKey2 := h.RotateSdkKey("test3")
+	testutils.WaitUntil(5*time.Second, func() bool {
+		return nil != reg.GetSdkByKeyOrNil(sdkKey2) && nil != reg.GetSdkByKeyOrNil(sdkKey1)
+	})
+
+	h.RemoveSdkKey("test3", true)
+	testutils.WaitUntil(5*time.Second, func() bool {
+		return nil != reg.GetSdkByKeyOrNil(sdkKey2) && nil == reg.GetSdkByKeyOrNil(sdkKey1)
+	})
+	testutils.WaitUntil(5*time.Second, func() bool {
+		return "test3" == <-sub
+	})
+
+	sdkKey3 := h.RotateSdkKey("test3")
+	testutils.WaitUntil(5*time.Second, func() bool {
+		return nil != reg.GetSdkByKeyOrNil(sdkKey2) && nil != reg.GetSdkByKeyOrNil(sdkKey3)
+	})
+
+	h.RemoveSdkKey("test3", false)
+	testutils.WaitUntil(5*time.Second, func() bool {
+		return nil != reg.GetSdkByKeyOrNil(sdkKey2) && nil == reg.GetSdkByKeyOrNil(sdkKey3)
+	})
 }
 
 func TestAutoRegistrar_Refresh(t *testing.T) {
@@ -172,7 +203,7 @@ func TestAutoRegistrar_Cache_Poll(t *testing.T) {
 	_ = cache.Set(cacheKey, string(cacheEntry))
 
 	autoConfig := model.ProxyConfigModel{
-		SDKs: map[string]*model.SdkConfigModel{"test": {SDKKey: sdkKey}},
+		SDKs: map[string]*model.SdkConfigModel{"test": {Key1: sdkKey}},
 	}
 
 	autoConfigJson, _ := json.Marshal(autoConfig)
@@ -198,7 +229,7 @@ func TestAutoRegistrar_Cache_Poll(t *testing.T) {
 	_ = cache.Set(cacheKey2, string(cacheEntry2))
 
 	autoConfig = model.ProxyConfigModel{
-		SDKs: map[string]*model.SdkConfigModel{"test": {SDKKey: sdkKey}, "test2": {SDKKey: sdkKey2}},
+		SDKs: map[string]*model.SdkConfigModel{"test": {Key1: sdkKey}, "test2": {Key1: sdkKey2}},
 	}
 
 	autoConfigJson, _ = json.Marshal(autoConfig)
@@ -231,7 +262,7 @@ func TestAutoRegistrar_Cache_Refresh(t *testing.T) {
 	_ = cache.Set(cacheKey, string(cacheEntry))
 
 	autoConfig := model.ProxyConfigModel{
-		SDKs: map[string]*model.SdkConfigModel{"test": {SDKKey: sdkKey}},
+		SDKs: map[string]*model.SdkConfigModel{"test": {Key1: sdkKey}},
 	}
 
 	autoConfigJson, _ := json.Marshal(autoConfig)
@@ -257,7 +288,7 @@ func TestAutoRegistrar_Cache_Refresh(t *testing.T) {
 	_ = cache.Set(cacheKey2, string(cacheEntry2))
 
 	autoConfig = model.ProxyConfigModel{
-		SDKs: map[string]*model.SdkConfigModel{"test": {SDKKey: sdkKey}, "test2": {SDKKey: sdkKey2}},
+		SDKs: map[string]*model.SdkConfigModel{"test": {Key1: sdkKey}, "test2": {Key1: sdkKey2}},
 	}
 
 	autoConfigJson, _ = json.Marshal(autoConfig)
@@ -291,7 +322,7 @@ func TestAutoRegistrar_Cache_When_Fail(t *testing.T) {
 	_ = cache.Set(cacheKey, string(cacheEntry))
 
 	autoConfig := model.ProxyConfigModel{
-		SDKs: map[string]*model.SdkConfigModel{"test": {SDKKey: sdkKey}},
+		SDKs: map[string]*model.SdkConfigModel{"test": {Key1: sdkKey}},
 	}
 
 	autoConfigJson, _ := json.Marshal(autoConfig)
@@ -323,7 +354,7 @@ func TestAutoRegistrar_Saves_To_Cache(t *testing.T) {
 
 	cached, _ := cache.Get("configcat-proxy-profile-test-reg")
 	cachedBody, cachedEtag, _ := cacheSegmentsFromBytes([]byte(cached))
-	assert.Equal(t, `{"SDKs":{"test":{"SDKKey":"`+sdkClient.sdkCtx.SDKConf.Key+`"}},"Options":{"PollInterval":60,"DataGovernance":"global"}}`, string(cachedBody))
+	assert.Equal(t, `{"SDKs":{"test":{"Key1":"`+sdkClient.sdkCtx.SDKConf.Key+`","Key2":""}},"Options":{"PollInterval":60,"DataGovernance":"global"}}`, string(cachedBody))
 	assert.Equal(t, utils.GenerateEtag(cachedBody), "W/"+cachedEtag)
 }
 
@@ -359,6 +390,6 @@ func TestAutoRegistrar_GetBySdkKey(t *testing.T) {
 
 	cached, _ := cache.Get("configcat-proxy-profile-test-reg")
 	cachedBody, cachedEtag, _ := cacheSegmentsFromBytes([]byte(cached))
-	assert.Equal(t, `{"SDKs":{"test":{"SDKKey":"`+sdkClient.sdkCtx.SDKConf.Key+`"}},"Options":{"PollInterval":60,"DataGovernance":"global"}}`, string(cachedBody))
+	assert.Equal(t, `{"SDKs":{"test":{"Key1":"`+sdkClient.sdkCtx.SDKConf.Key+`","Key2":""}},"Options":{"PollInterval":60,"DataGovernance":"global"}}`, string(cachedBody))
 	assert.Equal(t, utils.GenerateEtag(cachedBody), "W/"+cachedEtag)
 }

@@ -11,7 +11,7 @@
 
 profile:
   key: 08ddb657-51e9-4b6a-848e-017939e290fe
-  secret: Vy8/4HVvluqncWMYENBK0iObSYNoDGG7uUN5m1p/Bhs=
+  secret: configcat_pst_2i2czO3+T5GxyosW9aiXg/CsCGD4TaIJe7nXgT45riU=
   base_url: "https://test-api.configcat.com"
   poll_interval: 30
   sdks:

@@ -34,7 +34,8 @@ type Client interface {
 	Ready() <-chan struct{}
 	Refresh() error
 	Close()
-	SdkKey() string
+	SdkKeys() (string, *string)
+	SetSecondarySdkKey(sdkKey string)
 	WebhookSigningKey() string
 	WebhookSignatureValidFor() int
 	IsInValidState() bool
@@ -42,6 +43,7 @@ type Client interface {
 
 type Context struct {
 	SdkId              string
+	SecondarySdkKey    atomic.Pointer[string]
 	SDKConf            *config.SDKConfig
 	ProxyConf          *config.HttpProxyConfig
 	GlobalDefaultAttrs model.UserAttrs
@@ -220,8 +222,14 @@ func (c *client) Ready() <-chan struct{} {
 	return c.configCatClient.Ready()
 }
 
-func (c *client) SdkKey() string {
-	return c.sdkCtx.SDKConf.Key
+func (c *client) SdkKeys() (string, *string) {
+	secondary := c.sdkCtx.SecondarySdkKey.Load()
+	return c.sdkCtx.SDKConf.Key, secondary
+}
+
+func (c *client) SetSecondarySdkKey(sdkKey string) {
+	c.log.Debugf("setting secondary SDK key")
+	c.sdkCtx.SecondarySdkKey.Store(&sdkKey)
 }
 
 func (c *client) WebhookSigningKey() string {

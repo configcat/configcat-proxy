@@ -114,7 +114,7 @@ func NewTestAutoRegistrar(t *testing.T, conf config.Config, cache store.Cache, l
 			PollInterval:   60,
 			DataGovernance: "global",
 		},
-		SDKs: map[string]*model.SdkConfigModel{"test": {SDKKey: sdkKey}},
+		SDKs: map[string]*model.SdkConfigModel{"test": {Key1: sdkKey}},
 	}, sdkHandler: &sdkHandler}
 	configSrv := httptest.NewServer(&h)
 
@@ -154,7 +154,7 @@ func (h *TestSdkRegistrarHandler) ServeHTTP(w http.ResponseWriter, req *http.Req
 	_, _ = w.Write(body)
 }
 
-func (h *TestSdkRegistrarHandler) AddSdk(sdkId string) {
+func (h *TestSdkRegistrarHandler) AddSdk(sdkId string) string {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -164,7 +164,29 @@ func (h *TestSdkRegistrarHandler) AddSdk(sdkId string) {
 			Default: true,
 		},
 	})
-	h.result.SDKs[sdkId] = &model.SdkConfigModel{SDKKey: sdkKey}
+	h.result.SDKs[sdkId] = &model.SdkConfigModel{Key1: sdkKey}
+	return sdkKey
+}
+
+func (h *TestSdkRegistrarHandler) RotateSdkKey(sdkId string) string {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	sdkKey := configcattest.RandomSDKKey()
+	h.result.SDKs[sdkId].Key2 = sdkKey
+	return sdkKey
+}
+
+func (h *TestSdkRegistrarHandler) RemoveSdkKey(sdkId string, primary bool) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	if primary {
+		h.result.SDKs[sdkId].Key1 = h.result.SDKs[sdkId].Key2
+		h.result.SDKs[sdkId].Key2 = ""
+	} else {
+		h.result.SDKs[sdkId].Key2 = ""
+	}
 }
 
 func (h *TestSdkRegistrarHandler) RemoveSdk(sdkId string) {

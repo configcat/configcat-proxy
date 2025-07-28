@@ -11,5 +11,6 @@ type OptionsModel struct {
 }
 
 type SdkConfigModel struct {
-	SDKKey string
+	Key1 string
+	Key2 string
 }

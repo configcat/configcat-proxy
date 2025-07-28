@@ -16,7 +16,7 @@ func (c *Config) Validate() error {
 		}
 	}
 	for id, conf := range c.SDKs {
-		if err := conf.validate(&c.Cache, id); err != nil {
+		if err := conf.validate(&c.Cache, &c.Profile, id); err != nil {
 			return err
 		}
 	}
@@ -44,8 +44,8 @@ func (c *Config) Validate() error {
 	return nil
 }
 
-func (s *SDKConfig) validate(c *CacheConfig, sdkId string) error {
-	if s.Key == "" {
+func (s *SDKConfig) validate(c *CacheConfig, p *ProfileConfig, sdkId string) error {
+	if !p.IsSet() && s.Key == "" {
 		return fmt.Errorf("sdk-%s: SDK key is required", sdkId)
 	}
 	if s.DataGovernance != "" && s.DataGovernance != "global" && s.DataGovernance != "eu" {
