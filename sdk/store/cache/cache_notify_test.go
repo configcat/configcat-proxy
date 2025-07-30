@@ -212,6 +212,10 @@ func (r *testReporter) RegisterSdk(_ string, _ *config.SDKConfig) {
 	// do nothing
 }
 
+func (r *testReporter) UpdateSdk(_ string, _ *config.SDKConfig) {
+	// do nothing
+}
+
 func (r *testReporter) RemoveSdk(_ string) {
 	// do nothing
 }
