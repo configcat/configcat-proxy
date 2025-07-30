@@ -379,6 +379,7 @@ func (r *autoRegistrar) resetSdkClients(sdkIds []string, config *model.ProxyConf
 			sdkClient := r.buildSdkClient(sdkId, sdkConfig, sdkModel)
 			if existing, loaded := r.sdkClients.LoadAndStore(sdkId, sdkClient); loaded {
 				existing.Close()
+				r.statusReporter.UpdateSdk(sdkId, sdkConfig)
 				r.Publish(sdkId)
 			}
 		}

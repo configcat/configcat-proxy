@@ -188,6 +188,11 @@ func TestReporter_Key_Obfuscation(t *testing.T) {
 	stat := readStatus(srv.URL)
 
 	assert.Equal(t, "****************************************ovVnQ", stat.SDKs["t"].SdkKey)
+
+	reporter.UpdateSdk("t", &config.SDKConfig{Key: "XxPbCKmzIUGORk4vsufpzw/6ft7XQudcEuIXY49grZM9w"})
+	stat = readStatus(srv.URL)
+
+	assert.Equal(t, "****************************************rZM9w", stat.SDKs["t"].SdkKey)
 }
 
 func TestReporter_Offline(t *testing.T) {

@@ -35,6 +35,7 @@ const maxLastErrorsMeaningDegraded = 2
 
 type Reporter interface {
 	RegisterSdk(sdkId string, conf *config.SDKConfig)
+	UpdateSdk(sdkId string, conf *config.SDKConfig)
 	RemoveSdk(sdkId string)
 	ReportOk(component string, message string)
 	ReportError(component string, message string)
@@ -126,6 +127,14 @@ func (r *reporter) RegisterSdk(sdkId string, conf *config.SDKConfig) {
 			r.appendRecord(sdkId, "cache offline source enabled without a configured cache", true)
 		}
 	}
+}
+
+func (r *reporter) UpdateSdk(sdkId string, conf *config.SDKConfig) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	status := r.status.SDKs[sdkId]
+	status.SdkKey = utils.Obfuscate(conf.Key, 5)
 }
 
 func (r *reporter) RemoveSdk(sdkId string) {
