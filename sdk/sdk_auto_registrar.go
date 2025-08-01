@@ -397,7 +397,7 @@ func (r *autoRegistrar) readCache(ctx context.Context) (config []byte, eTag stri
 	}
 	cached, err := r.cache.Get(ctx, r.cacheKey)
 	if err != nil {
-		return nil, "", err
+		return nil, r.etag, err
 	}
 	if len(cached) == 0 {
 		return nil, "", fmt.Errorf("no valid proxy profile found in cache")
