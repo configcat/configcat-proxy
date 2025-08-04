@@ -8,7 +8,7 @@ import (
 
 func (c *Config) Validate() error {
 	if len(c.SDKs) == 0 && !c.Profile.IsSet() {
-		return fmt.Errorf("sdk: at least 1 SDK must be configured")
+		return fmt.Errorf("sdk: at least 1 SDK or a proxy profile must be configured")
 	}
 	if c.Profile.IsSet() {
 		if err := c.Profile.validate(); err != nil {

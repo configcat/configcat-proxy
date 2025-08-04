@@ -312,6 +312,10 @@ func TestCORSConfig_ENV(t *testing.T) {
 	t.Setenv("CONFIGCAT_HTTP_API_CORS_ALLOWED_ORIGINS", `["https://example1.com","https://example2.com"]`)
 	t.Setenv("CONFIGCAT_HTTP_API_CORS_ALLOWED_ORIGINS_REGEX_PATTERNS", `[".*\\.example1\\.com",".*\\.example2\\.com"]`)
 	t.Setenv("CONFIGCAT_HTTP_API_CORS_ALLOWED_ORIGINS_REGEX_IF_NO_MATCH", "https://example1.com")
+	t.Setenv("CONFIGCAT_HTTP_OFREP_CORS_ENABLED", "true")
+	t.Setenv("CONFIGCAT_HTTP_OFREP_CORS_ALLOWED_ORIGINS", `["https://example1.com","https://example2.com"]`)
+	t.Setenv("CONFIGCAT_HTTP_OFREP_CORS_ALLOWED_ORIGINS_REGEX_PATTERNS", `[".*\\.example1\\.com",".*\\.example2\\.com"]`)
+	t.Setenv("CONFIGCAT_HTTP_OFREP_CORS_ALLOWED_ORIGINS_REGEX_IF_NO_MATCH", "https://example1.com")
 
 	conf, err := LoadConfigFromFileAndEnvironment("")
 	require.NoError(t, err)
@@ -331,6 +335,13 @@ func TestCORSConfig_ENV(t *testing.T) {
 	assert.Equal(t, `.*\.example1\.com`, conf.Http.Api.CORS.AllowedOriginsRegex.Patterns[0])
 	assert.Equal(t, `.*\.example2\.com`, conf.Http.Api.CORS.AllowedOriginsRegex.Patterns[1])
 	assert.Equal(t, "https://example1.com", conf.Http.Api.CORS.AllowedOriginsRegex.IfNoMatch)
+
+	assert.True(t, conf.Http.OFREP.CORS.Enabled)
+	assert.Equal(t, "https://example1.com", conf.Http.OFREP.CORS.AllowedOrigins[0])
+	assert.Equal(t, "https://example2.com", conf.Http.OFREP.CORS.AllowedOrigins[1])
+	assert.Equal(t, `.*\.example1\.com`, conf.Http.OFREP.CORS.AllowedOriginsRegex.Patterns[0])
+	assert.Equal(t, `.*\.example2\.com`, conf.Http.OFREP.CORS.AllowedOriginsRegex.Patterns[1])
+	assert.Equal(t, "https://example1.com", conf.Http.OFREP.CORS.AllowedOriginsRegex.IfNoMatch)
 }
 
 func TestGrpcConfig_ENV(t *testing.T) {
