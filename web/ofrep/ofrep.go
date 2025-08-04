@@ -19,12 +19,12 @@ type errorCode string
 type reason string
 
 const (
-	GeneralErrorCode        errorCode = "GENERAL"
-	FlagNotFoundErrorCode   errorCode = "FLAG_NOT_FOUND"
-	InvalidContextErrorCode errorCode = "INVALID_CONTEXT"
+	generalErrorCode        errorCode = "GENERAL"
+	flagNotFoundErrorCode   errorCode = "FLAG_NOT_FOUND"
+	invalidContextErrorCode errorCode = "INVALID_CONTEXT"
 
-	DefaultReason        reason = "DEFAULT"
-	TargetingMatchReason reason = "TARGETING_MATCH"
+	defaultReason        reason = "DEFAULT"
+	targetingMatchReason reason = "TARGETING_MATCH"
 
 	SdkIdHeader = "X-ConfigCat-SdkId"
 )
@@ -79,7 +79,7 @@ func NewServer(sdkRegistrar sdk.Registrar, config *config.OFREPConfig, log log.L
 func (s *Server) Eval(w http.ResponseWriter, r *http.Request) {
 	key := r.PathValue("key")
 	if key == "" {
-		s.writeError(w, errorResponse{ErrorCode: GeneralErrorCode, ErrorDetails: "'key' path parameter must be set", Key: ""}, http.StatusBadRequest)
+		s.writeError(w, errorResponse{ErrorCode: generalErrorCode, ErrorDetails: "'key' path parameter must be set", Key: ""}, http.StatusBadRequest)
 		return
 	}
 
@@ -98,7 +98,7 @@ func (s *Server) Eval(w http.ResponseWriter, r *http.Request) {
 	if eval.Error != nil {
 		var errKeyNotFound configcat.ErrKeyNotFound
 		if errors.As(eval.Error, &errKeyNotFound) {
-			s.writeError(w, errorResponse{ErrorDetails: "feature flag or setting with key '" + key + "' not found", ErrorCode: FlagNotFoundErrorCode, Key: key}, http.StatusNotFound)
+			s.writeError(w, errorResponse{ErrorDetails: "feature flag or setting with key '" + key + "' not found", ErrorCode: flagNotFoundErrorCode, Key: key}, http.StatusNotFound)
 		} else {
 			s.writeError(w, generalErrorResponse{ErrorDetails: "the request failed; please check the server logs for more details"}, http.StatusInternalServerError)
 		}
@@ -139,7 +139,7 @@ func (s *Server) EvalAll(w http.ResponseWriter, r *http.Request) {
 	flags := make([]interface{}, 0, len(details))
 	for key, detail := range details {
 		if detail.Error != nil {
-			flags = append(flags, errorResponse{ErrorDetails: detail.Error.Error(), ErrorCode: GeneralErrorCode, Key: key})
+			flags = append(flags, errorResponse{ErrorDetails: detail.Error.Error(), ErrorCode: generalErrorCode, Key: key})
 		} else {
 			flags = append(flags, toEvalResponse(&detail, key))
 		}
@@ -165,12 +165,12 @@ func (s *Server) writeError(w http.ResponseWriter, body interface{}, code int) {
 func (s *Server) parseRequest(r *http.Request, evalReq *evaluationRequest) (sdk.Client, error, errorCode, int) {
 	reqBody, err := io.ReadAll(r.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read request body"), GeneralErrorCode, http.StatusBadRequest
+		return nil, fmt.Errorf("failed to read request body"), generalErrorCode, http.StatusBadRequest
 	}
 	if len(reqBody) > 0 {
 		err = json.Unmarshal(reqBody, &evalReq)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse JSON body: %s", err), InvalidContextErrorCode, http.StatusBadRequest
+			return nil, fmt.Errorf("failed to parse JSON body: %s", err), invalidContextErrorCode, http.StatusBadRequest
 		}
 	}
 	sdkClient, err, errCode, code := s.getSDKClient(r)
@@ -183,14 +183,14 @@ func (s *Server) parseRequest(r *http.Request, evalReq *evaluationRequest) (sdk.
 func (s *Server) getSDKClient(r *http.Request) (sdk.Client, error, errorCode, int) {
 	sdkId := r.Header.Get(SdkIdHeader)
 	if sdkId == "" {
-		return nil, fmt.Errorf("'%s' header must be set", SdkIdHeader), GeneralErrorCode, http.StatusBadRequest
+		return nil, fmt.Errorf("'%s' header must be set", SdkIdHeader), generalErrorCode, http.StatusBadRequest
 	}
 	sdkClient := s.sdkRegistrar.GetSdkOrNil(sdkId)
 	if sdkClient == nil {
-		return nil, fmt.Errorf("invalid SDK identifier: '%s'", sdkId), GeneralErrorCode, http.StatusBadRequest
+		return nil, fmt.Errorf("invalid SDK identifier: '%s'", sdkId), generalErrorCode, http.StatusBadRequest
 	}
 	if !sdkClient.IsInValidState() {
-		return nil, fmt.Errorf("SDK with identifier '%s' is in an invalid state; please check the logs for more details", sdkId), GeneralErrorCode, http.StatusInternalServerError
+		return nil, fmt.Errorf("SDK with identifier '%s' is in an invalid state; please check the logs for more details", sdkId), generalErrorCode, http.StatusInternalServerError
 	}
 	return sdkClient, nil, "", http.StatusOK
 }
@@ -212,10 +212,10 @@ func toEvalResponse(data *model.EvalData, key string) evaluationResponse {
 		Key:     key,
 		Value:   data.Value,
 		Variant: data.VariationId,
-		Reason:  DefaultReason,
+		Reason:  defaultReason,
 	}
 	if data.IsTargeting {
-		response.Reason = TargetingMatchReason
+		response.Reason = targetingMatchReason
 	}
 	return response
 }
