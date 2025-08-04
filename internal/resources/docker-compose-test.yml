@@ -7,21 +7,21 @@ volumes:
 
 configs:
   prometheus_4:
-    file: internal/resources/monitor/prometheus.yml
+    file: monitor/prometheus.yml
   grafana_datasource_3:
-    file: internal/resources/monitor/grafana_ds.yml
+    file: monitor/grafana_ds.yml
   grafana_dashboards_2:
-    file: internal/resources/monitor/dashboards.yml
+    file: monitor/dashboards.yml
   grafana_dashboard_12:
-    file: internal/resources/monitor/proxy_dashboard.json
+    file: monitor/proxy_dashboard.json
 
 services:
   configcat_proxy:
     build:
-      context: .
-      dockerfile: ./Dockerfile
+      context: ../..
+      dockerfile: Dockerfile
     volumes:
-      - ./internal/resources/cert:/cert
+      - ./cert:/cert
     environment:
 #      - CONFIGCAT_LOG_LEVEL=debug
       - CONFIGCAT_GRPC_KEEP_ALIVE_MAX_CONNECTION_IDLE=15

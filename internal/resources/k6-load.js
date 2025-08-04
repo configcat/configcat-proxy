@@ -9,7 +9,7 @@ export const options = {
 
 export default () => {
     const BASE_URL1 = "https://localhost:8050/api/sdk-342";
-    const BASE_URL2 = "https://localhost:8050/api/sdk-344";
+    const BASE_URL2 = "https://localhost:8050/api/sdk-675";
 
     const payload = JSON.stringify({
         user: {

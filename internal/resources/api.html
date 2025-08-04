@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <title>ConfigCat Proxy API sample</title>
+    <meta charset="utf-8">
+
+    <script type="text/javascript">
+        const url = "https://localhost:8050/api/sdk-342/eval";
+
+        const data = {
+            key: "test1",
+            user: {
+                Identifier: "09c63c8ad682"
+            }
+        };
+
+        const requestOptions = {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        };
+
+        fetch(url, requestOptions)
+            .then(response => response.json())
+            .then(data => console.log(data))
+            .catch(error => console.error('Error:', error));
+    </script>
+</head>
+
+<body>
+Open Console (F12) to see the results!
+</body>
+
+</html>

@@ -15,17 +15,20 @@
             identifier: "09c63c8ad682",
         };
 
-        const configCatClient = configcat.getClient('configcat-proxy/sdk1', configcat.PollingMode.AutoPoll, {
+        const configCatClient = configcat.getClient('configcat-proxy/sdk-342', configcat.PollingMode.AutoPoll, {
             baseUrl: "https://localhost:8050",
             pollIntervalSeconds: 10,
             logger: logger,
             setupHooks: (hooks) =>
                 hooks.on('configChanged', () => {
-                    configCatClient.getValueAsync("awesomeFeature", false, userObject).then((value) => {
-                            console.log("awesomeFeature: " + value);
-                        });
+
                 }),
         });
+        setInterval(() => {
+            configCatClient.getValueAsync("test1", false, userObject).then((value) => {
+                console.log("test1: " + value);
+            });
+        }, 2000);
     </script>
 </head>
 
