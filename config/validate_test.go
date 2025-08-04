@@ -10,17 +10,17 @@ func TestConfig_Validate(t *testing.T) {
 	t.Run("no envs", func(t *testing.T) {
 		conf := Config{}
 		conf.setDefaults()
-		require.ErrorContains(t, conf.Validate(), "sdk: at least 1 SDK must be configured")
+		require.ErrorContains(t, conf.Validate(), "sdk: at least 1 SDK or a proxy profile must be configured")
 	})
 	t.Run("no envs with auto key missing", func(t *testing.T) {
 		conf := Config{Profile: ProfileConfig{Key: "", Secret: "secret"}}
 		conf.setDefaults()
-		require.ErrorContains(t, conf.Validate(), "sdk: at least 1 SDK must be configured")
+		require.ErrorContains(t, conf.Validate(), "sdk: at least 1 SDK or a proxy profile must be configured")
 	})
 	t.Run("no envs with auto secret missing", func(t *testing.T) {
 		conf := Config{Profile: ProfileConfig{Key: "key", Secret: ""}}
 		conf.setDefaults()
-		require.ErrorContains(t, conf.Validate(), "sdk: at least 1 SDK must be configured")
+		require.ErrorContains(t, conf.Validate(), "sdk: at least 1 SDK or a proxy profile must be configured")
 	})
 	t.Run("invalid webhook valid for value", func(t *testing.T) {
 		conf := Config{Profile: ProfileConfig{Key: "key", Secret: "secret", WebhookSigningKey: "key", WebhookSignatureValidFor: -1}}
