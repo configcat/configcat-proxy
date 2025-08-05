@@ -1,0 +1,16 @@
+---
+{{if .Values.clusterMode.enabled}}
+{{if .Values.clusterMode.followers.enabled}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{include "configcat-proxy.followerName" .}}-config
+  labels:
+    {{include "configcat-proxy.followerLabels" . | nindent 4}}
+  annotations:
+    checksum/config: {{ include "configcat-proxy.followerOptionsYamlTpl" . | sha256sum }}
+data:
+  options.yml.tpl: |-
+{{include "configcat-proxy.followerOptionsYamlTpl" . | indent 4}}
+{{end}}
+{{end}}

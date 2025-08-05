@@ -1,0 +1,11 @@
+apiVersion: v2
+name: configcat-proxy
+description: A Helm chart for deploying ConfigCat Proxy on Kubernetes with Redis-backed distributed topology
+type: application
+version: 0.5.0
+appVersion: "latest"
+dependencies:
+  - name: redis
+    version: "~17.17.1"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: redis.enabled

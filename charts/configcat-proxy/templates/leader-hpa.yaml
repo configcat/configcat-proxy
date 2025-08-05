@@ -1,0 +1,34 @@
+---
+{{if and .Values.clusterMode.enabled .Values.clusterMode.leader.enabled .Values.clusterMode.leader.autoscaling.enabled}}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{include "configcat-proxy.leaderName" .}}
+  labels:
+    {{include "configcat-proxy.leaderLabels" . | nindent 4}}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{include "configcat-proxy.leaderName" .}}
+  minReplicas: {{.Values.clusterMode.leader.autoscaling.minReplicas}}
+  maxReplicas: {{.Values.clusterMode.leader.autoscaling.maxReplicas}}
+  metrics:
+  {{if .Values.clusterMode.leader.autoscaling.targetCPUUtilizationPercentage}}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{.Values.clusterMode.leader.autoscaling.targetCPUUtilizationPercentage}}
+  {{end}}
+  {{if .Values.clusterMode.leader.autoscaling.targetMemoryUtilizationPercentage}}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 
+            {{.Values.clusterMode.leader.autoscaling.targetMemoryUtilizationPercentage}}
+  {{end}}
+{{end}}

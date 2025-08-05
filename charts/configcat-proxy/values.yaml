@@ -1,0 +1,236 @@
+# Default values for configcat-proxy.
+
+# Ingress configuration for standalone mode
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  # kubernetes.io/ingress.class: nginx
+  # kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: configcat-proxy.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+  #  - secretName: configcat-proxy-tls
+  #    hosts:
+  #      - configcat-proxy.local
+# Cluster topology configuration
+clusterMode:
+  # Enable distributed cluster mode with online leader and offline followers
+  enabled: false
+  # Online leader configuration (connects directly to ConfigCat CDN)
+  leader:
+    enabled: true
+    replicaCount: 1
+    nodeSelector: {}
+    resources: {}
+    # Example: network-zone: dmz
+    tolerations: []
+    affinity: {}
+    # Service for the leader proxy 
+    service:
+      type: ClusterIP
+      port: 80
+      targetPort: 8050
+    # Ingress for leader proxy (ONLINE)
+    ingress:
+      enabled: false
+      className: ""
+      annotations: {}
+      hosts:
+        - host: configcat-leader.local
+          paths:
+            - path: /
+              pathType: Prefix
+      tls: []
+    # Autoscaling configuration specific to leader
+    autoscaling:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 5
+      targetCPUUtilizationPercentage: 80
+  # Offline follower configuration (reads from Redis)
+  followers:
+    enabled: true
+    replicaCount: 1
+    nodeSelector: {}
+    resources: {}
+    # Example: network-zone: internal
+    tolerations: []
+    affinity: {}
+    # Ingress for follower proxies (OFFLINE)
+    ingress:
+      enabled: false
+      className: ""
+      annotations: {}
+      hosts:
+        - host: configcat-follower.local
+          paths:
+            - path: /
+              pathType: Prefix
+      tls: []
+    # Autoscaling configuration specific to followers
+    autoscaling:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 10
+      targetCPUUtilizationPercentage: 75
+# Redis configuration for distributed caching
+redis:
+  # Use built-in Redis deployment (when enabled, deploys Redis as a subchart)
+  enabled: false
+  # Redis deployment architecture (used by Redis subchart)
+  # Options: standalone, replication, sentinel
+  # - standalone: Single Redis instance (simplest)
+  # - replication: Master + read replicas (better availability)
+  # - sentinel: Master + replicas + Sentinel nodes (high availability with failover)
+  architecture: standalone
+  auth:
+    enabled: true
+    password: "" # Set a password or use existingSecret
+    existingSecret: ""
+    existingSecretPasswordKey: ""
+  master:
+    persistence:
+      enabled: true
+      size: 8Gi
+  # Database number to use (0-15)
+  database: 0
+  # Connection settings
+  connection:
+    timeout: 5000 # Timeout in milliseconds
+    retries: 3 # Number of retry attempts
+# External Redis configuration (when redis.enabled is false)
+externalRedis:
+  # ElastiCache or other external Redis configuration
+  host: ""
+  port: 6379
+  connection:
+    timeout: 5000 # Timeout in milliseconds
+    retries: 3 # Number of retry attempts
+  # Database number to use (0-15)
+  database: 0
+  # Authentication for external Redis
+  auth:
+    enabled: false
+    # Secret containing Redis password
+    existingSecret: ""
+    existingSecretPasswordKey: "redis-password"
+    # Environment variable name to use for the Redis password
+    envVarName: "CONFIGCAT_CACHE_REDIS_PASSWORD"
+# Standard configuration for standalone mode (when clusterMode.enabled is false)
+replicaCount: 1
+image:
+  repository: configcat/proxy
+  pullPolicy: IfNotPresent
+  tag: "" # Defaults to .Chart.AppVersion if not specified
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: false
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+podAnnotations: {}
+podSecurityContext: {}
+# fsGroup: 2000
+
+securityContext: {}
+# capabilities:
+#   drop:
+#   - ALL
+# readOnlyRootFilesystem: true
+# runAsNonRoot: true
+# runAsUser: 1000
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8050
+# ConfigCat Proxy configuration
+configcat:
+  # SDK configurations
+  sdks:
+    # Direct method: Map of environment names to SDK keys 
+    # The keys of this map (e.g., "production") will be used as the SDK identifier in the proxy URL path.
+    # Example: /api/production/v1/flags
+    # Example: {"production":"sdk-key-123", "staging":"sdk-key-456", "development":"sdk-key-789"}
+    # Environment names can be: production, staging, development, test, or any custom name
+    configurations: {}
+    # Secret reference method (recommended for production)
+    # Name of the existing secret containing SDK configurations
+    existingSecret: ""
+    # Key in the secret containing the JSON configuration
+    # The secret value should be a raw JSON string like: {"production":"sdk-key-123","staging":"sdk-key-456"}
+    # For kubectl create secret generic, use: --from-literal=sdks-configuration='{"production":"sdk-key-123"}'
+    existingSecretKey: "sdks-configuration"
+  # Options for ConfigCat Proxy
+  options:
+    followers:
+      cachePollInterval: 15 # controls how often the follower nodes (in offline mode) check Redis for updated configurations
+    pollIntervalSeconds: 15 # how often the leader node checks for updates from the ConfigCat CDN
+    maxInitWaitTimeSeconds: 5
+    baseUrl: "https://cdn-global.configcat.com"
+    dataGovernance: "Global"
+    exitOnConnectionProblems: false
+    logLevel: "info"
+    cache:
+      type: "redis" # Use "memory" for local in-memory caching, "redis" for distributed
+      timeToLiveSeconds: 300
+      # Native Redis configuration for ConfigCat proxy
+      redis:
+        enabled: true
+        db: 0
+        # For standalone Redis (internal or external)
+        addresses: [] # Will be auto-populated based on redis.enabled
+        user: "" # For Redis ACL users
+        password: "" # Will be auto-populated based on redis settings
+        # TLS configuration
+        tls:
+          enabled: false
+          min_version: "1.2"
+          server_name: ""
+          certificates: []
+    proxy:
+      ports:
+        http:
+          containerPort: 8050
+          servicePort: 80
+          protocol: TCP
+        metrics:
+          containerPort: 8051
+          servicePort: 8051
+          protocol: TCP
+        grpc:
+          containerPort: 50051
+          servicePort: 50051
+          protocol: TCP
+      connTimeoutMilliseconds: 3000
+      readTimeoutMilliseconds: 3000
+      maxIdleConns: 100
+      idleConnTimeoutMilliseconds: 90000
+      metrics:
+        enabled: true
+resources: {}
+# limits:
+#   cpu: 100m
+#   memory: 128Mi
+# requests:
+#   cpu: 100m
+#   memory: 128Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+nodeSelector: {}
+tolerations: []
+affinity: {}
