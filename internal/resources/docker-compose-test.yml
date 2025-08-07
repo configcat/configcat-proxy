@@ -30,7 +30,7 @@ services:
       - CONFIGCAT_PROFILE_SECRET=configcat_pst_2i2czO3+T5GxyosW9aiXg/CsCGD4TaIJe7nXgT45riU=
       - CONFIGCAT_PROFILE_BASE_URL=https://test-api.configcat.com
       - CONFIGCAT_PROFILE_SDKS_BASE_URL=https://test-cdn-global.configcat.com
-      - CONFIGCAT_PROFILE_POLL_INTERVAL=30
+      - CONFIGCAT_PROFILE_POLL_INTERVAL=60
       - CONFIGCAT_PROFILE_LOG_LEVEL=debug
       - CONFIGCAT_PROFILE_WEBHOOK_SIGNING_KEY=configcat_whsk_6R0Dt8/dA+1Bvlrpp0IHAWLr0x3RQ5jQ+YlG87CHjtM=
       - CONFIGCAT_SDKS={"sdk-676":""}
