@@ -11,7 +11,7 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("sdk: at least 1 SDK or a proxy profile must be configured")
 	}
 	if c.Profile.IsSet() {
-		if err := c.Profile.validate(); err != nil {
+		if err := c.Profile.validate(&c.GlobalOfflineConfig); err != nil {
 			return err
 		}
 	}
@@ -208,12 +208,15 @@ func (g *GrpcConfig) validate() error {
 	return nil
 }
 
-func (a *ProfileConfig) validate() error {
-	if a.PollInterval < 30 {
-		return fmt.Errorf("sdk: auto configuration poll interval cannot be less than 30 seconds")
+func (a *ProfileConfig) validate(c *GlobalOfflineConfig) error {
+	if a.Secret == "" && !c.Enabled {
+		return fmt.Errorf("profile: proxy is in online mode without a profile secret")
+	}
+	if a.PollInterval < 60 {
+		return fmt.Errorf("profile: auto configuration poll interval cannot be less than 60 seconds")
 	}
 	if a.WebhookSigningKey != "" && a.WebhookSignatureValidFor < 5 {
-		return fmt.Errorf("sdk: webhook signature validity check must be greater than 5 seconds")
+		return fmt.Errorf("profile: webhook signature validity check must be greater than 5 seconds")
 	}
 	return nil
 }

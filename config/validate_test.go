@@ -1,9 +1,10 @@
 package config
 
 import (
+	"testing"
+
 	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestConfig_Validate(t *testing.T) {
@@ -20,13 +21,13 @@ func TestConfig_Validate(t *testing.T) {
 	t.Run("no envs with auto secret missing", func(t *testing.T) {
 		conf := Config{Profile: ProfileConfig{Key: "key", Secret: ""}}
 		conf.setDefaults()
-		require.ErrorContains(t, conf.Validate(), "sdk: at least 1 SDK or a proxy profile must be configured")
+		require.ErrorContains(t, conf.Validate(), "profile: proxy is in online mode without a profile secret")
 	})
 	t.Run("invalid webhook valid for value", func(t *testing.T) {
 		conf := Config{Profile: ProfileConfig{Key: "key", Secret: "secret", WebhookSigningKey: "key", WebhookSignatureValidFor: -1}}
 		conf.setDefaults()
 		conf.fixupDefaults()
-		require.ErrorContains(t, conf.Validate(), "sdk: webhook signature validity check must be greater than 5 seconds")
+		require.ErrorContains(t, conf.Validate(), "profile: webhook signature validity check must be greater than 5 seconds")
 	})
 	t.Run("no envs with auto ok", func(t *testing.T) {
 		conf := Config{Profile: ProfileConfig{Key: "key", Secret: "secret", PollInterval: 60}}
@@ -36,7 +37,7 @@ func TestConfig_Validate(t *testing.T) {
 	t.Run("no envs with auto ok too low poll interval", func(t *testing.T) {
 		conf := Config{Profile: ProfileConfig{Key: "key", Secret: "secret", PollInterval: 1}}
 		conf.setDefaults()
-		require.ErrorContains(t, conf.Validate(), "sdk: auto configuration poll interval cannot be less than 30 seconds")
+		require.ErrorContains(t, conf.Validate(), "profile: auto configuration poll interval cannot be less than 60 seconds")
 	})
 	t.Run("missing sdk key", func(t *testing.T) {
 		conf := Config{SDKs: map[string]*SDKConfig{"env1": {}}}

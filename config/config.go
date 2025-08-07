@@ -4,16 +4,17 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"github.com/configcat/configcat-proxy/log"
-	"github.com/configcat/configcat-proxy/model"
-	"google.golang.org/grpc/keepalive"
-	"gopkg.in/yaml.v3"
 	"os"
 	"path"
 	"path/filepath"
 	"regexp"
 	"runtime"
 	"time"
+
+	"github.com/configcat/configcat-proxy/log"
+	"github.com/configcat/configcat-proxy/model"
+	"google.golang.org/grpc/keepalive"
+	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -500,7 +501,7 @@ func (c *CacheConfig) IsSet() bool {
 }
 
 func (a *ProfileConfig) IsSet() bool {
-	return a.Key != "" && a.Secret != ""
+	return a.Key != ""
 }
 
 func (t *TlsConfig) LoadTlsOptions() (*tls.Config, error) {

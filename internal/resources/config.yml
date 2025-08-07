@@ -10,17 +10,16 @@
 
 
 profile:
-  key: 08ddd139-5e60-4287-8894-047832f313b6
-  secret: configcat_pst_3ZMdNsDQoDLgDc+UcgZP4CzxcWffKhj5jWSCljMVjS4=
+  key: 08ddb657-51e9-4b6a-848e-017939e290fe
   base_url: "https://test-api.configcat.com"
-  poll_interval: 30
+  poll_interval: 60
   sdks:
     base_url: "https://test-cdn-global.configcat.com"
   log:
     level: "debug"
 
-#offline:
-#  enabled: true
+offline:
+  enabled: true
 
 cache:
   redis:
