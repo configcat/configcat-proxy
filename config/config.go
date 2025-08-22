@@ -4,21 +4,30 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"github.com/configcat/configcat-proxy/log"
-	"github.com/configcat/configcat-proxy/model"
-	"google.golang.org/grpc/keepalive"
-	"gopkg.in/yaml.v3"
 	"os"
 	"path"
 	"path/filepath"
 	"regexp"
 	"runtime"
 	"time"
+
+	"github.com/configcat/configcat-proxy/log"
+	"github.com/configcat/configcat-proxy/model"
+	"google.golang.org/grpc/keepalive"
+	"gopkg.in/yaml.v3"
 )
 
-const defaultConfigName = "options.yml"
-const defaultVendorName = "configcat"
-const defaultProductName = "proxy"
+const (
+	defaultConfigName  = "options.yml"
+	defaultVendorName  = "configcat"
+	defaultProductName = "proxy"
+
+	DefaultWebhookSignatureValidFor = 300
+
+	defaultSdkPollInterval     = 60
+	defaultCachePollInterval   = 5
+	defaultAutoSdkPollInterval = 300
+)
 
 var allowedLogLevels = map[string]log.Level{
 	"debug": log.Debug,
@@ -45,6 +54,7 @@ type Config struct {
 	HttpProxy           HttpProxyConfig     `yaml:"http_proxy"`
 	GlobalOfflineConfig GlobalOfflineConfig `yaml:"offline"`
 	DefaultAttrs        model.UserAttrs     `yaml:"default_user_attributes"`
+	Profile             ProfileConfig       `yaml:"profile"`
 }
 
 type SDKConfig struct {
@@ -57,6 +67,22 @@ type SDKConfig struct {
 	DefaultAttrs             model.UserAttrs `yaml:"default_user_attributes"`
 	Offline                  OfflineConfig
 	Log                      LogConfig
+}
+
+type ProfileConfig struct {
+	Key                      string
+	Secret                   string
+	BaseUrl                  string `yaml:"base_url"`
+	PollInterval             int    `yaml:"poll_interval"`
+	WebhookSignatureValidFor int    `yaml:"webhook_signature_valid_for"`
+	WebhookSigningKey        string `yaml:"webhook_signing_key"`
+	Log                      LogConfig
+	SDKs                     ProfileSDKConfig
+}
+
+type ProfileSDKConfig struct {
+	BaseUrl string `yaml:"base_url"`
+	Log     LogConfig
 }
 
 type GrpcConfig struct {
@@ -93,11 +119,12 @@ type HttpConfig struct {
 	Enabled  bool
 	Port     int            `yaml:"port"`
 	CdnProxy CdnProxyConfig `yaml:"cdn_proxy"`
-	Log      LogConfig
+	OFREP    OFREPConfig    `yaml:"ofrep"`
 	Webhook  WebhookConfig
 	Sse      SseConfig
 	Api      ApiConfig
 	Status   StatusConfig
+	Log      LogConfig
 }
 
 type WebhookConfig struct {
@@ -113,6 +140,13 @@ type CdnProxyConfig struct {
 }
 
 type ApiConfig struct {
+	AuthHeaders map[string]string `yaml:"auth_headers"`
+	Headers     map[string]string `yaml:"headers"`
+	Enabled     bool              `yaml:"enabled"`
+	CORS        CORSConfig
+}
+
+type OFREPConfig struct {
 	AuthHeaders map[string]string `yaml:"auth_headers"`
 	Headers     map[string]string `yaml:"headers"`
 	Enabled     bool              `yaml:"enabled"`
@@ -301,6 +335,9 @@ func (c *Config) setDefaults() {
 	c.Http.Api.Enabled = true
 	c.Http.Api.CORS.Enabled = true
 
+	c.Http.OFREP.Enabled = false
+	c.Http.OFREP.CORS.Enabled = true
+
 	c.Http.Webhook.Enabled = true
 
 	c.Http.Status.Enabled = false
@@ -312,6 +349,8 @@ func (c *Config) setDefaults() {
 	c.Cache.MongoDb.Collection = "cache"
 
 	c.Cache.DynamoDb.Table = "configcat_proxy_cache"
+
+	c.Profile.BaseUrl = "https://api.configcat.com"
 }
 
 func (c *Config) fixupDefaults() {
@@ -320,20 +359,26 @@ func (c *Config) fixupDefaults() {
 			continue
 		}
 		if sdk.WebhookSignatureValidFor == 0 {
-			sdk.WebhookSignatureValidFor = 300
+			sdk.WebhookSignatureValidFor = DefaultWebhookSignatureValidFor
 		}
 		if sdk.PollInterval == 0 {
-			sdk.PollInterval = 30
+			sdk.PollInterval = defaultSdkPollInterval
 		}
 		if sdk.Offline.Local.PollInterval == 0 {
-			sdk.Offline.Local.PollInterval = 5
+			sdk.Offline.Local.PollInterval = defaultCachePollInterval
 		}
 		if sdk.Offline.CachePollInterval == 0 {
-			sdk.Offline.CachePollInterval = 5
+			sdk.Offline.CachePollInterval = defaultCachePollInterval
 		}
 	}
 	if c.GlobalOfflineConfig.CachePollInterval == 0 {
-		c.GlobalOfflineConfig.CachePollInterval = 5
+		c.GlobalOfflineConfig.CachePollInterval = defaultCachePollInterval
+	}
+	if c.Profile.PollInterval == 0 {
+		c.Profile.PollInterval = defaultAutoSdkPollInterval
+	}
+	if c.Profile.WebhookSignatureValidFor == 0 {
+		c.Profile.WebhookSignatureValidFor = DefaultWebhookSignatureValidFor
 	}
 }
 
@@ -355,6 +400,12 @@ func (c *Config) fixupOffline() {
 }
 
 func (c *Config) fixupLogLevels(defLevel string) {
+	if c.Profile.Log.GetLevel() == log.None {
+		c.Profile.Log.Level = defLevel
+	}
+	if c.Profile.SDKs.Log.GetLevel() == log.None {
+		c.Profile.SDKs.Log.Level = defLevel
+	}
 	for _, sdk := range c.SDKs {
 		if sdk == nil {
 			continue
@@ -447,6 +498,10 @@ func (k *KeepAliveConfig) ToParams() (keepalive.ServerParameters, bool) {
 
 func (c *CacheConfig) IsSet() bool {
 	return c.Redis.Enabled || c.MongoDb.Enabled || c.DynamoDb.Enabled
+}
+
+func (a *ProfileConfig) IsSet() bool {
+	return a.Key != ""
 }
 
 func (t *TlsConfig) LoadTlsOptions() (*tls.Config, error) {

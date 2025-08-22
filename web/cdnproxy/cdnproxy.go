@@ -1,13 +1,12 @@
 package cdnproxy
 
 import (
-	"context"
 	"fmt"
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/sdk"
-	"github.com/julienschmidt/httprouter"
 	"net/http"
+	"strings"
 )
 
 type Server struct {
@@ -26,7 +25,7 @@ func NewServer(sdkRegistrar sdk.Registrar, config *config.CdnProxyConfig, log lo
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	sdkClient, err, code := s.getSDKClient(r.Context())
+	sdkClient, err, code := s.getSDKClient(r)
 	if err != nil {
 		http.Error(w, err.Error(), code)
 		return
@@ -48,15 +47,23 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Server) getSDKClient(ctx context.Context) (sdk.Client, error, int) {
-	vars := httprouter.ParamsFromContext(ctx)
-	sdkId := vars.ByName("sdkId")
-	sdkClient := s.sdkRegistrar.GetSdkOrNil(sdkId)
+func (s *Server) getSDKClient(r *http.Request) (sdk.Client, error, int) {
+	path := r.PathValue("path")
+	var sdkClient sdk.Client
+
+	if strings.HasPrefix(path, "configcat-proxy/") {
+		path = strings.TrimPrefix(path, "configcat-proxy/")
+		sdkId := strings.TrimSuffix(path, "/config_v6.json")
+		sdkClient = s.sdkRegistrar.GetSdkOrNil(sdkId)
+	} else {
+		sdkKey := strings.TrimSuffix(path, "/config_v6.json")
+		sdkClient = s.sdkRegistrar.GetSdkByKeyOrNil(sdkKey)
+	}
 	if sdkClient == nil {
-		return nil, fmt.Errorf("invalid SDK identifier: '%s'", sdkId), http.StatusNotFound
+		return nil, fmt.Errorf("could not identify a configured SDK"), http.StatusNotFound
 	}
 	if !sdkClient.IsInValidState() {
-		return nil, fmt.Errorf("SDK with identifier '%s' is in an invalid state; please check the logs for more details", sdkId), http.StatusInternalServerError
+		return nil, fmt.Errorf("requested SDK is in an invalid state; please check the logs for more details"), http.StatusInternalServerError
 	}
 	return sdkClient, nil, http.StatusOK
 }

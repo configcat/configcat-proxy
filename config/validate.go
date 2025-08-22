@@ -7,11 +7,16 @@ import (
 )
 
 func (c *Config) Validate() error {
-	if len(c.SDKs) == 0 {
-		return fmt.Errorf("sdk: at least 1 SDK must be configured")
+	if len(c.SDKs) == 0 && !c.Profile.IsSet() {
+		return fmt.Errorf("sdk: at least 1 SDK or a proxy profile must be configured")
+	}
+	if c.Profile.IsSet() {
+		if err := c.Profile.validate(&c.GlobalOfflineConfig); err != nil {
+			return err
+		}
 	}
 	for id, conf := range c.SDKs {
-		if err := conf.validate(&c.Cache, id); err != nil {
+		if err := conf.validate(&c.Cache, &c.Profile, id); err != nil {
 			return err
 		}
 	}
@@ -39,8 +44,8 @@ func (c *Config) Validate() error {
 	return nil
 }
 
-func (s *SDKConfig) validate(c *CacheConfig, sdkId string) error {
-	if s.Key == "" {
+func (s *SDKConfig) validate(c *CacheConfig, p *ProfileConfig, sdkId string) error {
+	if !p.IsSet() && s.Key == "" {
 		return fmt.Errorf("sdk-%s: SDK key is required", sdkId)
 	}
 	if s.DataGovernance != "" && s.DataGovernance != "global" && s.DataGovernance != "eu" {
@@ -140,6 +145,9 @@ func (h *HttpConfig) validate() error {
 	if err := h.Api.CORS.validate(); err != nil {
 		return err
 	}
+	if err := h.OFREP.CORS.validate(); err != nil {
+		return err
+	}
 	if err := h.Sse.CORS.validate(); err != nil {
 		return err
 	}
@@ -196,6 +204,19 @@ func (d *DiagConfig) validate() error {
 func (g *GrpcConfig) validate() error {
 	if g.Port < 1 || g.Port > 65535 {
 		return fmt.Errorf("grpc: invalid port %d", g.Port)
+	}
+	return nil
+}
+
+func (a *ProfileConfig) validate(c *GlobalOfflineConfig) error {
+	if a.Secret == "" && !c.Enabled {
+		return fmt.Errorf("profile: proxy is in online mode without a profile secret")
+	}
+	if a.PollInterval < 60 {
+		return fmt.Errorf("profile: auto configuration poll interval cannot be less than 60 seconds")
+	}
+	if a.WebhookSigningKey != "" && a.WebhookSignatureValidFor < 5 {
+		return fmt.Errorf("profile: webhook signature validity check must be greater than 5 seconds")
 	}
 	return nil
 }

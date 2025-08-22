@@ -56,6 +56,8 @@ func (s *flagService) EvalFlagStream(req *proto.EvalRequest, stream proto.FlagSe
 		case <-stream.Context().Done():
 			str.CloseConnection(conn, req.GetKey())
 			return stream.Context().Err()
+		case <-str.Closed():
+			return status.Error(codes.Aborted, "connection aborted")
 		case <-s.closed:
 			return status.Error(codes.Aborted, "server down")
 		}
@@ -87,6 +89,8 @@ func (s *flagService) EvalAllFlagsStream(req *proto.EvalRequest, evalStream prot
 		case <-evalStream.Context().Done():
 			str.CloseConnection(conn, stream.AllFlagsDiscriminator)
 			return evalStream.Context().Err()
+		case <-str.Closed():
+			return status.Error(codes.Aborted, "connection aborted")
 		case <-s.closed:
 			return status.Error(codes.Aborted, "server down")
 		}

@@ -7,9 +7,11 @@ import (
 	"github.com/configcat/go-sdk/v9/configcatcache"
 )
 
+type Cache = configcat.ConfigCache
+
 type CacheEntryStore interface {
 	EntryStore
-	configcat.ConfigCache
+	Cache
 }
 
 type NotifyingStore interface {
@@ -21,7 +23,7 @@ type inMemoryStore struct {
 	EntryStore
 }
 
-func NewInMemoryStorage() CacheEntryStore {
+func NewInMemoryStorage() Cache {
 	return &inMemoryStore{EntryStore: NewEntryStore()}
 }
 

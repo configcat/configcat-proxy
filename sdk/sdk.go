@@ -7,6 +7,7 @@ import (
 	"github.com/configcat/configcat-proxy/diag/status"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/model"
+	"github.com/configcat/configcat-proxy/pubsub"
 	"github.com/configcat/configcat-proxy/sdk/statistics"
 	"github.com/configcat/configcat-proxy/sdk/store"
 	"github.com/configcat/configcat-proxy/sdk/store/cache"
@@ -25,15 +26,16 @@ const (
 )
 
 type Client interface {
+	pubsub.SubscriptionHandler[struct{}]
 	Eval(key string, user model.UserAttrs) model.EvalData
 	EvalAll(user model.UserAttrs) map[string]model.EvalData
 	Keys() []string
 	GetCachedJson() *store.EntryWithEtag
-	SubConfigChanged(id string) <-chan struct{}
-	UnsubConfigChanged(id string)
 	Ready() <-chan struct{}
 	Refresh() error
 	Close()
+	SdkKeys() (string, *string)
+	SetSecondarySdkKey(sdkKey string)
 	WebhookSigningKey() string
 	WebhookSignatureValidFor() int
 	IsInValidState() bool
@@ -41,36 +43,35 @@ type Client interface {
 
 type Context struct {
 	SdkId              string
+	SecondarySdkKey    atomic.Pointer[string]
 	SDKConf            *config.SDKConfig
 	ProxyConf          *config.HttpProxyConfig
 	GlobalDefaultAttrs model.UserAttrs
 	MetricsReporter    metrics.Reporter
 	StatusReporter     status.Reporter
 	EvalReporter       statistics.Reporter
-	ExternalCache      configcat.ConfigCache
+	ExternalCache      store.Cache
 }
 
 type client struct {
 	configCatClient *configcat.Client
 	defaultAttrs    model.UserAttrs
-	subscriptions   map[string]chan struct{}
 	readyOnce       sync.Once
 	log             log.Logger
 	cache           store.EntryStore
 	sdkCtx          *Context
-	mu              sync.RWMutex
 	initialized     atomic.Bool
 	ctx             context.Context
 	ctxCancel       func()
+	pubsub.Publisher[struct{}]
 }
 
 func NewClient(sdkCtx *Context, log log.Logger) Client {
-	sdkLog := log.WithLevel(sdkCtx.SDKConf.Log.GetLevel()).WithPrefix("sdk-" + sdkCtx.SdkId)
-	sdkCtx.StatusReporter.RegisterSdk(sdkCtx.SdkId, sdkCtx.SDKConf)
+	sdkLog := log.WithLevel(sdkCtx.SDKConf.Log.GetLevel()).WithPrefix(sdkCtx.SdkId)
 
 	offline := sdkCtx.SDKConf.Offline.Enabled
 	key := sdkCtx.SDKConf.Key
-	var storage configcat.ConfigCache
+	var storage store.Cache
 	if offline && sdkCtx.SDKConf.Offline.Local.FilePath != "" {
 		key = validEmptySdkKey
 		storage = file.NewFileStore(sdkCtx.SdkId, &sdkCtx.SDKConf.Offline.Local, sdkCtx.StatusReporter, log.WithLevel(sdkCtx.SDKConf.Offline.Log.GetLevel()))
@@ -84,11 +85,11 @@ func NewClient(sdkCtx *Context, log log.Logger) Client {
 		storage = store.NewInMemoryStorage()
 	}
 	client := &client{
-		log:           sdkLog,
-		subscriptions: make(map[string]chan struct{}),
-		cache:         storage.(store.EntryStore),
-		sdkCtx:        sdkCtx,
-		defaultAttrs:  model.MergeUserAttrs(sdkCtx.GlobalDefaultAttrs, sdkCtx.SDKConf.DefaultAttrs),
+		Publisher:    pubsub.NewPublisher[struct{}](),
+		log:          sdkLog,
+		cache:        storage.(store.EntryStore),
+		sdkCtx:       sdkCtx,
+		defaultAttrs: model.MergeUserAttrs(sdkCtx.GlobalDefaultAttrs, sdkCtx.SDKConf.DefaultAttrs),
 	}
 	client.ctx, client.ctxCancel = context.WithCancel(context.Background())
 	var transport = http.DefaultTransport.(*http.Transport)
@@ -153,6 +154,7 @@ func NewClient(sdkCtx *Context, log log.Logger) Client {
 	if notifier, ok := storage.(store.NotifyingStore); ok {
 		go client.listen(notifier)
 	}
+	sdkLog.Reportf("started")
 	return client
 }
 
@@ -168,9 +170,6 @@ func (c *client) listen(notifier store.NotifyingStore) {
 }
 
 func (c *client) signal() {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
 	// we don't want to notify subscribers in ONLINE mode
 	// about the first change upon SDK initialization
 	if !c.sdkCtx.SDKConf.Offline.Enabled && c.initialized.CompareAndSwap(false, true) {
@@ -180,15 +179,14 @@ func (c *client) signal() {
 	if c.sdkCtx.SDKConf.Offline.Enabled {
 		_ = c.Refresh()
 	}
-	for _, sub := range c.subscriptions {
-		sub <- struct{}{}
-	}
+	c.Publish(struct{}{})
 }
 
 func (c *client) Eval(key string, user model.UserAttrs) model.EvalData {
 	mergedUser := model.MergeUserAttrs(c.defaultAttrs, user)
 	details := c.configCatClient.Snapshot(mergedUser).GetValueDetails(key)
-	return model.EvalData{Value: details.Value, VariationId: details.Data.VariationID, User: details.Data.User, Error: details.Data.Error}
+	return model.EvalData{Value: details.Value, VariationId: details.Data.VariationID, User: details.Data.User, Error: details.Data.Error,
+		IsTargeting: details.Data.MatchedPercentageOption != nil || details.Data.MatchedTargetingRule != nil}
 }
 
 func (c *client) EvalAll(user model.UserAttrs) map[string]model.EvalData {
@@ -196,7 +194,8 @@ func (c *client) EvalAll(user model.UserAttrs) map[string]model.EvalData {
 	allDetails := c.configCatClient.Snapshot(mergedUser).GetAllValueDetails()
 	result := make(map[string]model.EvalData, len(allDetails))
 	for _, details := range allDetails {
-		result[details.Data.Key] = model.EvalData{Value: details.Value, VariationId: details.Data.VariationID, User: details.Data.User, Error: details.Data.Error}
+		result[details.Data.Key] = model.EvalData{Value: details.Value, VariationId: details.Data.VariationID, User: details.Data.User, Error: details.Data.Error,
+			IsTargeting: details.Data.MatchedPercentageOption != nil || details.Data.MatchedTargetingRule != nil}
 	}
 	return result
 }
@@ -215,31 +214,22 @@ func (c *client) GetCachedJson() *store.EntryWithEtag {
 	return c.cache.LoadEntry()
 }
 
-func (c *client) SubConfigChanged(id string) <-chan struct{} {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	sub, ok := c.subscriptions[id]
-	if !ok {
-		sub = make(chan struct{}, 1)
-		c.subscriptions[id] = sub
-	}
-	return sub
-}
-
-func (c *client) UnsubConfigChanged(id string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	delete(c.subscriptions, id)
-}
-
 func (c *client) Refresh() error {
 	return c.configCatClient.Refresh(c.ctx)
 }
 
 func (c *client) Ready() <-chan struct{} {
 	return c.configCatClient.Ready()
+}
+
+func (c *client) SdkKeys() (string, *string) {
+	secondary := c.sdkCtx.SecondarySdkKey.Load()
+	return c.sdkCtx.SDKConf.Key, secondary
+}
+
+func (c *client) SetSecondarySdkKey(sdkKey string) {
+	c.log.Debugf("setting secondary SDK key")
+	c.sdkCtx.SecondarySdkKey.Store(&sdkKey)
 }
 
 func (c *client) WebhookSigningKey() string {
@@ -258,7 +248,12 @@ func (c *client) Close() {
 	if notifier, ok := c.cache.(store.Notifier); ok {
 		notifier.Close()
 	}
+	c.Publisher.Close()
 	c.ctxCancel()
 	c.configCatClient.Close()
 	c.log.Reportf("shutdown complete")
+}
+
+func Version() string {
+	return proxyVersion
 }

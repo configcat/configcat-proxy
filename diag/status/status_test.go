@@ -74,6 +74,63 @@ func TestReporter_Online(t *testing.T) {
 		assert.Equal(t, NA, stat.Cache.Status)
 		assert.Equal(t, 0, len(stat.Cache.Records))
 	})
+	t.Run("2 sdks (1 ok, 1 down) degraded, then ok after remove faulty sdk", func(t *testing.T) {
+		reporter := NewEmptyReporter()
+		reporter.RegisterSdk("t1", &config.SDKConfig{})
+		reporter.RegisterSdk("t2", &config.SDKConfig{})
+		srv := httptest.NewServer(reporter.HttpHandler())
+		reporter.ReportOk("t1", "")
+		reporter.ReportError("t2", "")
+		stat := readStatus(srv.URL)
+
+		assert.Equal(t, Degraded, stat.Status)
+		assert.Equal(t, Healthy, stat.SDKs["t1"].Source.Status)
+		assert.Equal(t, Down, stat.SDKs["t2"].Source.Status)
+		assert.Equal(t, Online, stat.SDKs["t1"].Mode)
+		assert.Equal(t, Online, stat.SDKs["t2"].Mode)
+		assert.Equal(t, 1, len(stat.SDKs["t1"].Source.Records))
+		assert.Equal(t, 1, len(stat.SDKs["t2"].Source.Records))
+		assert.Equal(t, RemoteSrc, stat.SDKs["t1"].Source.Type)
+		assert.Equal(t, RemoteSrc, stat.SDKs["t2"].Source.Type)
+		assert.Equal(t, NA, stat.Cache.Status)
+		assert.Equal(t, 0, len(stat.Cache.Records))
+
+		reporter.RemoveSdk("t2")
+		stat = readStatus(srv.URL)
+
+		assert.Equal(t, Healthy, stat.Status)
+		assert.Equal(t, 1, len(stat.SDKs))
+		assert.Equal(t, Healthy, stat.SDKs["t1"].Source.Status)
+		assert.Equal(t, Online, stat.SDKs["t1"].Mode)
+		assert.Equal(t, 1, len(stat.SDKs["t1"].Source.Records))
+		assert.Equal(t, RemoteSrc, stat.SDKs["t1"].Source.Type)
+		assert.Equal(t, NA, stat.Cache.Status)
+		assert.Equal(t, 0, len(stat.Cache.Records))
+	})
+	t.Run("1 sdk, ok then remove", func(t *testing.T) {
+		reporter := NewEmptyReporter()
+		reporter.RegisterSdk("t1", &config.SDKConfig{})
+		srv := httptest.NewServer(reporter.HttpHandler())
+		reporter.ReportOk("t1", "")
+		stat := readStatus(srv.URL)
+
+		assert.Equal(t, Healthy, stat.Status)
+		assert.Equal(t, 1, len(stat.SDKs))
+		assert.Equal(t, Healthy, stat.SDKs["t1"].Source.Status)
+		assert.Equal(t, Online, stat.SDKs["t1"].Mode)
+		assert.Equal(t, 1, len(stat.SDKs["t1"].Source.Records))
+		assert.Equal(t, RemoteSrc, stat.SDKs["t1"].Source.Type)
+		assert.Equal(t, NA, stat.Cache.Status)
+		assert.Equal(t, 0, len(stat.Cache.Records))
+
+		reporter.RemoveSdk("t1")
+		stat = readStatus(srv.URL)
+
+		assert.Equal(t, Down, stat.Status)
+		assert.Equal(t, 0, len(stat.SDKs))
+		assert.Equal(t, NA, stat.Cache.Status)
+		assert.Equal(t, 0, len(stat.Cache.Records))
+	})
 	t.Run("max 5 records", func(t *testing.T) {
 		reporter := NewEmptyReporter()
 		reporter.RegisterSdk("t", &config.SDKConfig{})
@@ -131,6 +188,11 @@ func TestReporter_Key_Obfuscation(t *testing.T) {
 	stat := readStatus(srv.URL)
 
 	assert.Equal(t, "****************************************ovVnQ", stat.SDKs["t"].SdkKey)
+
+	reporter.UpdateSdk("t", &config.SDKConfig{Key: "XxPbCKmzIUGORk4vsufpzw/6ft7XQudcEuIXY49grZM9w"})
+	stat = readStatus(srv.URL)
+
+	assert.Equal(t, "****************************************rZM9w", stat.SDKs["t"].SdkKey)
 }
 
 func TestReporter_Offline(t *testing.T) {

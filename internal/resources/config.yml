@@ -1,9 +1,30 @@
-sdks:
-  sdk1:
+#sdks:
+#  sdk1:
+#    base_url: "https://test-cdn-global.configcat.com"
+#    key: "XxPbCKmzIUGORk4vsufpzw/iC_KABprDEueeQs3yovVnQ"
+#    poll_interval: 300
+#    webhook_signing_key: "configcat_whsk_Dj59sEWxRmm+84izQ8Cbn9o4Pnjz7E+/hxcmyfEVT+A="
+#
+
+
+
+
+profile:
+  key: 08ddb657-51e9-4b6a-848e-017939e290fe
+  base_url: "https://test-api.configcat.com"
+  poll_interval: 60
+  sdks:
     base_url: "https://test-cdn-global.configcat.com"
-    key: "XxPbCKmzIUGORk4vsufpzw/iC_KABprDEueeQs3yovVnQ"
-    poll_interval: 300
-    webhook_signing_key: "configcat_whsk_Dj59sEWxRmm+84izQ8Cbn9o4Pnjz7E+/hxcmyfEVT+A="
+  log:
+    level: "debug"
+
+offline:
+  enabled: true
+
+cache:
+  redis:
+    enabled: true
+    addresses: ["127.0.0.1:6379"]
 
 log:
   level: "error"
@@ -16,6 +37,7 @@ grpc:
 
 diag:
   enabled: true
+  port: 8091
 
 http:
   port: 8090

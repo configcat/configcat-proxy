@@ -18,6 +18,7 @@ func TestMongoDbStore(t *testing.T) {
 		Collection: "coll",
 	}, log.NewNullLogger())
 	defer store.Shutdown()
+	assert.NoError(t, err)
 
 	cacheEntry := configcatcache.CacheSegmentsToBytes(time.Now(), "etag", []byte(`test`))
 
@@ -46,6 +47,7 @@ func TestMongoDbStore_Empty(t *testing.T) {
 		Collection: "coll",
 	}, log.NewNullLogger())
 	defer store.Shutdown()
+	assert.NoError(t, err)
 
 	_, err = store.Get(context.Background(), "k2")
 	assert.Error(t, err)

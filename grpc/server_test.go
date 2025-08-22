@@ -5,8 +5,8 @@ import (
 	"github.com/configcat/configcat-proxy/diag/metrics"
 	"github.com/configcat/configcat-proxy/diag/status"
 	"github.com/configcat/configcat-proxy/internal/testutils"
-	"github.com/configcat/configcat-proxy/internal/utils"
 	"github.com/configcat/configcat-proxy/log"
+	"github.com/configcat/configcat-proxy/sdk"
 	"github.com/configcat/go-sdk/v9/configcattest"
 	"github.com/stretchr/testify/assert"
 	"net/http/httptest"
@@ -30,7 +30,7 @@ func TestNewServer(t *testing.T) {
 	defer sdkSrv.Close()
 
 	sdkConf := config.SDKConfig{BaseUrl: sdkSrv.URL, Key: key, PollInterval: 1}
-	reg := testutils.NewTestRegistrar(&sdkConf, nil)
+	reg := sdk.NewTestRegistrar(&sdkConf, nil)
 	conf := config.Config{Grpc: config.GrpcConfig{Port: 5061, HealthCheckEnabled: true, ServerReflectionEnabled: true, KeepAlive: config.KeepAliveConfig{Timeout: 10}}, SDKs: map[string]*config.SDKConfig{key: &sdkConf}}
 	defer reg.Close()
 
@@ -50,7 +50,7 @@ func TestNewServer(t *testing.T) {
 }
 
 func TestNewServer_TLS(t *testing.T) {
-	utils.UseTempFile(`
+	testutils.UseTempFile(`
 -----BEGIN CERTIFICATE-----
 MIICrzCCAZcCFDnpdKF+Pg1smjtIXrNdIgxGYEJfMA0GCSqGSIb3DQEBCwUAMBQx
 EjAQBgNVBAMMCWxvY2FsaG9zdDAeFw0yMzAzMDEyMTA2NThaFw0yNDAyMjkyMTA2
@@ -68,7 +68,7 @@ J03vcwPSwme4bKC/avAT2oDD7jLGLA+kuhMqHvVq7nXRzs46xyFPBBv7fBxXjPPG
 c89d0ISafKtZ9kIKaRrzu2HX+b0fzKr0vtHYDLtC1U5oU7GPB12eupERkmWYlhrw
 hDL3X7kt3jEZFkzGV1XL1IJx/g==
 -----END CERTIFICATE-----`, func(certFile string) {
-		utils.UseTempFile(`-----BEGIN PRIVATE KEY-----
+		testutils.UseTempFile(`-----BEGIN PRIVATE KEY-----
 MIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQDokw043wD7ySw2
 dpsDb7tKaIUhz0c832UXNeolSOvhEpdA8I3Y5chERTv7bNRkJ4RNoIMpL6MR+M1M
 tTgp40yfjJta8o8uBuWSCCyBfTHxXMpmuf+V3aDk3A692Q0wMBWmmymCorKFTBwC
@@ -116,7 +116,7 @@ MK4Li/LGWcksyoF+hbPNXMFCIA==
 			defer sdkSrv.Close()
 
 			sdkConf := config.SDKConfig{BaseUrl: sdkSrv.URL, Key: key, PollInterval: 1}
-			reg := testutils.NewTestRegistrar(&sdkConf, nil)
+			reg := sdk.NewTestRegistrar(&sdkConf, nil)
 			conf := config.Config{Grpc: config.GrpcConfig{Port: 5062}, Tls: tlsConf, SDKs: map[string]*config.SDKConfig{key: &sdkConf}}
 			defer reg.Close()
 
@@ -157,7 +157,7 @@ func TestNewServer_TLS_Missing_Cert(t *testing.T) {
 	defer sdkSrv.Close()
 
 	sdkConf := config.SDKConfig{BaseUrl: sdkSrv.URL, Key: key, PollInterval: 1}
-	reg := testutils.NewTestRegistrar(&sdkConf, nil)
+	reg := sdk.NewTestRegistrar(&sdkConf, nil)
 	conf := config.Config{Grpc: config.GrpcConfig{Port: 5063}, Tls: tlsConf, SDKs: map[string]*config.SDKConfig{key: &sdkConf}}
 	defer reg.Close()
 

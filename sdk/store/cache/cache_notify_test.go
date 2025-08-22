@@ -5,7 +5,7 @@ import (
 	"github.com/alicebob/miniredis/v2"
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/diag/status"
-	"github.com/configcat/configcat-proxy/internal/utils"
+	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/go-sdk/v9/configcatcache"
 	"github.com/stretchr/testify/assert"
@@ -26,7 +26,7 @@ func TestRedisNotify(t *testing.T) {
 	cacheEntry := configcatcache.CacheSegmentsToBytes(time.Now(), "etag", []byte(`{"f":{"flag":{"v":{"b":true}}},"p":null}`))
 	err = s.Set(cacheKey, string(cacheEntry))
 	assert.NoError(t, err)
-	utils.WithTimeout(2*time.Second, func() {
+	testutils.WithTimeout(2*time.Second, func() {
 		<-srv.Modified()
 	})
 	s.CheckGet(t, cacheKey, string(cacheEntry))
@@ -35,8 +35,8 @@ func TestRedisNotify(t *testing.T) {
 	res, err := srv.Get(context.Background(), "")
 	_, _, j, _ := configcatcache.CacheSegmentsFromBytes(res)
 	assert.NoError(t, err)
-	assert.Equal(t, `{"f":{"flag":{"a":"","i":"","v":{"b":true,"s":null,"i":null,"d":null},"t":0,"r":null,"p":null}},"s":null,"p":null}`, string(j))
-	assert.Equal(t, `{"f":{"flag":{"a":"","i":"","v":{"b":true,"s":null,"i":null,"d":null},"t":0,"r":null,"p":null}},"s":null,"p":null}`, string(r.LoadEntry().ConfigJson))
+	assert.Equal(t, `{"f":{"flag":{"v":{"b":true}}},"p":null}`, string(j))
+	assert.Equal(t, `{"f":{"flag":{"v":{"b":true}}},"p":null}`, string(r.LoadEntry().ConfigJson))
 }
 
 func TestRedisNotify_Initial(t *testing.T) {
@@ -54,8 +54,8 @@ func TestRedisNotify_Initial(t *testing.T) {
 	res, err := srv.Get(context.Background(), "")
 	_, _, j, _ := configcatcache.CacheSegmentsFromBytes(res)
 	assert.NoError(t, err)
-	assert.Equal(t, `{"f":{"flag":{"a":"","i":"","v":{"b":true,"s":null,"i":null,"d":null},"t":0,"r":null,"p":null}},"s":null,"p":null}`, string(j))
-	assert.Equal(t, `{"f":{"flag":{"a":"","i":"","v":{"b":true,"s":null,"i":null,"d":null},"t":0,"r":null,"p":null}},"s":null,"p":null}`, string(r.LoadEntry().ConfigJson))
+	assert.Equal(t, `{"f":{"flag":{"v":{"b":true}}},"p":null}`, string(j))
+	assert.Equal(t, `{"f":{"flag":{"v":{"b":true}}},"p":null}`, string(r.LoadEntry().ConfigJson))
 }
 
 func TestRedisNotify_Notify(t *testing.T) {
@@ -73,19 +73,19 @@ func TestRedisNotify_Notify(t *testing.T) {
 	res, err := srv.Get(context.Background(), "")
 	_, _, j, _ := configcatcache.CacheSegmentsFromBytes(res)
 	assert.NoError(t, err)
-	assert.Equal(t, `{"f":{"flag":{"a":"","i":"","v":{"b":false,"s":null,"i":null,"d":null},"t":0,"r":null,"p":null}},"s":null,"p":null}`, string(j))
-	assert.Equal(t, `{"f":{"flag":{"a":"","i":"","v":{"b":false,"s":null,"i":null,"d":null},"t":0,"r":null,"p":null}},"s":null,"p":null}`, string(r.LoadEntry().ConfigJson))
+	assert.Equal(t, `{"f":{"flag":{"v":{"b":false}}},"p":null}`, string(j))
+	assert.Equal(t, `{"f":{"flag":{"v":{"b":false}}},"p":null}`, string(r.LoadEntry().ConfigJson))
 
 	cacheEntry = configcatcache.CacheSegmentsToBytes(time.Now(), "etag2", []byte(`{"f":{"flag":{"v":{"b":true}}},"p":null}`))
 	err = s.Set(cacheKey, string(cacheEntry))
-	utils.WithTimeout(2*time.Second, func() {
+	testutils.WithTimeout(2*time.Second, func() {
 		<-srv.Modified()
 	})
 	res, err = srv.Get(context.Background(), "")
 	_, _, j, _ = configcatcache.CacheSegmentsFromBytes(res)
 	assert.NoError(t, err)
-	assert.Equal(t, `{"f":{"flag":{"a":"","i":"","v":{"b":true,"s":null,"i":null,"d":null},"t":0,"r":null,"p":null}},"s":null,"p":null}`, string(j))
-	assert.Equal(t, `{"f":{"flag":{"a":"","i":"","v":{"b":true,"s":null,"i":null,"d":null},"t":0,"r":null,"p":null}},"s":null,"p":null}`, string(r.LoadEntry().ConfigJson))
+	assert.Equal(t, `{"f":{"flag":{"v":{"b":true}}},"p":null}`, string(j))
+	assert.Equal(t, `{"f":{"flag":{"v":{"b":true}}},"p":null}`, string(r.LoadEntry().ConfigJson))
 }
 
 func TestRedisNotify_BadJson(t *testing.T) {
@@ -194,9 +194,9 @@ func TestRedisNotify_Close(t *testing.T) {
 	go func() {
 		srv.Close()
 	}()
-	utils.WithTimeout(2*time.Second, func() {
+	testutils.WithTimeout(2*time.Second, func() {
 		select {
-		case <-srv.Closed():
+		case <-srv.Context().Done():
 		case <-srv.Modified():
 		}
 	})
@@ -209,6 +209,14 @@ type testReporter struct {
 }
 
 func (r *testReporter) RegisterSdk(_ string, _ *config.SDKConfig) {
+	// do nothing
+}
+
+func (r *testReporter) UpdateSdk(_ string, _ *config.SDKConfig) {
+	// do nothing
+}
+
+func (r *testReporter) RemoveSdk(_ string) {
 	// do nothing
 }
 

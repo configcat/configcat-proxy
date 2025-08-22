@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/diag/status"
-	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/log"
+	"github.com/configcat/configcat-proxy/sdk"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
@@ -14,7 +14,7 @@ import (
 
 func TestWebhook_BasicAuth(t *testing.T) {
 	router := newWebhookRouter(t, config.WebhookConfig{Enabled: true, Auth: config.AuthConfig{User: "user", Password: "pass"}})
-	srv := httptest.NewServer(router.Handler())
+	srv := httptest.NewServer(router)
 
 	t.Run("missing auth", func(t *testing.T) {
 		resp, _ := http.Get(fmt.Sprintf("%s/hook/test", srv.URL))
@@ -42,7 +42,7 @@ func TestWebhook_BasicAuth(t *testing.T) {
 
 func TestWebhook_HeaderAuth(t *testing.T) {
 	router := newWebhookRouter(t, config.WebhookConfig{Enabled: true, AuthHeaders: map[string]string{"X-AUTH": "key"}})
-	srv := httptest.NewServer(router.Handler())
+	srv := httptest.NewServer(router)
 
 	t.Run("missing auth", func(t *testing.T) {
 		resp, _ := http.Get(fmt.Sprintf("%s/hook/test", srv.URL))
@@ -70,35 +70,63 @@ func TestWebhook_HeaderAuth(t *testing.T) {
 
 func TestWebhook_NotAllowed(t *testing.T) {
 	router := newWebhookRouter(t, config.WebhookConfig{Enabled: true, AuthHeaders: map[string]string{"X-AUTH": "key"}})
-	srv := httptest.NewServer(router.Handler())
+	srv := httptest.NewServer(router)
 
 	t.Run("put", func(t *testing.T) {
-		req, _ := http.NewRequest(http.MethodPut, fmt.Sprintf("%s/hook/test", srv.URL), http.NoBody)
-		req.Header.Set("X-AUTH", "key")
-		resp, _ := http.DefaultClient.Do(req)
-		assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
+		t.Run("sdk id", func(t *testing.T) {
+			req, _ := http.NewRequest(http.MethodPut, fmt.Sprintf("%s/hook/test", srv.URL), http.NoBody)
+			req.Header.Set("X-AUTH", "key")
+			resp, _ := http.DefaultClient.Do(req)
+			assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
+		})
+		t.Run("test endpoint", func(t *testing.T) {
+			req, _ := http.NewRequest(http.MethodPut, fmt.Sprintf("%s/hook-test", srv.URL), http.NoBody)
+			resp, _ := http.DefaultClient.Do(req)
+			assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
+		})
 	})
 	t.Run("patch", func(t *testing.T) {
-		req, _ := http.NewRequest(http.MethodPatch, fmt.Sprintf("%s/hook/test", srv.URL), http.NoBody)
-		req.Header.Set("X-AUTH", "key")
-		resp, _ := http.DefaultClient.Do(req)
-		assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
+		t.Run("sdk id", func(t *testing.T) {
+			req, _ := http.NewRequest(http.MethodPatch, fmt.Sprintf("%s/hook/test", srv.URL), http.NoBody)
+			req.Header.Set("X-AUTH", "key")
+			resp, _ := http.DefaultClient.Do(req)
+			assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
+		})
+		t.Run("test endpoint", func(t *testing.T) {
+			req, _ := http.NewRequest(http.MethodPatch, fmt.Sprintf("%s/hook-test", srv.URL), http.NoBody)
+			resp, _ := http.DefaultClient.Do(req)
+			assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
+		})
 	})
 	t.Run("delete", func(t *testing.T) {
-		req, _ := http.NewRequest(http.MethodDelete, fmt.Sprintf("%s/hook/test", srv.URL), http.NoBody)
-		req.Header.Set("X-AUTH", "key")
-		resp, _ := http.DefaultClient.Do(req)
-		assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
+		t.Run("sdk id", func(t *testing.T) {
+			req, _ := http.NewRequest(http.MethodDelete, fmt.Sprintf("%s/hook/test", srv.URL), http.NoBody)
+			req.Header.Set("X-AUTH", "key")
+			resp, _ := http.DefaultClient.Do(req)
+			assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
+		})
+		t.Run("test endpoint", func(t *testing.T) {
+			req, _ := http.NewRequest(http.MethodDelete, fmt.Sprintf("%s/hook-test", srv.URL), http.NoBody)
+			resp, _ := http.DefaultClient.Do(req)
+			assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
+		})
 	})
 	t.Run("options", func(t *testing.T) {
-		req, _ := http.NewRequest(http.MethodOptions, fmt.Sprintf("%s/hook/test", srv.URL), http.NoBody)
-		req.Header.Set("X-AUTH", "key")
-		resp, _ := http.DefaultClient.Do(req)
-		assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
+		t.Run("sdk id", func(t *testing.T) {
+			req, _ := http.NewRequest(http.MethodOptions, fmt.Sprintf("%s/hook/test", srv.URL), http.NoBody)
+			req.Header.Set("X-AUTH", "key")
+			resp, _ := http.DefaultClient.Do(req)
+			assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
+		})
+		t.Run("test endpoint", func(t *testing.T) {
+			req, _ := http.NewRequest(http.MethodOptions, fmt.Sprintf("%s/hook-test", srv.URL), http.NoBody)
+			resp, _ := http.DefaultClient.Do(req)
+			assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
+		})
 	})
 }
 
 func newWebhookRouter(t *testing.T, conf config.WebhookConfig) *HttpRouter {
-	reg, _, _ := testutils.NewTestRegistrarT(t)
-	return NewRouter(reg, nil, status.NewEmptyReporter(), &config.HttpConfig{Webhook: conf}, log.NewNullLogger())
+	reg, _, _ := sdk.NewTestRegistrarT(t)
+	return NewRouter(reg, nil, status.NewEmptyReporter(), &config.HttpConfig{Webhook: conf}, &config.ProfileConfig{}, log.NewNullLogger())
 }

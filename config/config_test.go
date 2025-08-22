@@ -2,7 +2,7 @@ package config
 
 import (
 	"crypto/tls"
-	"github.com/configcat/configcat-proxy/internal/utils"
+	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -59,11 +59,16 @@ func TestConfig_Defaults(t *testing.T) {
 	assert.Equal(t, uint16(tls.VersionTLS12), conf.Cache.Redis.Tls.GetVersion())
 	assert.Equal(t, uint16(tls.VersionTLS12), conf.Cache.MongoDb.Tls.GetVersion())
 
+	assert.Equal(t, "https://api.configcat.com", conf.Profile.BaseUrl)
+
+	assert.Equal(t, 300, conf.Profile.PollInterval)
+	assert.Equal(t, 300, conf.Profile.WebhookSignatureValidFor)
+
 	assert.Nil(t, conf.DefaultAttrs)
 }
 
 func TestConfig_DefaultAttrs(t *testing.T) {
-	utils.UseTempFile(`
+	testutils.UseTempFile(`
 sdks:
   test_sdk:
     key: key
@@ -77,7 +82,7 @@ sdks:
 
 func TestConfig_LogLevelFixup(t *testing.T) {
 	t.Run("valid base level", func(t *testing.T) {
-		utils.UseTempFile(`
+		testutils.UseTempFile(`
 sdks:
   test_sdk:
     key: key
@@ -94,11 +99,12 @@ log:
 			assert.Equal(t, log.Info, conf.Http.Sse.Log.GetLevel())
 			assert.Equal(t, log.Info, conf.Grpc.Log.GetLevel())
 			assert.Equal(t, log.Info, conf.GlobalOfflineConfig.Log.GetLevel())
+			assert.Equal(t, log.Info, conf.Profile.Log.GetLevel())
 		})
 	})
 
 	t.Run("invalid base level", func(t *testing.T) {
-		utils.UseTempFile(`
+		testutils.UseTempFile(`
 sdks:
   test_sdk:
     key: key
@@ -119,7 +125,7 @@ log:
 	})
 
 	t.Run("overrides", func(t *testing.T) {
-		utils.UseTempFile(`
+		testutils.UseTempFile(`
 log:
   level: "error"
 sdks:
@@ -158,7 +164,7 @@ offline:
 }
 
 func TestSDKConfig_YAML(t *testing.T) {
-	utils.UseTempFile(`
+	testutils.UseTempFile(`
 sdks:
   test_sdk:
     base_url: "base"
@@ -214,8 +220,39 @@ sdks:
 	})
 }
 
+func TestConfig_AutoSDKs(t *testing.T) {
+	testutils.UseTempFile(`
+profile:
+  key: key
+  secret: secret
+  base_url: "https://base.com"
+  poll_interval: 300
+  webhook_signing_key: "key"
+  webhook_signature_valid_for: 600
+  log:
+    level: "debug"
+  sdks:
+    base_url: "https://sdk-base.com"
+    log:
+      level: "debug"
+`, func(file string) {
+		conf, err := LoadConfigFromFileAndEnvironment(file)
+		require.NoError(t, err)
+
+		assert.Equal(t, "key", conf.Profile.Key)
+		assert.Equal(t, "secret", conf.Profile.Secret)
+		assert.Equal(t, "https://base.com", conf.Profile.BaseUrl)
+		assert.Equal(t, "https://sdk-base.com", conf.Profile.SDKs.BaseUrl)
+		assert.Equal(t, log.Debug, conf.Profile.SDKs.Log.GetLevel())
+		assert.Equal(t, 300, conf.Profile.PollInterval)
+		assert.Equal(t, "key", conf.Profile.WebhookSigningKey)
+		assert.Equal(t, 600, conf.Profile.WebhookSignatureValidFor)
+		assert.Equal(t, log.Debug, conf.Profile.Log.GetLevel())
+	})
+}
+
 func TestSDKWithGlobalOffline_YAML(t *testing.T) {
-	utils.UseTempFile(`
+	testutils.UseTempFile(`
 sdks:
   test_sdk_1:
     poll_interval: 30
@@ -257,7 +294,7 @@ offline:
 }
 
 func TestSDKWithGlobalOfflineAndEnv_YAML(t *testing.T) {
-	utils.UseTempFile(`
+	testutils.UseTempFile(`
 sdks:
   test_sdk_1:
     poll_interval: 30
@@ -297,7 +334,7 @@ sdks:
 }
 
 func TestRedisConfig_YAML(t *testing.T) {
-	utils.UseTempFile(`
+	testutils.UseTempFile(`
 cache:
   redis:
     enabled: true
@@ -335,7 +372,7 @@ cache:
 }
 
 func TestMongoDbConfig_YAML(t *testing.T) {
-	utils.UseTempFile(`
+	testutils.UseTempFile(`
 cache:
   mongodb:
     enabled: true
@@ -370,7 +407,7 @@ cache:
 }
 
 func TestDynamoDbConfig_YAML(t *testing.T) {
-	utils.UseTempFile(`
+	testutils.UseTempFile(`
 cache:
   dynamodb:
     enabled: true
@@ -387,7 +424,7 @@ cache:
 }
 
 func TestGlobalOfflineConfig_YAML(t *testing.T) {
-	utils.UseTempFile(`
+	testutils.UseTempFile(`
 offline:
   enabled: true
   cache_poll_interval: 200
@@ -404,7 +441,7 @@ offline:
 }
 
 func TestTlsConfig_YAML(t *testing.T) {
-	utils.UseTempFile(`
+	testutils.UseTempFile(`
 tls: 
   enabled: true
   min_version: 1.1
@@ -429,7 +466,7 @@ tls:
 }
 
 func TestLogConfig_YAML(t *testing.T) {
-	utils.UseTempFile(`
+	testutils.UseTempFile(`
 log:
   level: "error"
 `, func(file string) {
@@ -441,7 +478,7 @@ log:
 }
 
 func TestDiagConfig_YAML(t *testing.T) {
-	utils.UseTempFile(`
+	testutils.UseTempFile(`
 diag:
   enabled: false
   port: 8091
@@ -461,7 +498,7 @@ diag:
 }
 
 func TestHttpConfig_YAML(t *testing.T) {
-	utils.UseTempFile(`
+	testutils.UseTempFile(`
 http:
   enabled: true
   port: 8090
@@ -490,6 +527,19 @@ http:
     auth_headers:
       X-API-KEY1: "api-auth1"
       X-API-KEY2: "api-auth2"
+    cors: 
+      enabled: true
+      allowed_origins:
+        - https://example1.com
+        - https://example2.com
+  ofrep:
+    enabled: true
+    headers:
+      CUSTOM-HEADER1: "ofrep-val1"
+      CUSTOM-HEADER2: "ofrep-val2"
+    auth_headers:
+      X-API-KEY1: "ofrep-auth1"
+      X-API-KEY2: "ofrep-auth2"
     cors: 
       enabled: true
       allowed_origins:
@@ -541,12 +591,21 @@ http:
 		assert.Equal(t, "api-auth1", conf.Http.Api.AuthHeaders["X-API-KEY1"])
 		assert.Equal(t, "api-auth2", conf.Http.Api.AuthHeaders["X-API-KEY2"])
 
+		assert.True(t, conf.Http.OFREP.Enabled)
+		assert.True(t, conf.Http.OFREP.CORS.Enabled)
+		assert.Equal(t, "https://example1.com", conf.Http.OFREP.CORS.AllowedOrigins[0])
+		assert.Equal(t, "https://example2.com", conf.Http.OFREP.CORS.AllowedOrigins[1])
+		assert.Equal(t, "ofrep-val1", conf.Http.OFREP.Headers["CUSTOM-HEADER1"])
+		assert.Equal(t, "ofrep-val2", conf.Http.OFREP.Headers["CUSTOM-HEADER2"])
+		assert.Equal(t, "ofrep-auth1", conf.Http.OFREP.AuthHeaders["X-API-KEY1"])
+		assert.Equal(t, "ofrep-auth2", conf.Http.OFREP.AuthHeaders["X-API-KEY2"])
+
 		assert.True(t, conf.Http.Status.Enabled)
 	})
 }
 
 func TestCORSConfig_YAML(t *testing.T) {
-	utils.UseTempFile(`
+	testutils.UseTempFile(`
 http:
   cdn_proxy:
     cors: 
@@ -591,7 +650,7 @@ http:
 }
 
 func TestCORSConfigInvalidRegex_YAML(t *testing.T) {
-	utils.UseTempFile(`
+	testutils.UseTempFile(`
 http:
   sse:
     cors: 
@@ -607,7 +666,7 @@ http:
 }
 
 func TestGrpcConfig_YAML(t *testing.T) {
-	utils.UseTempFile(`
+	testutils.UseTempFile(`
 grpc:
   enabled: true
   port: 8060
@@ -639,7 +698,7 @@ grpc:
 }
 
 func TestHttpProxyConfig_YAML(t *testing.T) {
-	utils.UseTempFile(`
+	testutils.UseTempFile(`
 http_proxy:
   url: "proxy-url"
 `, func(file string) {
@@ -651,7 +710,7 @@ http_proxy:
 }
 
 func TestDefaultAttributesConfig_YAML(t *testing.T) {
-	utils.UseTempFile(`
+	testutils.UseTempFile(`
 default_user_attributes:
   attr_1: "attr_value1"
   attr2: "attr_value2"
@@ -703,7 +762,7 @@ func TestGrpcConfig_KeepAlive(t *testing.T) {
 
 func TestTlsConfig_LoadTlsOptions(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
-		utils.UseTempFile(`
+		testutils.UseTempFile(`
 -----BEGIN CERTIFICATE-----
 MIICrzCCAZcCFDnpdKF+Pg1smjtIXrNdIgxGYEJfMA0GCSqGSIb3DQEBCwUAMBQx
 EjAQBgNVBAMMCWxvY2FsaG9zdDAeFw0yMzAzMDEyMTA2NThaFw0yNDAyMjkyMTA2
@@ -721,7 +780,7 @@ J03vcwPSwme4bKC/avAT2oDD7jLGLA+kuhMqHvVq7nXRzs46xyFPBBv7fBxXjPPG
 c89d0ISafKtZ9kIKaRrzu2HX+b0fzKr0vtHYDLtC1U5oU7GPB12eupERkmWYlhrw
 hDL3X7kt3jEZFkzGV1XL1IJx/g==
 -----END CERTIFICATE-----`, func(cert string) {
-			utils.UseTempFile(`-----BEGIN PRIVATE KEY-----
+			testutils.UseTempFile(`-----BEGIN PRIVATE KEY-----
 MIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQDokw043wD7ySw2
 dpsDb7tKaIUhz0c832UXNeolSOvhEpdA8I3Y5chERTv7bNRkJ4RNoIMpL6MR+M1M
 tTgp40yfjJta8o8uBuWSCCyBfTHxXMpmuf+V3aDk3A692Q0wMBWmmymCorKFTBwC

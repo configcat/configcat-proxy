@@ -6,11 +6,12 @@ import (
 	"fmt"
 	"github.com/alicebob/miniredis/v2"
 	"github.com/configcat/configcat-proxy/config"
-	"github.com/configcat/configcat-proxy/diag/status"
+	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/internal/utils"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/model"
 	"github.com/configcat/configcat-proxy/sdk/statistics"
+	"github.com/configcat/configcat-proxy/sdk/store"
 	"github.com/configcat/configcat-proxy/sdk/store/cache"
 	configcat "github.com/configcat/go-sdk/v9"
 	"github.com/configcat/go-sdk/v9/configcatcache"
@@ -32,10 +33,11 @@ func TestSdk_Signal(t *testing.T) {
 	srv := httptest.NewServer(&h)
 	defer srv.Close()
 
-	ctx := newTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key, PollInterval: 1}, nil)
+	ctx := NewTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key, PollInterval: 1}, nil)
 	client := NewClient(ctx, log.NewNullLogger())
 	defer client.Close()
-	sub := client.SubConfigChanged("id")
+	sub := make(chan struct{})
+	client.Subscribe(sub)
 	data := client.Eval("flag", nil)
 	j := client.GetCachedJson()
 	assert.NoError(t, data.Error)
@@ -48,7 +50,7 @@ func TestSdk_Signal(t *testing.T) {
 			Default: false,
 		},
 	})
-	utils.WithTimeout(2*time.Second, func() {
+	testutils.WithTimeout(2*time.Second, func() {
 		<-sub
 	})
 	data = client.Eval("flag", nil)
@@ -70,10 +72,10 @@ func TestSdk_Ready_Online(t *testing.T) {
 	srv := httptest.NewServer(&h)
 	defer srv.Close()
 
-	ctx := newTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key}, nil)
+	ctx := NewTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key}, nil)
 	client := NewClient(ctx, log.NewNullLogger())
 	defer client.Close()
-	utils.WithTimeout(2*time.Second, func() {
+	testutils.WithTimeout(2*time.Second, func() {
 		<-client.Ready()
 	})
 	j := client.GetCachedJson()
@@ -82,11 +84,11 @@ func TestSdk_Ready_Online(t *testing.T) {
 }
 
 func TestSdk_Ready_Offline(t *testing.T) {
-	utils.UseTempFile(`{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true},"t":0}}}`, func(path string) {
-		ctx := newTestSdkContext(&config.SDKConfig{Key: "key", Offline: config.OfflineConfig{Enabled: true, Local: config.LocalConfig{FilePath: path}}}, nil)
+	testutils.UseTempFile(`{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true},"t":0}}}`, func(path string) {
+		ctx := NewTestSdkContext(&config.SDKConfig{Key: "key", Offline: config.OfflineConfig{Enabled: true, Local: config.LocalConfig{FilePath: path}}}, nil)
 		client := NewClient(ctx, log.NewNullLogger())
 		defer client.Close()
-		utils.WithTimeout(2*time.Second, func() {
+		testutils.WithTimeout(2*time.Second, func() {
 			<-client.Ready()
 		})
 		j := client.GetCachedJson()
@@ -106,10 +108,11 @@ func TestSdk_Signal_Refresh(t *testing.T) {
 	srv := httptest.NewServer(&h)
 	defer srv.Close()
 
-	ctx := newTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key}, nil)
+	ctx := NewTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key}, nil)
 	client := NewClient(ctx, log.NewNullLogger())
 	defer client.Close()
-	sub := client.SubConfigChanged("id")
+	sub := make(chan struct{})
+	client.Subscribe(sub)
 	data := client.Eval("flag", nil)
 	j := client.GetCachedJson()
 	assert.NoError(t, data.Error)
@@ -123,7 +126,7 @@ func TestSdk_Signal_Refresh(t *testing.T) {
 		},
 	})
 	_ = client.Refresh()
-	utils.WithTimeout(2*time.Second, func() {
+	testutils.WithTimeout(2*time.Second, func() {
 		<-sub
 	})
 	data = client.Eval("flag", nil)
@@ -141,7 +144,7 @@ func TestSdk_BadConfig(t *testing.T) {
 	srv := httptest.NewServer(&h)
 	defer srv.Close()
 
-	ctx := newTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key, Log: config.LogConfig{Level: "debug"}}, nil)
+	ctx := NewTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key, Log: config.LogConfig{Level: "debug"}}, nil)
 	client := NewClient(ctx, log.NewDebugLogger())
 	defer client.Close()
 	data := client.Eval("flag", nil)
@@ -165,7 +168,7 @@ func TestSdk_BadConfig_WithCache(t *testing.T) {
 	err := s.Set(cacheKey, string(cacheEntry))
 	assert.NoError(t, err)
 
-	ctx := newTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key, Log: config.LogConfig{Level: "debug"}}, newRedisCache(s.Addr()))
+	ctx := NewTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key, Log: config.LogConfig{Level: "debug"}}, newRedisCache(s.Addr()))
 	client := NewClient(ctx, log.NewDebugLogger())
 	defer client.Close()
 	data := client.Eval("flag", nil)
@@ -177,11 +180,12 @@ func TestSdk_BadConfig_WithCache(t *testing.T) {
 }
 
 func TestSdk_Signal_Offline_File_Watch(t *testing.T) {
-	utils.UseTempFile(`{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true},"t":0}}}`, func(path string) {
-		ctx := newTestSdkContext(&config.SDKConfig{Key: "key", Offline: config.OfflineConfig{Enabled: true, Local: config.LocalConfig{FilePath: path}}}, nil)
+	testutils.UseTempFile(`{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true},"t":0}}}`, func(path string) {
+		ctx := NewTestSdkContext(&config.SDKConfig{Key: "key", Offline: config.OfflineConfig{Enabled: true, Local: config.LocalConfig{FilePath: path}}}, nil)
 		client := NewClient(ctx, log.NewNullLogger())
 		defer client.Close()
-		sub := client.SubConfigChanged("id")
+		sub := make(chan struct{})
+		client.Subscribe(sub)
 		data := client.Eval("flag", nil)
 		j := client.GetCachedJson()
 		assert.NoError(t, data.Error)
@@ -189,8 +193,8 @@ func TestSdk_Signal_Offline_File_Watch(t *testing.T) {
 		assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true,"s":null,"i":null,"d":null},"t":0,"r":null,"p":null}},"s":null,"p":null}`, string(j.ConfigJson))
 		assert.Equal(t, fmt.Sprintf("W/\"%s\"", utils.FastHashHex(j.ConfigJson)), j.ETag)
 
-		utils.WriteIntoFile(path, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":false},"t":0}}}`)
-		utils.WithTimeout(2*time.Second, func() {
+		testutils.WriteIntoFile(path, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":false},"t":0}}}`)
+		testutils.WithTimeout(2*time.Second, func() {
 			<-sub
 		})
 		data = client.Eval("flag", nil)
@@ -203,11 +207,12 @@ func TestSdk_Signal_Offline_File_Watch(t *testing.T) {
 }
 
 func TestSdk_Signal_Offline_Poll_Watch(t *testing.T) {
-	utils.UseTempFile(`{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true},"t":0}}}`, func(path string) {
-		ctx := newTestSdkContext(&config.SDKConfig{Key: "key", Offline: config.OfflineConfig{Enabled: true, Local: config.LocalConfig{FilePath: path, Polling: true, PollInterval: 1}}}, nil)
+	testutils.UseTempFile(`{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true},"t":0}}}`, func(path string) {
+		ctx := NewTestSdkContext(&config.SDKConfig{Key: "key", Offline: config.OfflineConfig{Enabled: true, Local: config.LocalConfig{FilePath: path, Polling: true, PollInterval: 1}}}, nil)
 		client := NewClient(ctx, log.NewNullLogger())
 		defer client.Close()
-		sub := client.SubConfigChanged("id")
+		sub := make(chan struct{})
+		client.Subscribe(sub)
 		data := client.Eval("flag", nil)
 		j := client.GetCachedJson()
 		assert.NoError(t, data.Error)
@@ -215,8 +220,8 @@ func TestSdk_Signal_Offline_Poll_Watch(t *testing.T) {
 		assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true,"s":null,"i":null,"d":null},"t":0,"r":null,"p":null}},"s":null,"p":null}`, string(j.ConfigJson))
 		assert.Equal(t, fmt.Sprintf("W/\"%s\"", utils.FastHashHex(j.ConfigJson)), j.ETag)
 
-		utils.WriteIntoFile(path, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":false},"t":0}}}`)
-		utils.WithTimeout(2*time.Second, func() {
+		testutils.WriteIntoFile(path, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":false},"t":0}}}`)
+		testutils.WithTimeout(2*time.Second, func() {
 			<-sub
 		})
 		data = client.Eval("flag", nil)
@@ -235,51 +240,32 @@ func TestSdk_Signal_Offline_Redis_Watch(t *testing.T) {
 	cacheEntry := configcatcache.CacheSegmentsToBytes(time.Now(), "etag", []byte(`{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true},"t":0}}}`))
 	_ = s.Set(cacheKey, string(cacheEntry))
 
-	ctx := newTestSdkContext(&config.SDKConfig{
+	ctx := NewTestSdkContext(&config.SDKConfig{
 		Key:     sdkKey,
 		Offline: config.OfflineConfig{Enabled: true, UseCache: true, CachePollInterval: 1},
 	}, newRedisCache(s.Addr()))
 	client := NewClient(ctx, log.NewNullLogger())
 	defer client.Close()
-	sub := client.SubConfigChanged("id")
+	sub := make(chan struct{})
+	client.Subscribe(sub)
 	data := client.Eval("flag", nil)
 	j := client.GetCachedJson()
 	assert.NoError(t, data.Error)
 	assert.True(t, data.Value.(bool))
-	assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true,"s":null,"i":null,"d":null},"t":0,"r":null,"p":null}},"s":null,"p":null}`, string(j.ConfigJson))
+	assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true},"t":0}}}`, string(j.ConfigJson))
 	assert.Equal(t, "etag", j.ETag)
 
 	cacheEntry = configcatcache.CacheSegmentsToBytes(time.Now(), "etag2", []byte(`{"f":{"flag":{"a":"","i":"v_flag","v":{"b":false},"t":0}}}`))
 	_ = s.Set(cacheKey, string(cacheEntry))
-	utils.WithTimeout(2*time.Second, func() {
+	testutils.WithTimeout(2*time.Second, func() {
 		<-sub
 	})
 	data = client.Eval("flag", nil)
 	j = client.GetCachedJson()
 	assert.NoError(t, data.Error)
 	assert.False(t, data.Value.(bool))
-	assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":false,"s":null,"i":null,"d":null},"t":0,"r":null,"p":null}},"s":null,"p":null}`, string(j.ConfigJson))
+	assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":false},"t":0}}}`, string(j.ConfigJson))
 	assert.Equal(t, "etag2", j.ETag)
-}
-
-func TestSdk_Sub_Unsub(t *testing.T) {
-	key := configcattest.RandomSDKKey()
-	var h configcattest.Handler
-	_ = h.SetFlags(key, map[string]*configcattest.Flag{
-		"flag": {
-			Default: true,
-		},
-	})
-	srv := httptest.NewServer(&h)
-	defer srv.Close()
-
-	ctx := newTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key, PollInterval: 1}, nil)
-	client := NewClient(ctx, log.NewNullLogger()).(*client)
-	defer client.Close()
-	_ = client.SubConfigChanged("id")
-	assert.NotEmpty(t, client.subscriptions)
-	client.UnsubConfigChanged("id")
-	assert.Empty(t, client.subscriptions)
 }
 
 func TestSdk_EvalAll(t *testing.T) {
@@ -296,7 +282,7 @@ func TestSdk_EvalAll(t *testing.T) {
 	srv := httptest.NewServer(&h)
 	defer srv.Close()
 
-	ctx := newTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key}, nil)
+	ctx := NewTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key}, nil)
 	client := NewClient(ctx, log.NewNullLogger())
 	defer client.Close()
 
@@ -304,6 +290,42 @@ func TestSdk_EvalAll(t *testing.T) {
 	assert.Equal(t, 2, len(details))
 	assert.Equal(t, "v1", details["flag1"].Value)
 	assert.Equal(t, "v2", details["flag2"].Value)
+	assert.False(t, details["flag1"].IsTargeting)
+	assert.False(t, details["flag2"].IsTargeting)
+	assert.Nil(t, details["flag1"].Error)
+	assert.Nil(t, details["flag2"].Error)
+}
+
+func TestSdk_EvalAll_Targeting(t *testing.T) {
+	key := configcattest.RandomSDKKey()
+	var h configcattest.Handler
+	_ = h.SetFlags(key, map[string]*configcattest.Flag{
+		"flag1": {
+			Default: "v1",
+			Rules: []configcattest.Rule{{
+				Value:               "t1",
+				ComparisonAttribute: "Email",
+				Comparator:          configcat.OpEq,
+				ComparisonValue:     "a@b.com",
+			}},
+		},
+		"flag2": {
+			Default: "v2",
+		},
+	})
+	srv := httptest.NewServer(&h)
+	defer srv.Close()
+
+	ctx := NewTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key}, nil)
+	client := NewClient(ctx, log.NewNullLogger())
+	defer client.Close()
+
+	details := client.EvalAll(model.UserAttrs{"Email": "a@b.com"})
+	assert.Equal(t, 2, len(details))
+	assert.Equal(t, "t1", details["flag1"].Value)
+	assert.Equal(t, "v2", details["flag2"].Value)
+	assert.True(t, details["flag1"].IsTargeting)
+	assert.False(t, details["flag2"].IsTargeting)
 	assert.Nil(t, details["flag1"].Error)
 	assert.Nil(t, details["flag2"].Error)
 }
@@ -322,7 +344,7 @@ func TestSdk_Keys(t *testing.T) {
 	srv := httptest.NewServer(&h)
 	defer srv.Close()
 
-	ctx := newTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key}, nil)
+	ctx := NewTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key}, nil)
 	client := NewClient(ctx, log.NewNullLogger())
 	defer client.Close()
 
@@ -344,7 +366,7 @@ func TestSdk_EvalStatsReporter(t *testing.T) {
 	defer srv.Close()
 
 	reporter := NewTestReporter()
-	ctx := newTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key}, nil)
+	ctx := NewTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key}, nil)
 	ctx.EvalReporter = reporter
 	client := NewClient(ctx, log.NewNullLogger())
 	defer client.Close()
@@ -352,7 +374,7 @@ func TestSdk_EvalStatsReporter(t *testing.T) {
 	_ = client.Eval("flag1", model.UserAttrs{"e": "h"})
 
 	var event *statistics.EvalEvent
-	utils.WithTimeout(2*time.Second, func() {
+	testutils.WithTimeout(2*time.Second, func() {
 		event = <-reporter.Latest()
 	})
 	assert.Equal(t, map[string]interface{}{"e": "h"}, event.UserAttrs)
@@ -369,7 +391,7 @@ func TestSdk_DefaultAttrs(t *testing.T) {
 	srv := httptest.NewServer(&h)
 	defer srv.Close()
 
-	ctx := newTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key, DefaultAttrs: map[string]interface{}{"a": "g"}}, nil)
+	ctx := NewTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key, DefaultAttrs: map[string]interface{}{"a": "g"}}, nil)
 	ctx.GlobalDefaultAttrs = map[string]interface{}{"a": "b", "c": "d", "e": "f"}
 	client := NewClient(ctx, log.NewNullLogger())
 	defer client.Close()
@@ -389,7 +411,7 @@ func TestSdk_WebHookParams(t *testing.T) {
 	srv := httptest.NewServer(&h)
 	defer srv.Close()
 
-	ctx := newTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key, WebhookSigningKey: "key", WebhookSignatureValidFor: 5}, nil)
+	ctx := NewTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key, WebhookSigningKey: "key", WebhookSignatureValidFor: 5}, nil)
 	client := NewClient(ctx, log.NewNullLogger())
 	defer client.Close()
 
@@ -408,7 +430,7 @@ func TestSdk_IsInValidState_True(t *testing.T) {
 	srv := httptest.NewServer(&h)
 	defer srv.Close()
 
-	ctx := newTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key}, nil)
+	ctx := NewTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key}, nil)
 	client := NewClient(ctx, log.NewNullLogger())
 	defer client.Close()
 
@@ -416,7 +438,7 @@ func TestSdk_IsInValidState_True(t *testing.T) {
 }
 
 func TestSdk_IsInValidState_False(t *testing.T) {
-	ctx := newTestSdkContext(&config.SDKConfig{BaseUrl: "https://localhost", Key: configcattest.RandomSDKKey()}, nil)
+	ctx := NewTestSdkContext(&config.SDKConfig{BaseUrl: "https://localhost", Key: configcattest.RandomSDKKey()}, nil)
 	client := NewClient(ctx, log.NewDebugLogger())
 	defer client.Close()
 
@@ -425,39 +447,58 @@ func TestSdk_IsInValidState_False(t *testing.T) {
 
 func TestSdk_IsInValidState_EmptyCache_False(t *testing.T) {
 	r := miniredis.RunT(t)
-	ctx := newTestSdkContext(&config.SDKConfig{BaseUrl: "https://localhost", Key: configcattest.RandomSDKKey()}, newRedisCache(r.Addr()))
+	ctx := NewTestSdkContext(&config.SDKConfig{BaseUrl: "https://localhost", Key: configcattest.RandomSDKKey()}, newRedisCache(r.Addr()))
 	client := NewClient(ctx, log.NewDebugLogger())
 	defer client.Close()
 
 	assert.False(t, client.IsInValidState())
 }
 
-func TestSdk_StatusReporter(t *testing.T) {
-	reporter := status.NewEmptyReporter()
-	ctx := newTestSdkContextWithReporter(&config.SDKConfig{BaseUrl: "https://localhost", Key: configcattest.RandomSDKKey()}, nil, reporter)
-	client := NewClient(ctx, log.NewDebugLogger())
+func TestVersion(t *testing.T) {
+	assert.Equal(t, "0.0.0", Version())
+}
+
+func TestSdk_Cache_Rebuild(t *testing.T) {
+	key := configcattest.RandomSDKKey()
+	var h configcattest.Handler
+	_ = h.SetFlags(key, map[string]*configcattest.Flag{
+		"flag": {
+			Default: true,
+		},
+	})
+	srv := httptest.NewServer(&h)
+	defer srv.Close()
+
+	redis := miniredis.RunT(t)
+	cacheKey := configcatcache.ProduceCacheKey(key, configcatcache.ConfigJSONName, configcatcache.ConfigJSONCacheVersion)
+	ctx := NewTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key, PollInterval: 1}, newRedisCache(redis.Addr()))
+	client := NewClient(ctx, log.NewNullLogger())
 	defer client.Close()
 
-	assert.NotEmpty(t, reporter.GetStatus().SDKs)
+	testutils.WaitUntil(2*time.Second, func() bool {
+		val, _ := redis.Get(cacheKey)
+		return len(val) > 0
+	})
+	val, _ := redis.Get(cacheKey)
+	_, etag, j, _ := configcatcache.CacheSegmentsFromBytes([]byte(val))
+	assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true,"s":null,"i":null,"d":null},"t":0,"r":[],"p":null}},"s":null,"p":null}`, string(j))
+
+	redis.Del(cacheKey)
+	val, _ = redis.Get(cacheKey)
+	assert.Empty(t, val)
+
+	testutils.WaitUntil(2*time.Second, func() bool {
+		val, _ := redis.Get(cacheKey)
+		return len(val) > 0
+	})
+
+	val, _ = redis.Get(cacheKey)
+	_, etag2, j, _ := configcatcache.CacheSegmentsFromBytes([]byte(val))
+	assert.Equal(t, etag, etag2)
+	assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true,"s":null,"i":null,"d":null},"t":0,"r":[],"p":null}},"s":null,"p":null}`, string(j))
 }
 
-func newTestSdkContext(conf *config.SDKConfig, externalCache configcat.ConfigCache) *Context {
-	return newTestSdkContextWithReporter(conf, externalCache, status.NewEmptyReporter())
-}
-
-func newTestSdkContextWithReporter(conf *config.SDKConfig, externalCache configcat.ConfigCache, reporter status.Reporter) *Context {
-	return &Context{
-		SDKConf:         conf,
-		ProxyConf:       &config.HttpProxyConfig{},
-		StatusReporter:  reporter,
-		MetricsReporter: nil,
-		EvalReporter:    nil,
-		SdkId:           "test",
-		ExternalCache:   externalCache,
-	}
-}
-
-func newRedisCache(addr string) configcat.ConfigCache {
+func newRedisCache(addr string) store.Cache {
 	c, _ := cache.SetupExternalCache(context.Background(), &config.CacheConfig{Redis: config.RedisConfig{Enabled: true, Addresses: []string{addr}}}, log.NewNullLogger())
 	return c
 }

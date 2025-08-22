@@ -6,6 +6,7 @@ import (
 	"github.com/configcat/configcat-proxy/model"
 	"github.com/configcat/configcat-proxy/sdk"
 	"hash/maphash"
+	"sync/atomic"
 )
 
 type Stream interface {
@@ -13,7 +14,9 @@ type Stream interface {
 	IsInValidState() bool
 	CreateConnection(key string, user model.UserAttrs) *Connection
 	CloseConnection(conn *Connection, key string)
+	ResetSdk(client sdk.Client)
 	Close()
+	Closed() <-chan struct{}
 }
 
 type connEstablished struct {
@@ -28,8 +31,8 @@ type connClosed struct {
 }
 
 type stream struct {
-	sdkClient        sdk.Client
-	sdkConfigChanged <-chan struct{}
+	sdkClient        atomic.Value
+	sdkConfigChanged chan struct{}
 	stop             chan struct{}
 	log              log.Logger
 	serverType       string
@@ -48,14 +51,16 @@ func NewStream(sdkId string, sdkClient sdk.Client, metrics metrics.Reporter, log
 		connEstablished:  make(chan *connEstablished),
 		connClosed:       make(chan *connClosed),
 		stop:             make(chan struct{}),
-		sdkConfigChanged: sdkClient.SubConfigChanged(serverType + sdkId),
-		sdkClient:        sdkClient,
+		sdkConfigChanged: make(chan struct{}, 1),
+		sdkClient:        atomic.Value{},
 		log:              log.WithPrefix("stream-" + sdkId),
 		serverType:       serverType,
 		sdkId:            sdkId,
 		metrics:          metrics,
 		seed:             maphash.MakeSeed(),
 	}
+	s.sdkClient.Store(sdkClient)
+	sdkClient.Subscribe(s.sdkConfigChanged)
 	go s.run()
 	return s
 }
@@ -89,7 +94,7 @@ func (s *stream) run() {
 }
 
 func (s *stream) CanEval(key string) bool {
-	keys := s.sdkClient.Keys()
+	keys := s.sdkClient.Load().(sdk.Client).Keys()
 	for _, k := range keys {
 		if k == key {
 			return true
@@ -99,7 +104,7 @@ func (s *stream) CanEval(key string) bool {
 }
 
 func (s *stream) IsInValidState() bool {
-	return s.sdkClient.IsInValidState()
+	return s.sdkClient.Load().(sdk.Client).IsInValidState()
 }
 
 func (s *stream) CreateConnection(key string, user model.UserAttrs) *Connection {
@@ -126,22 +131,37 @@ func (s *stream) CloseConnection(conn *Connection, key string) {
 	}
 }
 
+func (s *stream) ResetSdk(client sdk.Client) {
+	select {
+	case <-s.stop:
+		return
+	default:
+		old := s.sdkClient.Swap(client).(sdk.Client)
+		old.Unsubscribe(s.sdkConfigChanged)
+		client.Subscribe(s.sdkConfigChanged)
+	}
+}
+
 func (s *stream) Close() {
 	close(s.stop)
-	s.sdkClient.UnsubConfigChanged(s.serverType + s.sdkId)
+	s.sdkClient.Load().(sdk.Client).Unsubscribe(s.sdkConfigChanged)
 	s.log.Reportf("shutdown complete")
+}
+
+func (s *stream) Closed() <-chan struct{} {
+	return s.stop
 }
 
 func (s *stream) addConnection(established *connEstablished) {
 	bucket, ok := s.channels[established.key]
 	if !ok {
-		ch := createChannel(established, s.sdkClient)
+		ch := createChannel(established, s.sdkClient.Load().(sdk.Client))
 		bucket = map[uint64]channel{established.conn.discriminator: ch}
 		s.channels[established.key] = bucket
 	}
 	ch, ok := bucket[established.conn.discriminator]
 	if !ok {
-		ch = createChannel(established, s.sdkClient)
+		ch = createChannel(established, s.sdkClient.Load().(sdk.Client))
 		bucket[established.conn.discriminator] = ch
 	}
 	ch.AddConnection(established.conn)
@@ -173,7 +193,7 @@ func (s *stream) notifyConnections() {
 	sent := 0
 	for key, bucket := range s.channels {
 		for _, ch := range bucket {
-			count := ch.Notify(s.sdkClient, key)
+			count := ch.Notify(s.sdkClient.Load().(sdk.Client), key)
 			sent += count
 			if s.metrics != nil {
 				s.metrics.AddSentMessageCount(count, s.sdkId, s.serverType, key)

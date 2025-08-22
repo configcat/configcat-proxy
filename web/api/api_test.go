@@ -3,8 +3,8 @@ package api
 import (
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/internal/testutils"
-	"github.com/configcat/configcat-proxy/internal/utils"
 	"github.com/configcat/configcat-proxy/log"
+	"github.com/configcat/configcat-proxy/sdk"
 	"github.com/configcat/go-sdk/v9/configcattest"
 	"github.com/stretchr/testify/assert"
 	"net/http"
@@ -71,7 +71,7 @@ func TestAPI_Eval(t *testing.T) {
 		assert.Contains(t, res.Body.String(), `failed to parse JSON body: 'Identifier' has an invalid type, only 'string', 'number', and 'string[]' types are allowed`)
 	})
 	t.Run("offline", func(t *testing.T) {
-		utils.UseTempFile(`{"f":{"flag":{"i":"","v":{"b":true},"t":0}}}`, func(path string) {
+		testutils.UseTempFile(`{"f":{"flag":{"i":"","v":{"b":true},"t":0}}}`, func(path string) {
 			res := httptest.NewRecorder()
 			req, _ := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"key":"flag"}`))
 
@@ -84,7 +84,7 @@ func TestAPI_Eval(t *testing.T) {
 		})
 	})
 	t.Run("offline error", func(t *testing.T) {
-		utils.UseTempFile(`{"f":{"flag":{"i":""`, func(path string) {
+		testutils.UseTempFile(`{"f":{"flag":{"i":""`, func(path string) {
 			res := httptest.NewRecorder()
 			req, _ := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"key":"flag"}`))
 
@@ -144,7 +144,7 @@ func TestAPI_EvalAll(t *testing.T) {
 		assert.Contains(t, res.Body.String(), `failed to parse JSON body: 'Identifier' has an invalid type, only 'string', 'number', and 'string[]' types are allowed`)
 	})
 	t.Run("offline", func(t *testing.T) {
-		utils.UseTempFile(`{"f":{"flag":{"i":"","v":{"b":true},"t":0}}}`, func(path string) {
+		testutils.UseTempFile(`{"f":{"flag":{"i":"","v":{"b":true},"t":0}}}`, func(path string) {
 			res := httptest.NewRecorder()
 			req, _ := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"key":"flag"}`))
 
@@ -157,7 +157,7 @@ func TestAPI_EvalAll(t *testing.T) {
 		})
 	})
 	t.Run("offline error", func(t *testing.T) {
-		utils.UseTempFile(`{"f":{"flag":{"i":""`, func(path string) {
+		testutils.UseTempFile(`{"f":{"flag":{"i":""`, func(path string) {
 			res := httptest.NewRecorder()
 			req, _ := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"key":"flag"}`))
 
@@ -208,7 +208,7 @@ func TestAPI_Keys(t *testing.T) {
 		assert.Equal(t, "SDK with identifier 'test' is in an invalid state; please check the logs for more details\n", res.Body.String())
 	})
 	t.Run("offline", func(t *testing.T) {
-		utils.UseTempFile(`{"f":{"flag":{"i":"","v":{"b":true},"t":0}}}`, func(path string) {
+		testutils.UseTempFile(`{"f":{"flag":{"i":"","v":{"b":true},"t":0}}}`, func(path string) {
 			res := httptest.NewRecorder()
 			req, _ := http.NewRequest(http.MethodGet, "/", http.NoBody)
 
@@ -221,7 +221,7 @@ func TestAPI_Keys(t *testing.T) {
 		})
 	})
 	t.Run("offline error", func(t *testing.T) {
-		utils.UseTempFile(`{"f":{"flag":{"i":""`, func(path string) {
+		testutils.UseTempFile(`{"f":{"flag":{"i":""`, func(path string) {
 			res := httptest.NewRecorder()
 			req, _ := http.NewRequest(http.MethodGet, "/", http.NoBody)
 
@@ -313,7 +313,7 @@ func TestAPI_WrongSdkId(t *testing.T) {
 }
 
 func TestAPI_WrongSDKState(t *testing.T) {
-	reg := testutils.NewTestRegistrar(&config.SDKConfig{BaseUrl: "http://localhost", Key: configcattest.RandomSDKKey()}, nil)
+	reg := sdk.NewTestRegistrar(&config.SDKConfig{BaseUrl: "http://localhost", Key: configcattest.RandomSDKKey()}, nil)
 	defer reg.Close()
 
 	t.Run("Eval", func(t *testing.T) {
@@ -352,22 +352,22 @@ func TestAPI_WrongSDKState(t *testing.T) {
 }
 
 func newServer(t *testing.T, conf config.ApiConfig) *Server {
-	reg, _, _ := testutils.NewTestRegistrarT(t)
+	reg, _, _ := sdk.NewTestRegistrarT(t)
 	return NewServer(reg, &conf, log.NewNullLogger())
 }
 
 func newServerWithHandler(t *testing.T, conf config.ApiConfig) (*Server, *configcattest.Handler, string) {
-	reg, h, k := testutils.NewTestRegistrarT(t)
+	reg, h, k := sdk.NewTestRegistrarT(t)
 	return NewServer(reg, &conf, log.NewNullLogger()), h, k
 }
 
 func newErrorServer(t *testing.T, conf config.ApiConfig) *Server {
-	reg := testutils.NewTestRegistrarTWithErrorServer(t)
+	reg := sdk.NewTestRegistrarTWithErrorServer(t)
 	return NewServer(reg, &conf, log.NewNullLogger())
 }
 
 func newOfflineServer(t *testing.T, path string, conf config.ApiConfig) *Server {
-	reg := testutils.NewTestRegistrar(&config.SDKConfig{Key: "local", Offline: config.OfflineConfig{Enabled: true, Local: config.LocalConfig{FilePath: path, Polling: true, PollInterval: 30}}}, nil)
+	reg := sdk.NewTestRegistrar(&config.SDKConfig{Key: "local", Offline: config.OfflineConfig{Enabled: true, Local: config.LocalConfig{FilePath: path, Polling: true, PollInterval: 30}}}, nil)
 	t.Cleanup(func() {
 		reg.Close()
 	})

@@ -5,8 +5,8 @@ import (
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/grpc/proto"
 	"github.com/configcat/configcat-proxy/internal/testutils"
-	"github.com/configcat/configcat-proxy/internal/utils"
 	"github.com/configcat/configcat-proxy/log"
+	"github.com/configcat/configcat-proxy/sdk"
 	"github.com/configcat/go-sdk/v9/configcattest"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
@@ -29,7 +29,7 @@ func TestGrpc_EvalFlagStream(t *testing.T) {
 	sdkSrv := httptest.NewServer(&h)
 	defer sdkSrv.Close()
 
-	reg := testutils.NewTestRegistrar(&config.SDKConfig{BaseUrl: sdkSrv.URL, Key: key, PollInterval: 1}, nil)
+	reg := sdk.NewTestRegistrar(&config.SDKConfig{BaseUrl: sdkSrv.URL, Key: key, PollInterval: 1}, nil)
 	defer reg.Close()
 	flagSrv := newFlagService(reg, nil, log.NewNullLogger())
 
@@ -43,8 +43,7 @@ func TestGrpc_EvalFlagStream(t *testing.T) {
 		_ = srv.Serve(lis)
 	}()
 
-	conn, err := grpc.DialContext(context.Background(),
-		"bufnet",
+	conn, err := grpc.NewClient("passthrough://bufnet",
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithContextDialer(func(ctx context.Context, s string) (net.Conn, error) {
 			return lis.Dial()
@@ -60,7 +59,7 @@ func TestGrpc_EvalFlagStream(t *testing.T) {
 	assert.NoError(t, err)
 
 	var payload *proto.EvalResponse
-	utils.WithTimeout(2*time.Second, func() {
+	testutils.WithTimeout(2*time.Second, func() {
 		payload, err = cl.Recv()
 		assert.NoError(t, err)
 	})
@@ -75,11 +74,55 @@ func TestGrpc_EvalFlagStream(t *testing.T) {
 	_, err = client.Refresh(context.Background(), &proto.RefreshRequest{SdkId: "test"})
 	assert.NoError(t, err)
 
-	utils.WithTimeout(2*time.Second, func() {
+	testutils.WithTimeout(2*time.Second, func() {
 		payload, err = cl.Recv()
 		assert.NoError(t, err)
 	})
 	assert.Equal(t, "test2", payload.GetStringValue())
+}
+
+func TestGrpc_EvalFlagStream_SdkRemoved(t *testing.T) {
+	reg, h, _ := sdk.NewTestAutoRegistrarWithAutoConfig(t, config.ProfileConfig{PollInterval: 60}, log.NewNullLogger())
+	flagSrv := newFlagService(reg, nil, log.NewNullLogger())
+
+	lis := bufconn.Listen(1024 * 1024)
+
+	srv := grpc.NewServer()
+	defer srv.GracefulStop()
+
+	proto.RegisterFlagServiceServer(srv, flagSrv)
+	go func() {
+		_ = srv.Serve(lis)
+	}()
+
+	conn, err := grpc.NewClient("passthrough://bufnet",
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithContextDialer(func(ctx context.Context, s string) (net.Conn, error) {
+			return lis.Dial()
+		}))
+
+	assert.NoError(t, err)
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	client := proto.NewFlagServiceClient(conn)
+	cl, err := client.EvalFlagStream(context.Background(), &proto.EvalRequest{Key: "flag", SdkId: "test", User: map[string]*proto.UserValue{"id": {Value: &proto.UserValue_StringValue{StringValue: "u1"}}}})
+	assert.NoError(t, err)
+
+	var payload *proto.EvalResponse
+	testutils.WithTimeout(2*time.Second, func() {
+		payload, err = cl.Recv()
+		assert.NoError(t, err)
+	})
+	assert.True(t, payload.GetBoolValue())
+
+	h.RemoveSdk("test")
+	reg.Refresh()
+	testutils.WithTimeout(10*time.Second, func() {
+		_, err = cl.Recv()
+		assert.Error(t, err, "rpc error: code = Aborted desc = connection aborted")
+	})
 }
 
 func TestGrpc_EvalAllFlagsStream(t *testing.T) {
@@ -96,7 +139,7 @@ func TestGrpc_EvalAllFlagsStream(t *testing.T) {
 	sdkSrv := httptest.NewServer(&h)
 	defer sdkSrv.Close()
 
-	reg := testutils.NewTestRegistrar(&config.SDKConfig{BaseUrl: sdkSrv.URL, Key: key, PollInterval: 1}, nil)
+	reg := sdk.NewTestRegistrar(&config.SDKConfig{BaseUrl: sdkSrv.URL, Key: key, PollInterval: 1}, nil)
 	defer reg.Close()
 	flagSrv := newFlagService(reg, nil, log.NewNullLogger())
 
@@ -110,8 +153,7 @@ func TestGrpc_EvalAllFlagsStream(t *testing.T) {
 		_ = srv.Serve(lis)
 	}()
 
-	conn, err := grpc.DialContext(context.Background(),
-		"bufnet",
+	conn, err := grpc.NewClient("passthrough://bufnet",
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithContextDialer(func(ctx context.Context, s string) (net.Conn, error) {
 			return lis.Dial()
@@ -127,7 +169,7 @@ func TestGrpc_EvalAllFlagsStream(t *testing.T) {
 	assert.NoError(t, err)
 
 	var payload *proto.EvalAllResponse
-	utils.WithTimeout(2*time.Second, func() {
+	testutils.WithTimeout(2*time.Second, func() {
 		payload, err = cl.Recv()
 		assert.NoError(t, err)
 	})
@@ -150,7 +192,7 @@ func TestGrpc_EvalAllFlagsStream(t *testing.T) {
 	_, err = client.Refresh(context.Background(), &proto.RefreshRequest{SdkId: "test"})
 	assert.NoError(t, err)
 
-	utils.WithTimeout(2*time.Second, func() {
+	testutils.WithTimeout(2*time.Second, func() {
 		payload, err = cl.Recv()
 		assert.NoError(t, err)
 	})
@@ -158,6 +200,51 @@ func TestGrpc_EvalAllFlagsStream(t *testing.T) {
 	assert.Equal(t, "test12", payload.GetValues()["flag1"].GetStringValue())
 	assert.Equal(t, "test2", payload.GetValues()["flag2"].GetStringValue())
 	assert.Equal(t, "test3", payload.GetValues()["flag3"].GetStringValue())
+}
+
+func TestGrpc_EvalAllFlagsStream_SdkRemoved(t *testing.T) {
+	reg, h, _ := sdk.NewTestAutoRegistrarWithAutoConfig(t, config.ProfileConfig{PollInterval: 60}, log.NewNullLogger())
+	flagSrv := newFlagService(reg, nil, log.NewNullLogger())
+
+	lis := bufconn.Listen(1024 * 1024)
+
+	srv := grpc.NewServer()
+	defer srv.GracefulStop()
+
+	proto.RegisterFlagServiceServer(srv, flagSrv)
+	go func() {
+		_ = srv.Serve(lis)
+	}()
+
+	conn, err := grpc.NewClient("passthrough://bufnet",
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithContextDialer(func(ctx context.Context, s string) (net.Conn, error) {
+			return lis.Dial()
+		}))
+
+	assert.NoError(t, err)
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	client := proto.NewFlagServiceClient(conn)
+	cl, err := client.EvalAllFlagsStream(context.Background(), &proto.EvalRequest{Key: "flag", SdkId: "test", User: map[string]*proto.UserValue{"id": {Value: &proto.UserValue_StringValue{StringValue: "u1"}}}})
+	assert.NoError(t, err)
+
+	var payload *proto.EvalAllResponse
+	testutils.WithTimeout(2*time.Second, func() {
+		payload, err = cl.Recv()
+		assert.NoError(t, err)
+	})
+	assert.Equal(t, 1, len(payload.GetValues()))
+	assert.True(t, payload.GetValues()["flag"].GetBoolValue())
+
+	h.RemoveSdk("test")
+	reg.Refresh()
+	testutils.WithTimeout(10*time.Second, func() {
+		_, err = cl.Recv()
+		assert.Error(t, err, "rpc error: code = Aborted desc = connection aborted")
+	})
 }
 
 func TestGrpc_EvalFlag(t *testing.T) {
@@ -171,7 +258,7 @@ func TestGrpc_EvalFlag(t *testing.T) {
 	sdkSrv := httptest.NewServer(&h)
 	defer sdkSrv.Close()
 
-	reg := testutils.NewTestRegistrar(&config.SDKConfig{BaseUrl: sdkSrv.URL, Key: key, PollInterval: 1}, nil)
+	reg := sdk.NewTestRegistrar(&config.SDKConfig{BaseUrl: sdkSrv.URL, Key: key, PollInterval: 1}, nil)
 	defer reg.Close()
 	flagSrv := newFlagService(reg, nil, log.NewNullLogger())
 
@@ -185,8 +272,7 @@ func TestGrpc_EvalFlag(t *testing.T) {
 		_ = srv.Serve(lis)
 	}()
 
-	conn, err := grpc.DialContext(context.Background(),
-		"bufnet",
+	conn, err := grpc.NewClient("passthrough://bufnet",
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithContextDialer(func(ctx context.Context, s string) (net.Conn, error) {
 			return lis.Dial()
@@ -222,7 +308,7 @@ func TestGrpc_EvalFlag(t *testing.T) {
 }
 
 func TestGrpc_SDK_InvalidState(t *testing.T) {
-	reg := testutils.NewTestRegistrar(&config.SDKConfig{BaseUrl: "http://localhost", Key: configcattest.RandomSDKKey()}, nil)
+	reg := sdk.NewTestRegistrar(&config.SDKConfig{BaseUrl: "http://localhost", Key: configcattest.RandomSDKKey()}, nil)
 	defer reg.Close()
 	flagSrv := newFlagService(reg, nil, log.NewNullLogger())
 
@@ -236,8 +322,7 @@ func TestGrpc_SDK_InvalidState(t *testing.T) {
 		_ = srv.Serve(lis)
 	}()
 
-	conn, err := grpc.DialContext(context.Background(),
-		"bufnet",
+	conn, err := grpc.NewClient("passthrough://bufnet",
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithContextDialer(func(ctx context.Context, s string) (net.Conn, error) {
 			return lis.Dial()
@@ -257,13 +342,13 @@ func TestGrpc_SDK_InvalidState(t *testing.T) {
 	assert.ErrorContains(t, err, "sdk with identifier 'test' is in an invalid state; please check the logs for more details")
 
 	cl, err := client.EvalFlagStream(context.Background(), &proto.EvalRequest{Key: "flag", SdkId: "test"})
-	utils.WithTimeout(2*time.Second, func() {
+	testutils.WithTimeout(2*time.Second, func() {
 		_, err = cl.Recv()
 		assert.ErrorContains(t, err, "sdk with identifier 'test' is in an invalid state; please check the logs for more details")
 	})
 
 	cl1, err := client.EvalAllFlagsStream(context.Background(), &proto.EvalRequest{Key: "flag", SdkId: "test"})
-	utils.WithTimeout(2*time.Second, func() {
+	testutils.WithTimeout(2*time.Second, func() {
 		_, err = cl1.Recv()
 		assert.ErrorContains(t, err, "sdk with identifier 'test' is in an invalid state; please check the logs for more details")
 	})
@@ -282,7 +367,7 @@ func TestGrpc_Invalid_SdkKey(t *testing.T) {
 	})
 	sdkSrv := httptest.NewServer(&h)
 	defer sdkSrv.Close()
-	reg := testutils.NewTestRegistrar(&config.SDKConfig{BaseUrl: sdkSrv.URL, Key: key}, nil)
+	reg := sdk.NewTestRegistrar(&config.SDKConfig{BaseUrl: sdkSrv.URL, Key: key}, nil)
 	defer reg.Close()
 	flagSrv := newFlagService(reg, nil, log.NewNullLogger())
 	lis := bufconn.Listen(1024 * 1024)
@@ -293,8 +378,7 @@ func TestGrpc_Invalid_SdkKey(t *testing.T) {
 		_ = srv.Serve(lis)
 	}()
 
-	conn, err := grpc.DialContext(context.Background(),
-		"bufnet",
+	conn, err := grpc.NewClient("passthrough://bufnet",
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithContextDialer(func(ctx context.Context, s string) (net.Conn, error) {
 			return lis.Dial()
@@ -314,13 +398,13 @@ func TestGrpc_Invalid_SdkKey(t *testing.T) {
 	assert.ErrorContains(t, err, "sdk not found for identifier: 'non-existing'")
 
 	cl, err := client.EvalFlagStream(context.Background(), &proto.EvalRequest{Key: "flag", SdkId: "non-existing"})
-	utils.WithTimeout(2*time.Second, func() {
+	testutils.WithTimeout(2*time.Second, func() {
 		_, err = cl.Recv()
 		assert.ErrorContains(t, err, "sdk not found for identifier: 'non-existing'")
 	})
 
 	cl1, err := client.EvalAllFlagsStream(context.Background(), &proto.EvalRequest{Key: "flag", SdkId: "non-existing"})
-	utils.WithTimeout(2*time.Second, func() {
+	testutils.WithTimeout(2*time.Second, func() {
 		_, err = cl1.Recv()
 		assert.ErrorContains(t, err, "sdk not found for identifier: 'non-existing'")
 	})
@@ -342,7 +426,7 @@ func TestGrpc_Invalid_FlagKey(t *testing.T) {
 	})
 	sdkSrv := httptest.NewServer(&h)
 	defer sdkSrv.Close()
-	reg := testutils.NewTestRegistrar(&config.SDKConfig{BaseUrl: sdkSrv.URL, Key: key}, nil)
+	reg := sdk.NewTestRegistrar(&config.SDKConfig{BaseUrl: sdkSrv.URL, Key: key}, nil)
 	defer reg.Close()
 	flagSrv := newFlagService(reg, nil, log.NewNullLogger())
 	lis := bufconn.Listen(1024 * 1024)
@@ -353,8 +437,7 @@ func TestGrpc_Invalid_FlagKey(t *testing.T) {
 		_ = srv.Serve(lis)
 	}()
 
-	conn, err := grpc.DialContext(context.Background(),
-		"bufnet",
+	conn, err := grpc.NewClient("passthrough://bufnet",
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithContextDialer(func(ctx context.Context, s string) (net.Conn, error) {
 			return lis.Dial()
@@ -371,7 +454,7 @@ func TestGrpc_Invalid_FlagKey(t *testing.T) {
 	assert.ErrorContains(t, err, "feature flag or setting with key 'flag' not found")
 
 	cl, err := client.EvalFlagStream(context.Background(), &proto.EvalRequest{Key: "flag", SdkId: "test"})
-	utils.WithTimeout(2*time.Second, func() {
+	testutils.WithTimeout(2*time.Second, func() {
 		_, err = cl.Recv()
 		assert.ErrorContains(t, err, "feature flag or setting with key 'flag' not found")
 	})
@@ -391,7 +474,7 @@ func TestGrpc_EvalAllFlags(t *testing.T) {
 	sdkSrv := httptest.NewServer(&h)
 	defer sdkSrv.Close()
 
-	reg := testutils.NewTestRegistrar(&config.SDKConfig{BaseUrl: sdkSrv.URL, Key: key, PollInterval: 1}, nil)
+	reg := sdk.NewTestRegistrar(&config.SDKConfig{BaseUrl: sdkSrv.URL, Key: key, PollInterval: 1}, nil)
 	defer reg.Close()
 	flagSrv := newFlagService(reg, nil, log.NewNullLogger())
 
@@ -405,8 +488,7 @@ func TestGrpc_EvalAllFlags(t *testing.T) {
 		_ = srv.Serve(lis)
 	}()
 
-	conn, err := grpc.DialContext(context.Background(),
-		"bufnet",
+	conn, err := grpc.NewClient("passthrough://bufnet",
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithContextDialer(func(ctx context.Context, s string) (net.Conn, error) {
 			return lis.Dial()
@@ -463,7 +545,7 @@ func TestGrpc_GetKeys(t *testing.T) {
 	sdkSrv := httptest.NewServer(&h)
 	defer sdkSrv.Close()
 
-	reg := testutils.NewTestRegistrar(&config.SDKConfig{BaseUrl: sdkSrv.URL, Key: key, PollInterval: 1}, nil)
+	reg := sdk.NewTestRegistrar(&config.SDKConfig{BaseUrl: sdkSrv.URL, Key: key, PollInterval: 1}, nil)
 	defer reg.Close()
 	flagSrv := newFlagService(reg, nil, log.NewNullLogger())
 
@@ -477,8 +559,7 @@ func TestGrpc_GetKeys(t *testing.T) {
 		_ = srv.Serve(lis)
 	}()
 
-	conn, err := grpc.DialContext(context.Background(),
-		"bufnet",
+	conn, err := grpc.NewClient("passthrough://bufnet",
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithContextDialer(func(ctx context.Context, s string) (net.Conn, error) {
 			return lis.Dial()

@@ -33,7 +33,7 @@ func main() {
 
 func run(closeSignal chan os.Signal) int {
 	logger := log.NewLogger(os.Stderr, os.Stdout, log.Warn)
-	logger.Reportf("service starting...")
+	logger.Reportf("ConfigCat Proxy v%s starting...", sdk.Version())
 	var configFile string
 	flag.StringVar(&configFile, "c", "", "path to the configuration file")
 	flag.Parse()
@@ -71,7 +71,7 @@ func run(closeSignal chan os.Signal) int {
 
 	var externalCache cache.External
 	if conf.Cache.IsSet() {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second) // give 5 sec to spin up the cache connection
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second) // give 15 sec to spin up the cache connection
 		defer cancel()
 
 		externalCache, err = cache.SetupExternalCache(ctx, &conf.Cache, logger)
@@ -80,13 +80,16 @@ func run(closeSignal chan os.Signal) int {
 		}
 	}
 
-	sdkRegistrar := sdk.NewRegistrar(&conf, metricsReporter, statusReporter, externalCache, logger)
+	sdkRegistrar, err := sdk.NewRegistrar(&conf, metricsReporter, statusReporter, externalCache, logger)
+	if err != nil {
+		return exitFailure
+	}
 
 	var httpServer *web.Server
 	var router *web.HttpRouter
 	if conf.Http.Enabled {
-		router = web.NewRouter(sdkRegistrar, metricsReporter, statusReporter, &conf.Http, logger)
-		httpServer, err = web.NewServer(router.Handler(), logger, &conf, errorChan)
+		router = web.NewRouter(sdkRegistrar, metricsReporter, statusReporter, &conf.Http, &conf.Profile, logger)
+		httpServer, err = web.NewServer(router, logger, &conf, errorChan)
 		if err != nil {
 			return exitFailure
 		}
@@ -105,6 +108,7 @@ func run(closeSignal chan os.Signal) int {
 	for {
 		select {
 		case <-closeSignal:
+			logger.Reportf("shutdown requested...")
 			sdkRegistrar.Close()
 
 			if router != nil {

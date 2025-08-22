@@ -3,7 +3,6 @@ package stream
 import (
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/internal/testutils"
-	"github.com/configcat/configcat-proxy/internal/utils"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/model"
 	"github.com/configcat/configcat-proxy/sdk"
@@ -16,7 +15,7 @@ import (
 )
 
 func TestStream_Receive(t *testing.T) {
-	clients, h, key := testutils.NewTestSdkClient(t)
+	clients, h, key := sdk.NewTestSdkClient(t)
 
 	str := NewStream("test", clients["test"], nil, log.NewNullLogger(), "test")
 	defer str.Close()
@@ -26,11 +25,11 @@ func TestStream_Receive(t *testing.T) {
 
 	sConn := str.CreateConnection("flag", nil)
 	aConn := str.CreateConnection(AllFlagsDiscriminator, nil)
-	utils.WithTimeout(2*time.Second, func() {
+	testutils.WithTimeout(2*time.Second, func() {
 		pyl := <-sConn.Receive()
 		assert.True(t, pyl.(*model.ResponsePayload).Value.(bool))
 	})
-	utils.WithTimeout(2*time.Second, func() {
+	testutils.WithTimeout(2*time.Second, func() {
 		pyl := <-aConn.Receive()
 		assert.True(t, pyl.(map[string]*model.ResponsePayload)["flag"].Value.(bool))
 	})
@@ -40,19 +39,19 @@ func TestStream_Receive(t *testing.T) {
 		},
 	})
 	_ = clients["test"].Refresh()
-	utils.WithTimeout(2*time.Second, func() {
+	testutils.WithTimeout(2*time.Second, func() {
 		pyl := <-sConn.Receive()
 		assert.False(t, pyl.(*model.ResponsePayload).Value.(bool))
 	})
-	utils.WithTimeout(2*time.Second, func() {
+	testutils.WithTimeout(2*time.Second, func() {
 		pyl := <-aConn.Receive()
 		assert.False(t, pyl.(map[string]*model.ResponsePayload)["flag"].Value.(bool))
 	})
 }
 
 func TestStream_Offline_Receive(t *testing.T) {
-	utils.UseTempFile(`{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true},"t":0}}}`, func(path string) {
-		ctx := testutils.NewTestSdkContext(&config.SDKConfig{Key: "key", Offline: config.OfflineConfig{Enabled: true, Local: config.LocalConfig{FilePath: path}}}, nil)
+	testutils.UseTempFile(`{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true},"t":0}}}`, func(path string) {
+		ctx := sdk.NewTestSdkContext(&config.SDKConfig{Key: "key", Offline: config.OfflineConfig{Enabled: true, Local: config.LocalConfig{FilePath: path}}}, nil)
 		client := sdk.NewClient(ctx, log.NewNullLogger())
 		defer client.Close()
 
@@ -61,20 +60,20 @@ func TestStream_Offline_Receive(t *testing.T) {
 
 		sConn := str.CreateConnection("flag", nil)
 		aConn := str.CreateConnection(AllFlagsDiscriminator, nil)
-		utils.WithTimeout(2*time.Second, func() {
+		testutils.WithTimeout(2*time.Second, func() {
 			pyl := <-sConn.Receive()
 			assert.True(t, pyl.(*model.ResponsePayload).Value.(bool))
 		})
-		utils.WithTimeout(2*time.Second, func() {
+		testutils.WithTimeout(2*time.Second, func() {
 			pyl := <-aConn.Receive()
 			assert.True(t, pyl.(map[string]*model.ResponsePayload)["flag"].Value.(bool))
 		})
-		utils.WriteIntoFile(path, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":false},"t":0}}}`)
-		utils.WithTimeout(2*time.Second, func() {
+		testutils.WriteIntoFile(path, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":false},"t":0}}}`)
+		testutils.WithTimeout(2*time.Second, func() {
 			pyl := <-sConn.Receive()
 			assert.False(t, pyl.(*model.ResponsePayload).Value.(bool))
 		})
-		utils.WithTimeout(2*time.Second, func() {
+		testutils.WithTimeout(2*time.Second, func() {
 			pyl := <-aConn.Receive()
 			assert.False(t, pyl.(map[string]*model.ResponsePayload)["flag"].Value.(bool))
 		})
@@ -82,16 +81,16 @@ func TestStream_Offline_Receive(t *testing.T) {
 }
 
 func TestStream_Receive_Close(t *testing.T) {
-	clients, _, _ := testutils.NewTestSdkClient(t)
+	clients, _, _ := sdk.NewTestSdkClient(t)
 
 	str := NewStream("test", clients["test"], nil, log.NewNullLogger(), "test")
 	sConn := str.CreateConnection("flag", nil)
 	aConn := str.CreateConnection(AllFlagsDiscriminator, nil)
-	utils.WithTimeout(2*time.Second, func() {
+	testutils.WithTimeout(2*time.Second, func() {
 		pyl := <-sConn.Receive()
 		assert.True(t, pyl.(*model.ResponsePayload).Value.(bool))
 	})
-	utils.WithTimeout(2*time.Second, func() {
+	testutils.WithTimeout(2*time.Second, func() {
 		pyl := <-aConn.Receive()
 		assert.True(t, pyl.(map[string]*model.ResponsePayload)["flag"].Value.(bool))
 	})
@@ -113,7 +112,7 @@ func TestStream_IsInValidState_True(t *testing.T) {
 	srv := httptest.NewServer(&h)
 	defer srv.Close()
 
-	ctx := testutils.NewTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key}, nil)
+	ctx := sdk.NewTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key}, nil)
 	client := sdk.NewClient(ctx, log.NewNullLogger())
 	defer client.Close()
 
@@ -122,7 +121,7 @@ func TestStream_IsInValidState_True(t *testing.T) {
 }
 
 func TestStream_IsInValidState_False(t *testing.T) {
-	ctx := testutils.NewTestSdkContext(&config.SDKConfig{BaseUrl: "http://localhost", Key: configcattest.RandomSDKKey()}, nil)
+	ctx := sdk.NewTestSdkContext(&config.SDKConfig{BaseUrl: "http://localhost", Key: configcattest.RandomSDKKey()}, nil)
 	client := sdk.NewClient(ctx, log.NewNullLogger())
 	defer client.Close()
 
@@ -131,7 +130,7 @@ func TestStream_IsInValidState_False(t *testing.T) {
 }
 
 func TestStream_Goroutines(t *testing.T) {
-	clients, _, _ := testutils.NewTestSdkClient(t)
+	clients, _, _ := sdk.NewTestSdkClient(t)
 
 	str := NewStream("test", clients["test"], nil, log.NewNullLogger(), "test")
 	defer str.Close()
@@ -164,4 +163,45 @@ func TestStream_Goroutines(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	assert.Equal(t, count, runtime.NumGoroutine())
+}
+
+func TestStream_ResetSdk(t *testing.T) {
+	key := configcattest.RandomSDKKey()
+	var h configcattest.Handler
+	_ = h.SetFlags(key, map[string]*configcattest.Flag{
+		"flag": {
+			Default: true,
+		},
+	})
+	srv := httptest.NewServer(&h)
+	defer srv.Close()
+
+	ctx := sdk.NewTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key}, nil)
+	client := sdk.NewClient(ctx, log.NewNullLogger())
+	defer client.Close()
+
+	str := NewStream("test", client, nil, log.NewNullLogger(), "test").(*stream)
+
+	assert.Same(t, client, str.sdkClient.Load())
+
+	key2 := configcattest.RandomSDKKey()
+	_ = h.SetFlags(key2, map[string]*configcattest.Flag{
+		"flag": {
+			Default: true,
+		},
+	})
+
+	ctx2 := sdk.NewTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key2}, nil)
+	client2 := sdk.NewClient(ctx2, log.NewNullLogger())
+	defer client2.Close()
+
+	str.ResetSdk(client2)
+
+	assert.NotSame(t, client, str.sdkClient.Load())
+	assert.Same(t, client2, str.sdkClient.Load())
+
+	str.Close()
+
+	// ensure stream is closed
+	<-str.Closed()
 }

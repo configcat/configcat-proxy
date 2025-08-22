@@ -5,22 +5,34 @@ import (
 	"github.com/configcat/configcat-proxy/diag/metrics"
 	"github.com/configcat/configcat-proxy/diag/status"
 	"github.com/configcat/configcat-proxy/log"
-	configcat "github.com/configcat/go-sdk/v9"
+	"github.com/configcat/configcat-proxy/sdk/store"
 )
 
 type Registrar interface {
 	GetSdkOrNil(sdkId string) Client
+	GetSdkByKeyOrNil(sdkKey string) Client
+	RefreshAll()
 	GetAll() map[string]Client
 	Close()
 }
 
-type registrar struct {
+type manualRegistrar struct {
 	sdkClients map[string]Client
 }
 
-func NewRegistrar(conf *config.Config, metricsReporter metrics.Reporter, statusReporter status.Reporter, externalCache configcat.ConfigCache, log log.Logger) Registrar {
+func NewRegistrar(conf *config.Config, metricsReporter metrics.Reporter, statusReporter status.Reporter, externalCache store.Cache, log log.Logger) (Registrar, error) {
+	if conf.Profile.IsSet() {
+		return newAutoRegistrar(conf, metricsReporter, statusReporter, externalCache, log)
+	} else {
+		return newManualRegistrar(conf, metricsReporter, statusReporter, externalCache, log)
+	}
+}
+
+func newManualRegistrar(conf *config.Config, metricsReporter metrics.Reporter, statusReporter status.Reporter, externalCache store.Cache, log log.Logger) (*manualRegistrar, error) {
+	regLog := log.WithPrefix("sdk-registrar").WithLevel(conf.Profile.Log.GetLevel())
 	sdkClients := make(map[string]Client, len(conf.SDKs))
 	for key, sdkConf := range conf.SDKs {
+		statusReporter.RegisterSdk(key, sdkConf)
 		sdkClients[key] = NewClient(&Context{
 			SDKConf:            sdkConf,
 			MetricsReporter:    metricsReporter,
@@ -29,20 +41,36 @@ func NewRegistrar(conf *config.Config, metricsReporter metrics.Reporter, statusR
 			GlobalDefaultAttrs: conf.DefaultAttrs,
 			SdkId:              key,
 			ExternalCache:      externalCache,
-		}, log)
+		}, regLog)
 	}
-	return &registrar{sdkClients: sdkClients}
+	return &manualRegistrar{sdkClients: sdkClients}, nil
 }
 
-func (r *registrar) GetSdkOrNil(sdkId string) Client {
+func (r *manualRegistrar) GetSdkOrNil(sdkId string) Client {
 	return r.sdkClients[sdkId]
 }
 
-func (r *registrar) GetAll() map[string]Client {
+func (r *manualRegistrar) GetSdkByKeyOrNil(sdkKey string) Client {
+	for _, sdkClient := range r.sdkClients {
+		key1, key2 := sdkClient.SdkKeys()
+		if key1 == sdkKey || (key2 != nil && len(*key2) > 0 && *key2 == sdkKey) {
+			return sdkClient
+		}
+	}
+	return nil
+}
+
+func (r *manualRegistrar) RefreshAll() {
+	for _, sdkClient := range r.sdkClients {
+		_ = sdkClient.Refresh()
+	}
+}
+
+func (r *manualRegistrar) GetAll() map[string]Client {
 	return r.sdkClients
 }
 
-func (r *registrar) Close() {
+func (r *manualRegistrar) Close() {
 	for _, sdkClient := range r.sdkClients {
 		sdkClient.Close()
 	}

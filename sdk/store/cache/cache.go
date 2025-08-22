@@ -6,7 +6,6 @@ import (
 	"github.com/configcat/configcat-proxy/diag/status"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/sdk/store"
-	configcat "github.com/configcat/go-sdk/v9"
 	"github.com/configcat/go-sdk/v9/configcatcache"
 )
 
@@ -16,7 +15,7 @@ const (
 )
 
 type External interface {
-	configcat.ConfigCache
+	store.Cache
 	Shutdown()
 }
 
@@ -24,7 +23,7 @@ type cacheStore struct {
 	store.EntryStore
 
 	reporter    status.Reporter
-	actualCache configcat.ConfigCache
+	actualCache store.Cache
 }
 
 func SetupExternalCache(ctx context.Context, conf *config.CacheConfig, log log.Logger) (External, error) {
@@ -51,7 +50,7 @@ func SetupExternalCache(ctx context.Context, conf *config.CacheConfig, log log.L
 	return nil, nil
 }
 
-func NewCacheStore(actualCache configcat.ConfigCache, reporter status.Reporter) store.CacheEntryStore {
+func NewCacheStore(actualCache store.Cache, reporter status.Reporter) store.CacheEntryStore {
 	return &cacheStore{
 		EntryStore:  store.NewEntryStore(),
 		reporter:    reporter,

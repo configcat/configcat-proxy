@@ -2,7 +2,7 @@ package mware
 
 import (
 	"github.com/configcat/configcat-proxy/config"
-	"github.com/configcat/configcat-proxy/internal/utils"
+	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"net/http"
@@ -254,7 +254,7 @@ func TestCORS(t *testing.T) {
 		})
 	})
 	t.Run("custom origin, get, from config", func(t *testing.T) {
-		utils.UseTempFile(`
+		testutils.UseTempFile(`
 http:
   api:
     cors: 

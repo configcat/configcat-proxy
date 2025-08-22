@@ -60,7 +60,7 @@ func (f *fileWatcher) run() {
 			}
 		case err := <-f.watch.Errors:
 			f.log.Errorf("%s", err)
-		case <-f.Closed():
+		case <-f.Notifier.Context().Done():
 			return
 		}
 	}

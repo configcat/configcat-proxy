@@ -69,6 +69,9 @@ func (c *Config) loadEnv() error {
 		}
 		c.SDKs[sdkId] = sdkConf
 	}
+	if err := c.Profile.loadEnv(envPrefix); err != nil {
+		return err
+	}
 	if err := c.Http.loadEnv(envPrefix); err != nil {
 		return err
 	}
@@ -116,6 +119,30 @@ func (s *SDKConfig) loadEnv(prefix string) error {
 	return s.Log.loadEnv(prefix)
 }
 
+func (a *ProfileConfig) loadEnv(prefix string) error {
+	prefix = concatPrefix(prefix, "PROFILE")
+	readEnvString(prefix, "KEY", &a.Key)
+	readEnvString(prefix, "SECRET", &a.Secret)
+	readEnvString(prefix, "BASE_URL", &a.BaseUrl)
+	readEnvString(prefix, "WEBHOOK_SIGNING_KEY", &a.WebhookSigningKey)
+	if err := readEnv(prefix, "WEBHOOK_SIGNATURE_VALID_FOR", &a.WebhookSignatureValidFor, toInt); err != nil {
+		return err
+	}
+	if err := readEnv(prefix, "POLL_INTERVAL", &a.PollInterval, toInt); err != nil {
+		return err
+	}
+	if err := a.SDKs.loadEnv(prefix); err != nil {
+		return err
+	}
+	return a.Log.loadEnv(prefix)
+}
+
+func (p *ProfileSDKConfig) loadEnv(prefix string) error {
+	prefix = concatPrefix(prefix, "SDKS")
+	readEnvString(prefix, "BASE_URL", &p.BaseUrl)
+	return p.Log.loadEnv(prefix)
+}
+
 func (h *HttpConfig) loadEnv(prefix string) error {
 	prefix = concatPrefix(prefix, "HTTP")
 	if err := readEnv(prefix, "ENABLED", &h.Enabled, toBool); err != nil {
@@ -137,6 +164,9 @@ func (h *HttpConfig) loadEnv(prefix string) error {
 		return err
 	}
 	if err := h.Status.loadEnv(prefix); err != nil {
+		return err
+	}
+	if err := h.OFREP.loadEnv(prefix); err != nil {
 		return err
 	}
 	return h.Api.loadEnv(prefix)
@@ -299,6 +329,20 @@ func (a *ApiConfig) loadEnv(prefix string) error {
 		return err
 	}
 	return a.CORS.loadEnv(prefix)
+}
+
+func (o *OFREPConfig) loadEnv(prefix string) error {
+	prefix = concatPrefix(prefix, "OFREP")
+	if err := readEnv(prefix, "ENABLED", &o.Enabled, toBool); err != nil {
+		return err
+	}
+	if err := readEnv(prefix, "HEADERS", &o.Headers, toStringMap); err != nil {
+		return err
+	}
+	if err := readEnv(prefix, "AUTH_HEADERS", &o.AuthHeaders, toStringMap); err != nil {
+		return err
+	}
+	return o.CORS.loadEnv(prefix)
 }
 
 func (c *CdnProxyConfig) loadEnv(prefix string) error {

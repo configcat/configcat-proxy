@@ -25,16 +25,16 @@ var defaultExposedHeaders = []string{
 
 var defaultAllowedOrigin = "*"
 
-func CORS(allowedMethods []string, allowedOrigins []string, headers []string, authHeaders []string, originRegexConfig *config.OriginRegexConfig, next http.HandlerFunc) http.HandlerFunc {
+func CORS(allowedMethods []string, allowedOrigins []string, responseHeaders []string, requestHeaders []string, originRegexConfig *config.OriginRegexConfig, next http.HandlerFunc) http.HandlerFunc {
 	var exposedHeaders = defaultExposedHeaders
-	if len(headers) > 0 {
-		exposedHeaders = append(exposedHeaders, headers...)
+	if len(responseHeaders) > 0 {
+		exposedHeaders = append(exposedHeaders, responseHeaders...)
 		exposedHeaders = utils.DedupStringSlice(exposedHeaders)
 	}
 
 	var allowedHeaders = defaultAllowedHeaders
-	if len(authHeaders) > 0 {
-		allowedHeaders = append(allowedHeaders, authHeaders...)
+	if len(requestHeaders) > 0 {
+		allowedHeaders = append(allowedHeaders, requestHeaders...)
 		allowedHeaders = utils.DedupStringSlice(allowedHeaders)
 	}
 

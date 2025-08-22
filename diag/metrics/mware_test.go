@@ -78,6 +78,29 @@ func TestIntercept(t *testing.T) {
 	assert.Contains(t, string(body), "configcat_sdk_http_request_duration_seconds_bucket{route=\""+srv.URL+"\",sdk=\"test\",status=\"200 OK\",le=\"0.005\"} 1")
 }
 
+func TestProfileIntercept(t *testing.T) {
+	handler := NewReporter().(*reporter)
+	h := http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		writer.WriteHeader(http.StatusOK)
+	})
+	srv := httptest.NewServer(h)
+	client := http.Client{}
+	client.Transport = InterceptProxyProfile("test", handler, http.DefaultTransport)
+	req, _ := http.NewRequest(http.MethodGet, srv.URL, http.NoBody)
+	_, _ = client.Do(req)
+
+	assert.Equal(t, 1, testutil.CollectAndCount(handler.profileResponseTime))
+
+	mSrv := httptest.NewServer(handler.HttpHandler())
+	client = http.Client{}
+	req, _ = http.NewRequest(http.MethodGet, mSrv.URL, http.NoBody)
+	resp, _ := client.Do(req)
+	body, _ := io.ReadAll(resp.Body)
+	_ = resp.Body.Close()
+
+	assert.Contains(t, string(body), "configcat_profile_http_request_duration_seconds_bucket{key=\"test\",route=\""+srv.URL+"\",status=\"200 OK\",le=\"0.005\"} 1")
+}
+
 func TestUnaryInterceptor(t *testing.T) {
 	handler := func(ctx context.Context, req interface{}) (i interface{}, e error) {
 		return nil, nil

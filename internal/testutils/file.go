@@ -1,4 +1,6 @@
-package utils
+//go:build testing
+
+package testutils
 
 import (
 	"fmt"

@@ -16,13 +16,10 @@ type notifyingCacheStore struct {
 	store.CacheEntryStore
 	store.Notifier
 
-	poller    *time.Ticker
-	log       log.Logger
-	reporter  status.Reporter
-	ctx       context.Context
-	ctxCancel func()
-	sdkId     string
-	cacheKey  string
+	log      log.Logger
+	reporter status.Reporter
+	sdkId    string
+	cacheKey string
 }
 
 func NewNotifyingCacheStore(sdkId string, cacheKey string, cache store.CacheEntryStore, conf *config.OfflineConfig, reporter status.Reporter, log log.Logger) store.NotifyingStore {
@@ -34,29 +31,29 @@ func NewNotifyingCacheStore(sdkId string, cacheKey string, cache store.CacheEntr
 		reporter:        reporter,
 		log:             nrLogger,
 		sdkId:           sdkId,
-		poller:          time.NewTicker(time.Duration(conf.CachePollInterval) * time.Second),
 	}
-	n.ctx, n.ctxCancel = context.WithCancel(context.Background())
 	n.reload()
-	go n.run()
+	go n.run(conf.CachePollInterval)
 	return n
 }
 
-func (n *notifyingCacheStore) run() {
+func (n *notifyingCacheStore) run(interval int) {
+	poller := time.NewTicker(time.Duration(interval) * time.Second)
+	defer poller.Stop()
 	for {
 		select {
-		case <-n.poller.C:
+		case <-poller.C:
 			if n.reload() {
 				n.Notify()
 			}
-		case <-n.Closed():
+		case <-n.Notifier.Context().Done():
 			return
 		}
 	}
 }
 
 func (n *notifyingCacheStore) reload() bool {
-	data, err := n.CacheEntryStore.Get(n.ctx, n.cacheKey)
+	data, err := n.CacheEntryStore.Get(n.Notifier.Context(), n.cacheKey)
 	if err != nil {
 		n.log.Errorf("failed to read from cache: %s", err)
 		n.reporter.ReportError(n.sdkId, "failed to read from cache")
@@ -80,8 +77,7 @@ func (n *notifyingCacheStore) reload() bool {
 		n.reporter.ReportError(n.sdkId, "failed to parse JSON from cache")
 		return false
 	}
-	ser, _ := json.Marshal(root) // Re-serialize to enforce the JSON schema
-	n.CacheEntryStore.StoreEntry(ser, fetchTime, eTag)
+	n.CacheEntryStore.StoreEntry(configJson, fetchTime, eTag)
 	n.reporter.ReportOk(n.sdkId, "reload from cache succeeded")
 	return true
 }
@@ -96,7 +92,5 @@ func (n *notifyingCacheStore) Set(_ context.Context, _ string, _ []byte) error {
 
 func (n *notifyingCacheStore) Close() {
 	n.Notifier.Close()
-	n.ctxCancel()
-	n.poller.Stop()
 	n.log.Reportf("shutdown complete")
 }

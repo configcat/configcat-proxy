@@ -3,9 +3,9 @@
 package stream
 
 import (
-	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/model"
+	"github.com/configcat/configcat-proxy/sdk"
 	"github.com/stretchr/testify/assert"
 	"strconv"
 	"sync"
@@ -14,7 +14,7 @@ import (
 )
 
 func TestStream_Connections(t *testing.T) {
-	clients, _, _ := testutils.NewTestSdkClient(t)
+	clients, _, _ := sdk.NewTestSdkClient(t)
 
 	str := NewStream("test", clients["test"], nil, log.NewNullLogger(), "test").(*stream)
 	defer str.Close()
@@ -67,7 +67,7 @@ func TestStream_Connections(t *testing.T) {
 }
 
 func TestStream_Close(t *testing.T) {
-	clients, _, _ := testutils.NewTestSdkClient(t)
+	clients, _, _ := sdk.NewTestSdkClient(t)
 
 	str := NewStream("test", clients["test"], nil, log.NewNullLogger(), "test").(*stream)
 
@@ -92,7 +92,7 @@ func TestStream_Close(t *testing.T) {
 }
 
 func TestStream_Collision(t *testing.T) {
-	clients, _, _ := testutils.NewTestSdkClient(t)
+	clients, _, _ := sdk.NewTestSdkClient(t)
 
 	str := NewStream("test", clients["test"], nil, log.NewNullLogger(), "test").(*stream)
 
