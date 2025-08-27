@@ -1,4 +1,4 @@
-FROM golang:1.24-alpine3.21 AS build
+FROM golang:1.25-alpine3.22 AS build
 
 WORKDIR /go/src/configcat_proxy
 
