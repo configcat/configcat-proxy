@@ -81,7 +81,7 @@ func (r *manualRegistrar) Close() {
 }
 
 func buildTransport(proxyConf *config.HttpProxyConfig, log log.Logger) http.RoundTripper {
-	transport := http.DefaultTransport.(*http.Transport)
+	transport := http.DefaultTransport.(*http.Transport).Clone()
 	if proxyConf.Url != "" {
 		proxyUrl, err := url.Parse(proxyConf.Url)
 		if err != nil {
