@@ -2,12 +2,13 @@ package status
 
 import (
 	"encoding/json"
-	"github.com/configcat/configcat-proxy/config"
-	"github.com/stretchr/testify/assert"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/configcat/configcat-proxy/config"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestReporter_Online(t *testing.T) {

@@ -3,10 +3,11 @@ package config
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/configcat/configcat-proxy/model"
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/configcat/configcat-proxy/model"
 )
 
 type envVarReadError struct {

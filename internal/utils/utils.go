@@ -3,10 +3,11 @@ package utils
 import (
 	"encoding/base64"
 	"encoding/hex"
-	"github.com/cespare/xxhash/v2"
-	"github.com/puzpuzpuz/xsync/v3"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/cespare/xxhash/v2"
+	"github.com/puzpuzpuz/xsync/v3"
 )
 
 func Base64URLDecode(encoded string) ([]byte, error) {

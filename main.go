@@ -3,6 +3,12 @@ package main
 import (
 	"context"
 	"flag"
+	"os"
+	"os/signal"
+	"sync"
+	"syscall"
+	"time"
+
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/diag"
 	"github.com/configcat/configcat-proxy/diag/metrics"
@@ -12,11 +18,6 @@ import (
 	"github.com/configcat/configcat-proxy/sdk"
 	"github.com/configcat/configcat-proxy/sdk/store/cache"
 	"github.com/configcat/configcat-proxy/web"
-	"os"
-	"os/signal"
-	"sync"
-	"syscall"
-	"time"
 )
 
 const (

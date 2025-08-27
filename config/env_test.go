@@ -2,10 +2,11 @@ package config
 
 import (
 	"crypto/tls"
+	"testing"
+
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestSDKConfig_ENV(t *testing.T) {

@@ -2,6 +2,7 @@ package cache
 
 import (
 	"context"
+
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/redis/go-redis/v9"

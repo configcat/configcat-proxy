@@ -1,9 +1,10 @@
 package stream
 
 import (
+	"testing"
+
 	"github.com/configcat/configcat-proxy/model"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestConnection(t *testing.T) {

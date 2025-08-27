@@ -2,14 +2,15 @@ package file
 
 import (
 	"context"
+	"testing"
+	"time"
+
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/diag/status"
 	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/go-sdk/v9/configcatcache"
 	"github.com/stretchr/testify/assert"
-	"testing"
-	"time"
 )
 
 func TestFileStore_Existing(t *testing.T) {

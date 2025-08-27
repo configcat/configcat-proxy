@@ -3,9 +3,10 @@ package log
 import (
 	"bytes"
 	"fmt"
+	"testing"
+
 	configcat "github.com/configcat/go-sdk/v9"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestLogger(t *testing.T) {

@@ -1,9 +1,10 @@
 package testutils
 
 import (
-	"github.com/stretchr/testify/assert"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestAddSdkIdContextParam(t *testing.T) {

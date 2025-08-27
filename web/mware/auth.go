@@ -3,8 +3,9 @@ package mware
 import (
 	"crypto/sha256"
 	"crypto/subtle"
-	"github.com/configcat/configcat-proxy/log"
 	"net/http"
+
+	"github.com/configcat/configcat-proxy/log"
 )
 
 func BasicAuth(user string, pass string, logger log.Logger, next http.HandlerFunc) http.HandlerFunc {

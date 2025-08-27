@@ -4,6 +4,11 @@ package sdk
 
 import (
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"sync"
+	"testing"
+
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/diag/status"
 	"github.com/configcat/configcat-proxy/internal/utils"
@@ -12,10 +17,6 @@ import (
 	"github.com/configcat/configcat-proxy/sdk/store"
 	configcat "github.com/configcat/go-sdk/v9"
 	"github.com/configcat/go-sdk/v9/configcattest"
-	"net/http"
-	"net/http/httptest"
-	"sync"
-	"testing"
 )
 
 func NewTestRegistrar(conf *config.SDKConfig, cache store.Cache) Registrar {
@@ -79,7 +80,7 @@ func NewTestSdkClient(t *testing.T) (map[string]Client, *configcattest.Handler, 
 func NewTestSdkContext(conf *config.SDKConfig, cache store.Cache) *Context {
 	return &Context{
 		SDKConf:        conf,
-		ProxyConf:      &config.HttpProxyConfig{},
+		Transport:      http.DefaultTransport,
 		StatusReporter: status.NewEmptyReporter(),
 		SdkId:          "test",
 		ExternalCache:  cache,

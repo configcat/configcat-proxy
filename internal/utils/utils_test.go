@@ -1,9 +1,10 @@
 package utils
 
 import (
+	"testing"
+
 	"github.com/puzpuzpuz/xsync/v3"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestObfuscate(t *testing.T) {

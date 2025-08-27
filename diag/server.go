@@ -4,13 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
+	"strconv"
+	"time"
+
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/diag/metrics"
 	"github.com/configcat/configcat-proxy/diag/status"
 	"github.com/configcat/configcat-proxy/log"
-	"net/http"
-	"strconv"
-	"time"
 )
 
 type Server struct {
@@ -35,6 +36,8 @@ func NewServer(conf *config.DiagConfig, statusReporter status.Reporter, metricsR
 		mux.Handle("/status", statusReporter.HttpHandler())
 		diagLog.Reportf("status enabled, accepting requests on path: /status")
 	}
+
+	setupDebugEndpoints(mux)
 
 	httpServer := &http.Server{
 		Addr:    ":" + strconv.Itoa(conf.Port),

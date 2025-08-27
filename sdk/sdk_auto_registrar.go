@@ -5,6 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"strings"
+	"time"
+
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/diag/metrics"
 	"github.com/configcat/configcat-proxy/diag/status"
@@ -14,11 +19,6 @@ import (
 	"github.com/configcat/configcat-proxy/pubsub"
 	"github.com/configcat/configcat-proxy/sdk/store"
 	"github.com/puzpuzpuz/xsync/v3"
-	"io"
-	"net/http"
-	"net/url"
-	"strings"
-	"time"
 )
 
 type AutoRegistrar interface {
@@ -41,24 +41,16 @@ type autoRegistrar struct {
 	statusReporter  status.Reporter
 	cache           store.Cache
 	log             log.Logger
+	sdkTransport    http.RoundTripper
 	pubsub.Publisher[string]
 }
 
 func newAutoRegistrar(conf *config.Config, metricsReporter metrics.Reporter, statusReporter status.Reporter, cache store.Cache, log log.Logger) (*autoRegistrar, error) {
 	regLog := log.WithPrefix("profile-sdk-registrar").WithLevel(conf.Profile.Log.GetLevel())
-	var transport = http.DefaultTransport.(*http.Transport)
-	if !conf.GlobalOfflineConfig.Enabled && conf.HttpProxy.Url != "" {
-		proxyUrl, err := url.Parse(conf.HttpProxy.Url)
-		if err != nil {
-			regLog.Errorf("failed to parse proxy url: %s", conf.HttpProxy.Url)
-		} else {
-			transport.Proxy = http.ProxyURL(proxyUrl)
-			regLog.Reportf("using HTTP proxy: %s", conf.HttpProxy.Url)
-		}
-	}
-	var roundTripper http.RoundTripper = transport
+	transport := buildTransport(&conf.HttpProxy, regLog)
+	var profileTransport = transport
 	if metricsReporter != nil {
-		roundTripper = metrics.InterceptProxyProfile(conf.Profile.Key, metricsReporter, roundTripper)
+		profileTransport = metrics.InterceptProxyProfile(conf.Profile.Key, metricsReporter, profileTransport)
 	}
 	registrar := &autoRegistrar{
 		refreshChan:     make(chan struct{}),
@@ -71,10 +63,11 @@ func newAutoRegistrar(conf *config.Config, metricsReporter metrics.Reporter, sta
 		Publisher:       pubsub.NewPublisher[string](),
 		httpClient: &http.Client{
 			Timeout:   30 * time.Second,
-			Transport: roundTripper,
+			Transport: profileTransport,
 		},
-		cacheKey: "configcat-proxy-profile-" + conf.Profile.Key,
-		etag:     "initial",
+		cacheKey:     "configcat-proxy-profile-" + conf.Profile.Key,
+		etag:         "initial",
+		sdkTransport: transport,
 	}
 	registrar.ctx, registrar.ctxCancel = context.WithCancel(context.Background())
 
@@ -319,10 +312,10 @@ func (r *autoRegistrar) buildSdkClient(sdkId string, sdkConfig *config.SDKConfig
 		SDKConf:            sdkConfig,
 		MetricsReporter:    r.metricsReporter,
 		StatusReporter:     r.statusReporter,
-		ProxyConf:          &r.conf.HttpProxy,
 		GlobalDefaultAttrs: r.conf.DefaultAttrs,
 		SdkId:              sdkId,
 		ExternalCache:      r.cache,
+		Transport:          r.sdkTransport,
 	}
 	if len(sdkModel.Key2) > 0 {
 		ctx.SecondarySdkKey.Store(&sdkModel.Key2)

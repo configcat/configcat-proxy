@@ -2,11 +2,12 @@ package cdnproxy
 
 import (
 	"fmt"
+	"net/http"
+	"strings"
+
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/sdk"
-	"net/http"
-	"strings"
 )
 
 type Server struct {

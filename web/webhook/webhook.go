@@ -4,14 +4,15 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
-	"github.com/configcat/configcat-proxy/config"
-	"github.com/configcat/configcat-proxy/log"
-	"github.com/configcat/configcat-proxy/sdk"
 	"io"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/configcat/configcat-proxy/config"
+	"github.com/configcat/configcat-proxy/log"
+	"github.com/configcat/configcat-proxy/sdk"
 )
 
 const signatureHeader = "X-ConfigCat-Webhook-Signature-V1"

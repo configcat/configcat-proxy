@@ -2,14 +2,15 @@ package grpc
 
 import (
 	"context"
+	"strings"
+	"time"
+
 	"github.com/configcat/configcat-proxy/log"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
-	"strings"
-	"time"
 )
 
 func DebugLogUnaryInterceptor(log log.Logger) grpc.UnaryServerInterceptor {

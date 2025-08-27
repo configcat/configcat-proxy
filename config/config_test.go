@@ -2,12 +2,13 @@ package config
 
 import (
 	"crypto/tls"
+	"testing"
+	"time"
+
 	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
-	"time"
 )
 
 func TestConfig_Defaults(t *testing.T) {

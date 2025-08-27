@@ -2,6 +2,11 @@ package grpc
 
 import (
 	"context"
+	"net"
+	"net/http/httptest"
+	"testing"
+	"time"
+
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/grpc/proto"
 	"github.com/configcat/configcat-proxy/internal/testutils"
@@ -12,10 +17,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/test/bufconn"
-	"net"
-	"net/http/httptest"
-	"testing"
-	"time"
 )
 
 func TestGrpc_EvalFlagStream(t *testing.T) {

@@ -1,9 +1,10 @@
 package mware
 
 import (
-	"github.com/configcat/configcat-proxy/log"
 	"net/http"
 	"time"
+
+	"github.com/configcat/configcat-proxy/log"
 )
 
 type requestInterceptor struct {

@@ -4,15 +4,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"hash/maphash"
+	"io"
+	"net/http"
+
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/internal/utils"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/model"
 	"github.com/configcat/configcat-proxy/sdk"
 	configcat "github.com/configcat/go-sdk/v9"
-	"hash/maphash"
-	"io"
-	"net/http"
 )
 
 type errorCode string

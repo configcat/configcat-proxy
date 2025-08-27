@@ -1,12 +1,13 @@
 package stream
 
 import (
+	"hash/maphash"
+	"sync/atomic"
+
 	"github.com/configcat/configcat-proxy/diag/metrics"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/model"
 	"github.com/configcat/configcat-proxy/sdk"
-	"hash/maphash"
-	"sync/atomic"
 )
 
 type Stream interface {

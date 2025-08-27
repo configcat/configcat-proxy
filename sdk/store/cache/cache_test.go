@@ -2,14 +2,15 @@ package cache
 
 import (
 	"context"
+	"testing"
+	"time"
+
 	"github.com/alicebob/miniredis/v2"
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/diag/status"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/go-sdk/v9/configcatcache"
 	"github.com/stretchr/testify/assert"
-	"testing"
-	"time"
 )
 
 func TestCacheStore(t *testing.T) {

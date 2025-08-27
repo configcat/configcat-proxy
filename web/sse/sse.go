@@ -2,6 +2,8 @@ package sse
 
 import (
 	"encoding/json"
+	"net/http"
+
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/diag/metrics"
 	"github.com/configcat/configcat-proxy/internal/utils"
@@ -9,7 +11,6 @@ import (
 	"github.com/configcat/configcat-proxy/model"
 	"github.com/configcat/configcat-proxy/sdk"
 	"github.com/configcat/configcat-proxy/stream"
-	"net/http"
 )
 
 const streamDataName = "data"

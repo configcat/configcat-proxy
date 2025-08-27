@@ -2,6 +2,10 @@ package grpc
 
 import (
 	"fmt"
+	"net"
+	"strconv"
+	"time"
+
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/diag/metrics"
 	"github.com/configcat/configcat-proxy/diag/status"
@@ -13,9 +17,6 @@ import (
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
-	"net"
-	"strconv"
-	"time"
 )
 
 import _ "google.golang.org/grpc/encoding/gzip"

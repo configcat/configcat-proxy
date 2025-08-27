@@ -3,6 +3,9 @@ package cache
 import (
 	"context"
 	"fmt"
+	"testing"
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
@@ -11,8 +14,6 @@ import (
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/go-sdk/v9/configcatcache"
 	"github.com/stretchr/testify/assert"
-	"testing"
-	"time"
 )
 
 const (

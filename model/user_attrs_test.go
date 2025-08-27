@@ -2,10 +2,11 @@ package model
 
 import (
 	"encoding/json"
-	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
 	"hash/maphash"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
 )
 
 func TestUserAttributes_Identical(t *testing.T) {

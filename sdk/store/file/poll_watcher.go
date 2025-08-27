@@ -1,12 +1,13 @@
 package file
 
 import (
-	"github.com/configcat/configcat-proxy/config"
-	"github.com/configcat/configcat-proxy/log"
-	"github.com/configcat/configcat-proxy/sdk/store"
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/configcat/configcat-proxy/config"
+	"github.com/configcat/configcat-proxy/log"
+	"github.com/configcat/configcat-proxy/sdk/store"
 )
 
 type pollWatcher struct {

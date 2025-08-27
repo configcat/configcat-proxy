@@ -2,6 +2,11 @@ package cache
 
 import (
 	"context"
+	"net/http"
+	"sync"
+	"testing"
+	"time"
+
 	"github.com/alicebob/miniredis/v2"
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/diag/status"
@@ -9,10 +14,6 @@ import (
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/go-sdk/v9/configcatcache"
 	"github.com/stretchr/testify/assert"
-	"net/http"
-	"sync"
-	"testing"
-	"time"
 )
 
 func TestRedisNotify(t *testing.T) {

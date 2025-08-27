@@ -1,9 +1,10 @@
 package metrics
 
 import (
+	"testing"
+
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestConnection(t *testing.T) {

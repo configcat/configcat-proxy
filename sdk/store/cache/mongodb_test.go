@@ -2,12 +2,13 @@ package cache
 
 import (
 	"context"
+	"testing"
+	"time"
+
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/go-sdk/v9/configcatcache"
 	"github.com/stretchr/testify/assert"
-	"testing"
-	"time"
 )
 
 func TestMongoDbStore(t *testing.T) {
@@ -17,8 +18,8 @@ func TestMongoDbStore(t *testing.T) {
 		Database:   "test_db",
 		Collection: "coll",
 	}, log.NewNullLogger())
-	defer store.Shutdown()
 	assert.NoError(t, err)
+	defer store.Shutdown()
 
 	cacheEntry := configcatcache.CacheSegmentsToBytes(time.Now(), "etag", []byte(`test`))
 
@@ -46,8 +47,8 @@ func TestMongoDbStore_Empty(t *testing.T) {
 		Database:   "test_db",
 		Collection: "coll",
 	}, log.NewNullLogger())
-	defer store.Shutdown()
 	assert.NoError(t, err)
+	defer store.Shutdown()
 
 	_, err = store.Get(context.Background(), "k2")
 	assert.Error(t, err)

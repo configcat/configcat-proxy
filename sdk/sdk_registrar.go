@@ -1,6 +1,9 @@
 package sdk
 
 import (
+	"net/http"
+	"net/url"
+
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/diag/metrics"
 	"github.com/configcat/configcat-proxy/diag/status"
@@ -30,6 +33,7 @@ func NewRegistrar(conf *config.Config, metricsReporter metrics.Reporter, statusR
 
 func newManualRegistrar(conf *config.Config, metricsReporter metrics.Reporter, statusReporter status.Reporter, externalCache store.Cache, log log.Logger) (*manualRegistrar, error) {
 	regLog := log.WithPrefix("sdk-registrar").WithLevel(conf.Profile.Log.GetLevel())
+	transport := buildTransport(&conf.HttpProxy, regLog)
 	sdkClients := make(map[string]Client, len(conf.SDKs))
 	for key, sdkConf := range conf.SDKs {
 		statusReporter.RegisterSdk(key, sdkConf)
@@ -37,10 +41,10 @@ func newManualRegistrar(conf *config.Config, metricsReporter metrics.Reporter, s
 			SDKConf:            sdkConf,
 			MetricsReporter:    metricsReporter,
 			StatusReporter:     statusReporter,
-			ProxyConf:          &conf.HttpProxy,
 			GlobalDefaultAttrs: conf.DefaultAttrs,
 			SdkId:              key,
 			ExternalCache:      externalCache,
+			Transport:          transport,
 		}, regLog)
 	}
 	return &manualRegistrar{sdkClients: sdkClients}, nil
@@ -74,4 +78,18 @@ func (r *manualRegistrar) Close() {
 	for _, sdkClient := range r.sdkClients {
 		sdkClient.Close()
 	}
+}
+
+func buildTransport(proxyConf *config.HttpProxyConfig, log log.Logger) http.RoundTripper {
+	transport := http.DefaultTransport.(*http.Transport)
+	if proxyConf.Url != "" {
+		proxyUrl, err := url.Parse(proxyConf.Url)
+		if err != nil {
+			log.Errorf("failed to parse proxy url: %s", proxyConf.Url)
+		} else {
+			transport.Proxy = http.ProxyURL(proxyUrl)
+			log.Reportf("using HTTP proxy: %s", proxyConf.Url)
+		}
+	}
+	return OverrideUserAgent(transport)
 }

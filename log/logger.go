@@ -1,10 +1,11 @@
 package log
 
 import (
-	"github.com/configcat/go-sdk/v9"
 	"io"
 	"log"
 	"os"
+
+	"github.com/configcat/go-sdk/v9"
 )
 
 type Level int

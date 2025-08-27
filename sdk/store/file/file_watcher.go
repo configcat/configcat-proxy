@@ -1,12 +1,13 @@
 package file
 
 import (
+	"os"
+	"path/filepath"
+
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/sdk/store"
 	"github.com/fsnotify/fsnotify"
-	"os"
-	"path/filepath"
 )
 
 type fileWatcher struct {
