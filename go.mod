@@ -1,6 +1,6 @@
 module github.com/configcat/configcat-proxy
 
-go 1.24.0
+go 1.24.6
 
 require (
 	github.com/alicebob/miniredis/v2 v2.35.0
@@ -15,7 +15,7 @@ require (
 	github.com/prometheus/client_golang v1.23.0
 	github.com/puzpuzpuz/xsync/v3 v3.5.1
 	github.com/redis/go-redis/v9 v9.12.1
-	github.com/stretchr/testify v1.11.0
+	github.com/stretchr/testify v1.11.1
 	go.mongodb.org/mongo-driver v1.17.4
 	google.golang.org/grpc v1.75.0
 	google.golang.org/protobuf v1.36.8
