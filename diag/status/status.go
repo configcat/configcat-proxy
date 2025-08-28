@@ -2,11 +2,12 @@ package status
 
 import (
 	"encoding/json"
-	"github.com/configcat/configcat-proxy/config"
-	"github.com/configcat/configcat-proxy/internal/utils"
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/configcat/configcat-proxy/config"
+	"github.com/configcat/configcat-proxy/internal/utils"
 )
 
 type SDKSource string

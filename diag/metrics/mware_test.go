@@ -2,13 +2,14 @@ package metrics
 
 import (
 	"context"
-	"github.com/prometheus/client_golang/prometheus/testutil"
-	"github.com/stretchr/testify/assert"
-	"google.golang.org/grpc"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/prometheus/client_golang/prometheus/testutil"
+	"github.com/stretchr/testify/assert"
+	"google.golang.org/grpc"
 )
 
 func TestMeasure(t *testing.T) {

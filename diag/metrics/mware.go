@@ -2,11 +2,12 @@ package metrics
 
 import (
 	"context"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/status"
 	"net/http"
 	"strconv"
 	"time"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/status"
 )
 
 type httpRequestInterceptor struct {

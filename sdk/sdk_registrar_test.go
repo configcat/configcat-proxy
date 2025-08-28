@@ -2,6 +2,12 @@ package sdk
 
 import (
 	"encoding/json"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+	"time"
+
 	"github.com/alicebob/miniredis/v2"
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/diag/status"
@@ -10,8 +16,6 @@ import (
 	"github.com/configcat/configcat-proxy/model"
 	"github.com/configcat/go-sdk/v9/configcattest"
 	"github.com/stretchr/testify/assert"
-	"testing"
-	"time"
 )
 
 func TestRegistrar_GetSdkOrNil(t *testing.T) {
@@ -76,4 +80,23 @@ func TestNewRegistrar(t *testing.T) {
 	}, nil, status.NewEmptyReporter(), extCache, log.NewDebugLogger())
 	defer reg.Close()
 	assert.IsType(t, &autoRegistrar{}, reg)
+}
+
+func TestBuildProxy(t *testing.T) {
+	proxy := httptest.NewServer(
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("ok from proxy"))
+		}))
+	defer proxy.Close()
+	transport := buildTransport(&config.HttpProxyConfig{Url: proxy.URL}, log.NewNullLogger())
+	client := &http.Client{
+		Transport: transport,
+	}
+	rsp, err := client.Get("http://nonexisting")
+	assert.NoError(t, err)
+
+	body, err := io.ReadAll(rsp.Body)
+	assert.NoError(t, err)
+	assert.Equal(t, "ok from proxy", string(body))
 }

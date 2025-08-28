@@ -2,6 +2,10 @@ package sdk
 
 import (
 	"encoding/json"
+	"strings"
+	"testing"
+	"time"
+
 	"github.com/alicebob/miniredis/v2"
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/diag/status"
@@ -12,9 +16,6 @@ import (
 	"github.com/configcat/go-sdk/v9/configcatcache"
 	"github.com/configcat/go-sdk/v9/configcattest"
 	"github.com/stretchr/testify/assert"
-	"strings"
-	"testing"
-	"time"
 )
 
 func TestAutoRegistrar_Poll(t *testing.T) {

@@ -4,6 +4,11 @@ import (
 	"compress/gzip"
 	"context"
 	"fmt"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/diag/status"
 	"github.com/configcat/configcat-proxy/log"
@@ -14,10 +19,6 @@ import (
 	ofrepprovider "github.com/open-feature/go-sdk-contrib/providers/ofrep"
 	"github.com/open-feature/go-sdk/openfeature"
 	"github.com/stretchr/testify/assert"
-	"io"
-	"net/http"
-	"net/http/httptest"
-	"testing"
 )
 
 func TestOFREP_Integration(t *testing.T) {

@@ -1,11 +1,12 @@
 package mware
 
 import (
-	"github.com/configcat/configcat-proxy/log"
-	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/configcat/configcat-proxy/log"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestBasicAuth(t *testing.T) {

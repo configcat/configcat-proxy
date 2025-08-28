@@ -1,6 +1,11 @@
 package stream
 
 import (
+	"net/http/httptest"
+	"runtime"
+	"testing"
+	"time"
+
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/log"
@@ -8,10 +13,6 @@ import (
 	"github.com/configcat/configcat-proxy/sdk"
 	"github.com/configcat/go-sdk/v9/configcattest"
 	"github.com/stretchr/testify/assert"
-	"net/http/httptest"
-	"runtime"
-	"testing"
-	"time"
 )
 
 func TestStream_Receive(t *testing.T) {

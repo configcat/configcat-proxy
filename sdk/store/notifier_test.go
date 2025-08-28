@@ -1,8 +1,9 @@
 package store
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNotifier_Modified(t *testing.T) {

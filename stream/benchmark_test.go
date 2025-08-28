@@ -2,14 +2,15 @@ package stream
 
 import (
 	"fmt"
+	"net/http/httptest"
+	"strconv"
+	"testing"
+
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/model"
 	"github.com/configcat/configcat-proxy/sdk"
 	"github.com/configcat/go-sdk/v9/configcattest"
-	"net/http/httptest"
-	"strconv"
-	"testing"
 )
 
 func BenchmarkStream(b *testing.B) {

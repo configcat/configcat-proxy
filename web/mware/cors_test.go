@@ -1,14 +1,15 @@
 package mware
 
 import (
-	"github.com/configcat/configcat-proxy/config"
-	"github.com/configcat/configcat-proxy/internal/testutils"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
 	"testing"
+
+	"github.com/configcat/configcat-proxy/config"
+	"github.com/configcat/configcat-proxy/internal/testutils"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCORS(t *testing.T) {

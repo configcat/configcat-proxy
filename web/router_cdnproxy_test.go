@@ -3,6 +3,11 @@ package web
 import (
 	"compress/gzip"
 	"fmt"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/diag/status"
 	"github.com/configcat/configcat-proxy/log"
@@ -10,10 +15,6 @@ import (
 	configcat "github.com/configcat/go-sdk/v9"
 	"github.com/configcat/go-sdk/v9/configcattest"
 	"github.com/stretchr/testify/assert"
-	"io"
-	"net/http"
-	"net/http/httptest"
-	"testing"
 )
 
 func TestCDNProxy_Integration(t *testing.T) {

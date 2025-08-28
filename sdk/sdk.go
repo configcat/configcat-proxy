@@ -2,6 +2,11 @@ package sdk
 
 import (
 	"context"
+	"net/http"
+	"sync"
+	"sync/atomic"
+	"time"
+
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/diag/metrics"
 	"github.com/configcat/configcat-proxy/diag/status"
@@ -14,11 +19,6 @@ import (
 	"github.com/configcat/configcat-proxy/sdk/store/file"
 	"github.com/configcat/go-sdk/v9"
 	"github.com/configcat/go-sdk/v9/configcatcache"
-	"net/http"
-	"net/url"
-	"sync"
-	"sync/atomic"
-	"time"
 )
 
 const (
@@ -45,12 +45,12 @@ type Context struct {
 	SdkId              string
 	SecondarySdkKey    atomic.Pointer[string]
 	SDKConf            *config.SDKConfig
-	ProxyConf          *config.HttpProxyConfig
 	GlobalDefaultAttrs model.UserAttrs
 	MetricsReporter    metrics.Reporter
 	StatusReporter     status.Reporter
 	EvalReporter       statistics.Reporter
 	ExternalCache      store.Cache
+	Transport          http.RoundTripper
 }
 
 type client struct {
@@ -92,16 +92,6 @@ func NewClient(sdkCtx *Context, log log.Logger) Client {
 		defaultAttrs: model.MergeUserAttrs(sdkCtx.GlobalDefaultAttrs, sdkCtx.SDKConf.DefaultAttrs),
 	}
 	client.ctx, client.ctxCancel = context.WithCancel(context.Background())
-	var transport = http.DefaultTransport.(*http.Transport)
-	if !sdkCtx.SDKConf.Offline.Enabled && sdkCtx.ProxyConf.Url != "" {
-		proxyUrl, err := url.Parse(sdkCtx.ProxyConf.Url)
-		if err != nil {
-			sdkLog.Errorf("failed to parse proxy url: %s", sdkCtx.ProxyConf.Url)
-		} else {
-			transport.Proxy = http.ProxyURL(proxyUrl)
-			sdkLog.Reportf("using HTTP proxy: %s", sdkCtx.ProxyConf.Url)
-		}
-	}
 	clientConfig := configcat.Config{
 		PollingMode:    configcat.AutoPoll,
 		PollInterval:   time.Duration(sdkCtx.SDKConf.PollInterval) * time.Second,
@@ -112,7 +102,7 @@ func NewClient(sdkCtx *Context, log log.Logger) Client {
 		DataGovernance: configcat.Global,
 		Logger:         sdkLog,
 		LogLevel:       sdkLog.GetConfigCatLevel(),
-		Transport:      OverrideUserAgent(transport),
+		Transport:      sdkCtx.Transport,
 		Hooks:          &configcat.Hooks{},
 	}
 	if !sdkCtx.SDKConf.Offline.Enabled {

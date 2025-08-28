@@ -2,14 +2,15 @@ package main
 
 import (
 	"flag"
-	"github.com/alicebob/miniredis/v2"
-	"github.com/stretchr/testify/assert"
 	"io"
 	"os"
 	"sync"
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/alicebob/miniredis/v2"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestAppMain(t *testing.T) {

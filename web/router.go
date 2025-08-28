@@ -1,6 +1,8 @@
 package web
 
 import (
+	"net/http"
+
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/diag/metrics"
 	"github.com/configcat/configcat-proxy/diag/status"
@@ -13,7 +15,6 @@ import (
 	"github.com/configcat/configcat-proxy/web/ofrep"
 	"github.com/configcat/configcat-proxy/web/sse"
 	"github.com/configcat/configcat-proxy/web/webhook"
-	"net/http"
 )
 
 type HttpRouter struct {

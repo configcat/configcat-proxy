@@ -1,15 +1,16 @@
 package web
 
 import (
-	"github.com/configcat/configcat-proxy/config"
-	"github.com/configcat/configcat-proxy/internal/testutils"
-	"github.com/configcat/configcat-proxy/log"
-	"github.com/stretchr/testify/assert"
 	"net/http"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/configcat/configcat-proxy/config"
+	"github.com/configcat/configcat-proxy/internal/testutils"
+	"github.com/configcat/configcat-proxy/log"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNewServer(t *testing.T) {
@@ -130,7 +131,7 @@ func TestNewServer_TLS_Missing_Cert(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func ServeHTTP(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 

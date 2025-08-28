@@ -2,10 +2,11 @@ package store
 
 import (
 	"context"
-	"github.com/configcat/go-sdk/v9/configcatcache"
-	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
+
+	"github.com/configcat/go-sdk/v9/configcatcache"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestInMemoryStore(t *testing.T) {

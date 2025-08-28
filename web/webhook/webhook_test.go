@@ -5,18 +5,19 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
-	"github.com/configcat/configcat-proxy/config"
-	"github.com/configcat/configcat-proxy/internal/testutils"
-	"github.com/configcat/configcat-proxy/log"
-	"github.com/configcat/configcat-proxy/sdk"
-	"github.com/configcat/go-sdk/v9/configcattest"
-	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/configcat/configcat-proxy/config"
+	"github.com/configcat/configcat-proxy/internal/testutils"
+	"github.com/configcat/configcat-proxy/log"
+	"github.com/configcat/configcat-proxy/sdk"
+	"github.com/configcat/go-sdk/v9/configcattest"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestWebhook_Signature_Bad(t *testing.T) {

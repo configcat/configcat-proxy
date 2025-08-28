@@ -3,13 +3,14 @@ package grpc
 import (
 	"bytes"
 	"context"
+	"net"
+	"testing"
+
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
-	"net"
-	"testing"
 )
 
 func TestDebug_UnaryInterceptor(t *testing.T) {

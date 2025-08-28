@@ -2,11 +2,12 @@ package store
 
 import (
 	"encoding/json"
+	"sync/atomic"
+	"time"
+
 	"github.com/configcat/configcat-proxy/internal/utils"
 	configcat "github.com/configcat/go-sdk/v9"
 	"github.com/configcat/go-sdk/v9/configcatcache"
-	"sync/atomic"
-	"time"
 )
 
 type EntryStore interface {

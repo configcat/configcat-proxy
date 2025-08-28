@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/configcat/configcat-proxy/config"
-	"github.com/configcat/configcat-proxy/log"
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/configcat/configcat-proxy/config"
+	"github.com/configcat/configcat-proxy/log"
 )
 
 type Server struct {

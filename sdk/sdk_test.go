@@ -4,6 +4,10 @@ import (
 	"context"
 	"crypto/sha1"
 	"fmt"
+	"net/http/httptest"
+	"testing"
+	"time"
+
 	"github.com/alicebob/miniredis/v2"
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/internal/testutils"
@@ -17,9 +21,6 @@ import (
 	"github.com/configcat/go-sdk/v9/configcatcache"
 	"github.com/configcat/go-sdk/v9/configcattest"
 	"github.com/stretchr/testify/assert"
-	"net/http/httptest"
-	"testing"
-	"time"
 )
 
 func TestSdk_Signal(t *testing.T) {

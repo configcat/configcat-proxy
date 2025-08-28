@@ -1,11 +1,12 @@
 package mware
 
 import (
-	"github.com/configcat/configcat-proxy/config"
-	"github.com/configcat/configcat-proxy/internal/utils"
 	"net/http"
 	"slices"
 	"strings"
+
+	"github.com/configcat/configcat-proxy/config"
+	"github.com/configcat/configcat-proxy/internal/utils"
 )
 
 var defaultAllowedHeaders = []string{

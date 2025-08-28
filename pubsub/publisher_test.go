@@ -3,10 +3,11 @@
 package pubsub
 
 import (
-	"github.com/configcat/configcat-proxy/internal/testutils"
-	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
+
+	"github.com/configcat/configcat-proxy/internal/testutils"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestPubSub_Sub_Unsub(t *testing.T) {

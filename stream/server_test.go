@@ -1,14 +1,15 @@
 package stream
 
 import (
+	"testing"
+	"time"
+
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/model"
 	"github.com/configcat/configcat-proxy/sdk"
 	"github.com/stretchr/testify/assert"
-	"testing"
-	"time"
 )
 
 func TestServer_GetStreamOrNil(t *testing.T) {

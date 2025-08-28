@@ -1,6 +1,12 @@
 package grpc
 
 import (
+	"net/http/httptest"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/diag/metrics"
 	"github.com/configcat/configcat-proxy/diag/status"
@@ -9,11 +15,6 @@ import (
 	"github.com/configcat/configcat-proxy/sdk"
 	"github.com/configcat/go-sdk/v9/configcattest"
 	"github.com/stretchr/testify/assert"
-	"net/http/httptest"
-	"strings"
-	"sync"
-	"testing"
-	"time"
 )
 
 func TestNewServer(t *testing.T) {

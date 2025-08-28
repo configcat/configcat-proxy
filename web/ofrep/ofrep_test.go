@@ -1,6 +1,11 @@
 package ofrep
 
 import (
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/log"
@@ -8,10 +13,6 @@ import (
 	configcat "github.com/configcat/go-sdk/v9"
 	"github.com/configcat/go-sdk/v9/configcattest"
 	"github.com/stretchr/testify/assert"
-	"net/http"
-	"net/http/httptest"
-	"strings"
-	"testing"
 )
 
 func TestOFREP_Eval(t *testing.T) {
@@ -43,6 +44,7 @@ func TestOFREP_Eval(t *testing.T) {
 				}},
 			},
 		})
+		_ = srv.sdkRegistrar.GetSdkOrNil("test").Refresh()
 		req.SetPathValue("key", "flag")
 		srv.Eval(res, req)
 

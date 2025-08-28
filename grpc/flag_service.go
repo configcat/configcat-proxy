@@ -3,6 +3,7 @@ package grpc
 import (
 	"context"
 	"errors"
+
 	"github.com/configcat/configcat-proxy/diag/metrics"
 	"github.com/configcat/configcat-proxy/grpc/proto"
 	"github.com/configcat/configcat-proxy/log"
