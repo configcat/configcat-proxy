@@ -69,7 +69,7 @@ IMPORTANT:
 {{- if not .Values.clusterMode.enabled }}
 - For standalone mode, ConfigCat SDK keys must be specified:
 {{- if .Values.configcat.sdks.existingSecret }}
-  - Using secret: {{ .Values.configcat.sdks.existingSecret }} with key: {{ .Values.configcat.sdks.existingSecretKey }}
+  - Using secret: {{ .Values.configcat.sdks.existingSecret }} with key: {{ .Values.configcat.sdks.existingSecretSdkConfigurationKey }}
 {{- else if .Values.configcat.sdks.configurations }}
   - SDK configurations specified in values:
   {{- range $key, $value := .Values.configcat.sdks.configurations }}

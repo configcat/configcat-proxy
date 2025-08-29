@@ -169,13 +169,12 @@ configcat:
     # Key in the secret containing the JSON configuration
     # The secret value should be a raw JSON string like: {"production":"sdk-key-123","staging":"sdk-key-456"}
     # For kubectl create secret generic, use: --from-literal=sdks-configuration='{"production":"sdk-key-123"}'
-    existingSecretKey: "sdks-configuration"
+    existingSecretSdkConfigurationKey: "sdks-configuration"
   # Options for ConfigCat Proxy
   options:
     followers:
       cachePollInterval: 15 # controls how often the follower nodes (in offline mode) check Redis for updated configurations
     pollIntervalSeconds: 15 # how often the leader node checks for updates from the ConfigCat CDN
-    maxInitWaitTimeSeconds: 5
     baseUrl: "https://cdn-global.configcat.com"
     dataGovernance: "Global"
     exitOnConnectionProblems: false

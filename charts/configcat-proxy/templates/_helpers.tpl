@@ -434,7 +434,7 @@ Shared environment variables for init container
   valueFrom:
     secretKeyRef:
       name: {{.Values.configcat.sdks.existingSecret}}
-      key: {{.Values.configcat.sdks.existingSecretKey | default "sdk-key"}}
+      key: {{.Values.configcat.sdks.existingSecretSdkConfigurationKey | default "sdk-key"}}
 {{- end }}
 - name: DEPLOYMENT_TYPE
   value: "{{ .deploymentType | default "leader" }}"

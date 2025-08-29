@@ -74,7 +74,7 @@ kubectl create secret generic configcat-sdks --from-literal=sdks-configuration='
 configcat:
   sdks:
     existingSecret: "configcat-sdks"
-    existingSecretKey: "sdks-configuration"
+    existingSecretSdkConfigurationKey: "sdks-configuration"
 ```
 
 This approach avoids storing sensitive SDK keys in your values files or Helm releases, enhancing security.
@@ -115,7 +115,7 @@ configcat:
   sdks:
     # Reference SDK keys from a secret
     existingSecret: "configcat-sdks"
-    existingSecretKey: "sdks-configuration"
+    existingSecretSdkConfigurationKey: "sdks-configuration"
     
 # Enable cluster mode
 clusterMode:
