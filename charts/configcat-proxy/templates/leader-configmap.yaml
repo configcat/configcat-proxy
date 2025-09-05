@@ -1,0 +1,16 @@
+---
+{{if .Values.clusterMode.enabled}}
+{{if .Values.clusterMode.leader.enabled}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{include "configcat-proxy.leaderName" .}}-config
+  labels:
+    {{include "configcat-proxy.leaderLabels" . | nindent 4}}
+  annotations:
+    checksum/config: {{ include "configcat-proxy.optionsYamlTpl" . | sha256sum }}
+data:
+  options.yml.tpl: |-
+{{include "configcat-proxy.optionsYamlTpl" . | indent 4}}
+{{end}}
+{{end}}

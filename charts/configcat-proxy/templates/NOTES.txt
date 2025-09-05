@@ -1,0 +1,91 @@
+ConfigCat Proxy has been successfully deployed.
+
+{{- if not .Values.clusterMode.enabled }}
+{{- if .Values.ingress.enabled }}
+Your ConfigCat Proxy is available at:
+{{- range .Values.ingress.hosts }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ .host }}
+{{- end }}
+{{- else if contains "NodePort" .Values.service.type }}
+Get the application URL by running these commands:
+  export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "configcat-proxy.fullname" . }})
+  export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
+  echo http://$NODE_IP:$NODE_PORT
+{{- else if contains "LoadBalancer" .Values.service.type }}
+Get the application URL by running these commands:
+     NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+           You can watch the status of by running 'kubectl get --namespace {{ .Release.Namespace }} svc -w {{ include "configcat-proxy.fullname" . }}'
+  export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ include "configcat-proxy.fullname" . }} --template "{{"{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}"}}")
+  echo http://$SERVICE_IP:{{ .Values.service.port }}
+{{- else if contains "ClusterIP" .Values.service.type }}
+Get the application URL by running these commands:
+  export POD_NAME=$(kubectl get pods --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/name={{ include "configcat-proxy.name" . }},app.kubernetes.io/instance={{ .Release.Name }}" -o jsonpath="{.items[0].metadata.name}")
+  export CONTAINER_PORT=$(kubectl get pod --namespace {{ .Release.Namespace }} $POD_NAME -o jsonpath="{.spec.containers[0].ports[0].containerPort}")
+  echo "Visit http://127.0.0.1:8080 to use your application"
+  kubectl --namespace {{ .Release.Namespace }} port-forward $POD_NAME 8080:$CONTAINER_PORT
+{{- end }}
+
+{{- else }}
+ConfigCat Proxy has been deployed in cluster mode with:
+
+{{- if .Values.clusterMode.leader.enabled }}
+Leader proxy (ONLINE): {{ include "configcat-proxy.leaderName" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.clusterMode.leader.service.port }}
+{{- if .Values.clusterMode.leader.ingress.enabled }}
+Leader is accessible externally at:
+{{- range .Values.clusterMode.leader.ingress.hosts }}
+  http{{ if $.Values.clusterMode.leader.ingress.tls }}s{{ end }}://{{ .host }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{- if .Values.clusterMode.followers.enabled }}
+Follower proxy service (OFFLINE): {{ include "configcat-proxy.followerName" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.port }}
+{{- if .Values.clusterMode.followers.ingress.enabled }}
+Followers are accessible externally at:
+{{- range .Values.clusterMode.followers.ingress.hosts }}
+  http{{ if $.Values.clusterMode.followers.ingress.tls }}s{{ end }}://{{ .host }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{- if .Values.redis.enabled }}
+Redis is deployed at: 
+  - Address: {{ .Release.Name }}-redis-master.{{ .Release.Namespace }}.svc.cluster.local:6379
+  - Database: {{ .Values.redis.database }}
+{{- else if .Values.externalRedis.host }}
+Using external Redis:
+  {{- if kindIs "string" .Values.externalRedis.host }}
+  - Address: {{ .Values.externalRedis.host }}:{{ .Values.externalRedis.port }}
+  {{- else }}
+  - Addresses: {{ .Values.externalRedis.host | toJson }}
+  {{- end }}
+  - Database: {{ .Values.externalRedis.database }}
+{{- end }}
+
+Your applications should connect to the follower service for configuration.
+{{- end }}
+
+IMPORTANT:
+{{- if not .Values.clusterMode.enabled }}
+- For standalone mode, ConfigCat SDK keys must be specified:
+{{- if .Values.configcat.sdks.existingSecret }}
+  - Using secret: {{ .Values.configcat.sdks.existingSecret }} with key: {{ .Values.configcat.sdks.existingSecretSdkConfigurationKey }}
+{{- else if .Values.configcat.sdks.configurations }}
+  - SDK configurations specified in values:
+  {{- range $key, $value := .Values.configcat.sdks.configurations }}
+    - {{ $key }}: {{ $value }}
+  {{- end }}
+{{- else }}
+  - No SDK keys configured! Please set either configcat.sdks.configurations in your values
+    or create a secret and reference it with configcat.sdks.existingSecret.
+{{- end }}
+{{- else }}
+- For cluster mode:
+  - Leader proxy (ONLINE) {{- if or .Values.configcat.sdks.existingSecret .Values.configcat.sdks.configurations }} has SDK key configuration{{- else }} MISSING SDK KEYS!{{- end }}
+  - Follower proxies (OFFLINE)
+  - Your applications should connect to the follower service for configuration.
+{{- if not (or .Values.configcat.sdks.existingSecret .Values.configcat.sdks.configurations) }}
+  - Please configure SDK keys for the leader by setting either configcat.sdks.configurations 
+    in your values or create a secret and reference it with configcat.sdks.existingSecret
+{{- end }}
+{{- end }}

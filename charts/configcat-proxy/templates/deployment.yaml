@@ -1,0 +1,76 @@
+---
+{{if not .Values.clusterMode.enabled}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{include "configcat-proxy.fullname" .}}
+  labels:
+    {{include "configcat-proxy.labels" . | nindent 4}}
+spec:
+  {{if not .Values.autoscaling.enabled}}
+  replicas: {{.Values.replicaCount}}
+  {{end}}
+  selector:
+    matchLabels:
+      {{include "configcat-proxy.selectorLabels" . | nindent 6}}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include "configcat-proxy.optionsYamlTpl" . | sha256sum }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{include "configcat-proxy.selectorLabels" . | nindent 8}}
+    spec:
+      {{with .Values.imagePullSecrets}}
+      imagePullSecrets:
+        {{toYaml . | nindent 8}}
+      {{end}}
+      serviceAccountName: {{include "configcat-proxy.serviceAccountName" .}}
+      securityContext:
+        {{toYaml .Values.podSecurityContext | nindent 8}}
+      initContainers:
+{{ include "configcat-proxy.initContainer" (merge (dict "deploymentType" "leader") .) | indent 8 }}
+      containers:
+        - name: {{.Chart.Name}}
+          securityContext:
+            {{toYaml .Values.securityContext | nindent 12}}
+          image: "{{.Values.image.repository}}:{{.Values.image.tag | default .Chart.AppVersion}}"
+          imagePullPolicy: {{.Values.image.pullPolicy}}
+          ports:
+            {{- if .Values.configcat.options.proxy.ports }}
+            {{- range $name, $port := .Values.configcat.options.proxy.ports }}
+            - name: {{ $name }}
+              containerPort: {{ $port.containerPort }}
+              protocol: {{ $port.protocol | default "TCP" }}
+            {{- end }}
+            {{- else if not .Values.configcat.options.proxy.ports }}
+            - name: http
+              containerPort: {{.Values.configcat.options.proxy.port}}
+              protocol: TCP
+            {{- end }}
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/configcat/proxy
+          resources:
+            {{toYaml .Values.resources | nindent 12}}
+      volumes:
+        - name: template-volume
+          configMap:
+            name: {{include "configcat-proxy.fullname" .}}-config
+        - name: config-volume
+          emptyDir: {}
+      {{with .Values.nodeSelector}}
+      nodeSelector:
+        {{toYaml . | nindent 8}}
+      {{end}}
+      {{with .Values.affinity}}
+      affinity:
+        {{toYaml . | nindent 8}}
+      {{end}}
+      {{with .Values.tolerations}}
+      tolerations:
+        {{toYaml . | nindent 8}}
+      {{end}}
+{{end}}

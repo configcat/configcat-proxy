@@ -1,0 +1,44 @@
+---
+{{if and .Values.clusterMode.enabled .Values.clusterMode.leader.ingress.enabled}}
+{{$fullName := include "configcat-proxy.leaderName" .}}
+{{$svcPort := .Values.clusterMode.leader.service.port}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{$fullName}}
+  labels:
+    {{include "configcat-proxy.leaderLabels" . | nindent 4}}
+  {{with .Values.clusterMode.leader.ingress.annotations}}
+  annotations:
+    {{toYaml . | nindent 4}}
+  {{end}}
+spec:
+  {{if .Values.clusterMode.leader.ingress.className}}
+  ingressClassName: {{.Values.clusterMode.leader.ingress.className}}
+  {{end}}
+  {{if .Values.clusterMode.leader.ingress.tls}}
+  tls:
+    {{range .Values.clusterMode.leader.ingress.tls}}
+    - hosts:
+        {{range .hosts}}
+        - {{. | quote}}
+        {{end}}
+      secretName: {{.secretName}}
+    {{end}}
+  {{end}}
+  rules:
+    {{range .Values.clusterMode.leader.ingress.hosts}}
+    - host: {{.host | quote}}
+      http:
+        paths:
+          {{range .paths}}
+          - path: {{.path}}
+            pathType: {{.pathType}}
+            backend:
+              service:
+                name: {{$fullName}}
+                port:
+                  number: {{$svcPort}}
+          {{end}}
+    {{end}}
+{{end}}

@@ -1,0 +1,19 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{include "configcat-proxy.fullname" .}}-test-connection"
+  labels:
+    {{include "configcat-proxy.labels" . | nindent 4}}
+  annotations:
+    helm.sh/hook: test
+spec:
+  containers:
+    - name: wget
+      image: busybox
+      command: ['wget']
+      args:
+        - '--no-check-certificate'
+        - '--spider'
+        - '{{- if .Values.clusterMode.enabled }}{{- if .Values.clusterMode.followers.enabled }}{{include "configcat-proxy.followerName" .}}{{- else }}{{include "configcat-proxy.leaderName" .}}{{- end }}{{- else }}{{include "configcat-proxy.fullname" .}}{{- end }}:8051/status'
+  restartPolicy: Never
