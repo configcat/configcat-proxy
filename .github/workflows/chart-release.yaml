@@ -50,5 +50,6 @@ jobs:
           helm repo index helm-packages/ --merge index.yaml
           cp helm-packages/* .
           echo "New index.yaml: " && cat index.yaml
+          git add --all
           git commit -a -m "Update Helm charts index"
           git push origin gh-pages
