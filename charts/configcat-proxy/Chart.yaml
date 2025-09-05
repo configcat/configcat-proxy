@@ -2,7 +2,7 @@ apiVersion: v2
 name: configcat-proxy
 description: A Helm chart for deploying ConfigCat Proxy on Kubernetes with Redis-backed distributed topology
 type: application
-version: 0.1.0
+version: 0.2.0
 appVersion: "latest"
 dependencies:
   - name: redis
