@@ -3,6 +3,9 @@ name: Proxy CI
 on:
   push:
     branches: [ '*' ]
+    paths-ignore:
+      - 'charts/**'
+      - '**/*.md'
   pull_request:
     branches: [ main ]
     types: [opened, synchronize, reopened]
