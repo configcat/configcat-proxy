@@ -3,7 +3,7 @@ entries:
   configcat-proxy:
   - apiVersion: v2
     appVersion: latest
-    created: "2025-09-05T11:55:37.534756121Z"
+    created: "2025-09-05T12:24:33.8222683Z"
     dependencies:
     - condition: redis.enabled
       name: redis
@@ -11,10 +11,10 @@ entries:
       version: ~17.17.1
     description: A Helm chart for deploying ConfigCat Proxy on Kubernetes with Redis-backed
       distributed topology
-    digest: dbfc328c2134a2e88973c093ed4015a9112df12afc5b2b2e08c98250b62db439
+    digest: 5193ce97ad53dd040c409b58a91e69013d91b9f1fd09202630eeec2f9762d48e
     name: configcat-proxy
     type: application
     urls:
     - configcat-proxy-0.1.0.tgz
     version: 0.1.0
-generated: "2025-09-05T11:55:37.528922684Z"
+generated: "2025-09-05T12:24:33.816328251Z"
