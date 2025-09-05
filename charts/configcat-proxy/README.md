@@ -20,7 +20,8 @@ The ConfigCat Proxy provides a local caching proxy for ConfigCat feature flags a
 ### Installing the Chart
 
 ```bash
-helm install configcat-proxy ./configcat-proxy \
+helm repo add configcat https://configcat.github.io/configcat-proxy
+helm install configcat-proxy configcat/configcat-proxy \
   --set configcat.sdks.configurations='{\"production\":\"YOUR_PRODUCTION_SDK_KEY\",\"staging\":\"YOUR_STAGING_SDK_KEY\"}'
 ```
 
