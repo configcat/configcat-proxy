@@ -155,7 +155,6 @@ func (r *reporter) InstrumentHttpClient(handler http.RoundTripper, attributes ..
 		otelOpts = append(otelOpts, otelhttp.WithTracerProvider(r.traceHandler.provider), otelhttp.WithSpanOptions())
 	}
 	if len(otelOpts) > 0 {
-		otelOpts = append(otelOpts)
 		return otelhttp.NewTransport(handler, otelOpts...)
 	}
 	return handler
