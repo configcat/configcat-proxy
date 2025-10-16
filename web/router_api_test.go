@@ -11,13 +11,15 @@ import (
 
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/diag/status"
+	"github.com/configcat/configcat-proxy/diag/telemetry"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/sdk"
+	"github.com/configcat/configcat-proxy/web/api"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestAPI_Eval(t *testing.T) {
-	router := newAPIRouter(t, config.ApiConfig{Enabled: true, CORS: config.CORSConfig{Enabled: true}, Headers: map[string]string{"h1": "v1"}, AuthHeaders: map[string]string{"X-AUTH": "key"}})
+	router, key := newAPIRouter(t, config.ApiConfig{Enabled: true, CORS: config.CORSConfig{Enabled: true}, Headers: map[string]string{"h1": "v1"}, AuthHeaders: map[string]string{"X-AUTH": "key"}})
 	srv := httptest.NewServer(router)
 	path := fmt.Sprintf("%s/api/test/eval", srv.URL)
 
@@ -69,6 +71,19 @@ func TestAPI_Eval(t *testing.T) {
 		assert.Equal(t, "Content-Length,ETag,Date,Content-Encoding,h1", resp.Header.Get("Access-Control-Expose-Headers"))
 		assert.Equal(t, "v1", resp.Header.Get("h1"))
 	})
+	t.Run("ok sdk key", func(t *testing.T) {
+		req, _ := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/api/eval", srv.URL), strings.NewReader(`{"key":"flag"}`))
+		req.Header.Set("X-AUTH", "key")
+		req.Header.Set(api.SdkKeyHeader, key)
+		resp, _ := http.DefaultClient.Do(req)
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+		body, _ := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+		assert.Equal(t, `{"value":true,"variationId":"v_flag"}`, string(body))
+		assert.Equal(t, "*", resp.Header.Get("Access-Control-Allow-Origin"))
+		assert.Equal(t, "Content-Length,ETag,Date,Content-Encoding,h1", resp.Header.Get("Access-Control-Expose-Headers"))
+		assert.Equal(t, "v1", resp.Header.Get("h1"))
+	})
 	t.Run("get not allowed", func(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodGet, path, http.NoBody)
 		resp, _ := http.DefaultClient.Do(req)
@@ -92,7 +107,7 @@ func TestAPI_Eval(t *testing.T) {
 }
 
 func TestAPI_Eval_Headers(t *testing.T) {
-	router := newAPIRouter(t, config.ApiConfig{Enabled: true, CORS: config.CORSConfig{Enabled: false}, AuthHeaders: map[string]string{"X-AUTH": "key"}})
+	router, _ := newAPIRouter(t, config.ApiConfig{Enabled: true, CORS: config.CORSConfig{Enabled: false}, AuthHeaders: map[string]string{"X-AUTH": "key"}})
 	srv := httptest.NewServer(router)
 	path := fmt.Sprintf("%s/api/test/eval", srv.URL)
 
@@ -123,7 +138,7 @@ func TestAPI_Eval_Headers(t *testing.T) {
 }
 
 func TestAPI_EvalAll(t *testing.T) {
-	router := newAPIRouter(t, config.ApiConfig{Enabled: true, CORS: config.CORSConfig{Enabled: true}, Headers: map[string]string{"h1": "v1"}, AuthHeaders: map[string]string{"X-AUTH": "key"}})
+	router, key := newAPIRouter(t, config.ApiConfig{Enabled: true, CORS: config.CORSConfig{Enabled: true}, Headers: map[string]string{"h1": "v1"}, AuthHeaders: map[string]string{"X-AUTH": "key"}})
 	srv := httptest.NewServer(router)
 	path := fmt.Sprintf("%s/api/test/eval-all", srv.URL)
 
@@ -175,6 +190,19 @@ func TestAPI_EvalAll(t *testing.T) {
 		assert.Equal(t, "Content-Length,ETag,Date,Content-Encoding,h1", resp.Header.Get("Access-Control-Expose-Headers"))
 		assert.Equal(t, "v1", resp.Header.Get("h1"))
 	})
+	t.Run("ok sdk key", func(t *testing.T) {
+		req, _ := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/api/eval-all", srv.URL), strings.NewReader(`{"key":"flag"}`))
+		req.Header.Set("X-AUTH", "key")
+		req.Header.Set(api.SdkKeyHeader, key)
+		resp, _ := http.DefaultClient.Do(req)
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+		body, _ := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+		assert.Equal(t, `{"flag":{"value":true,"variationId":"v_flag"}}`, string(body))
+		assert.Equal(t, "*", resp.Header.Get("Access-Control-Allow-Origin"))
+		assert.Equal(t, "Content-Length,ETag,Date,Content-Encoding,h1", resp.Header.Get("Access-Control-Expose-Headers"))
+		assert.Equal(t, "v1", resp.Header.Get("h1"))
+	})
 	t.Run("get not allowed", func(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodGet, path, http.NoBody)
 		resp, _ := http.DefaultClient.Do(req)
@@ -198,7 +226,7 @@ func TestAPI_EvalAll(t *testing.T) {
 }
 
 func TestAPI_EvalAll_Headers(t *testing.T) {
-	router := newAPIRouter(t, config.ApiConfig{Enabled: true, CORS: config.CORSConfig{Enabled: false}, AuthHeaders: map[string]string{"X-AUTH": "key"}})
+	router, _ := newAPIRouter(t, config.ApiConfig{Enabled: true, CORS: config.CORSConfig{Enabled: false}, AuthHeaders: map[string]string{"X-AUTH": "key"}})
 	srv := httptest.NewServer(router)
 	path := fmt.Sprintf("%s/api/test/eval-all", srv.URL)
 
@@ -229,7 +257,7 @@ func TestAPI_EvalAll_Headers(t *testing.T) {
 }
 
 func TestAPI_Keys(t *testing.T) {
-	router := newAPIRouter(t, config.ApiConfig{Enabled: true, CORS: config.CORSConfig{Enabled: true}, Headers: map[string]string{"h1": "v1"}, AuthHeaders: map[string]string{"X-AUTH": "key"}})
+	router, key := newAPIRouter(t, config.ApiConfig{Enabled: true, CORS: config.CORSConfig{Enabled: true}, Headers: map[string]string{"h1": "v1"}, AuthHeaders: map[string]string{"X-AUTH": "key"}})
 	srv := httptest.NewServer(router)
 	path := fmt.Sprintf("%s/api/test/keys", srv.URL)
 
@@ -257,6 +285,19 @@ func TestAPI_Keys(t *testing.T) {
 	t.Run("ok", func(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodGet, path, http.NoBody)
 		req.Header.Set("X-AUTH", "key")
+		resp, _ := http.DefaultClient.Do(req)
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+		body, _ := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+		assert.Equal(t, `{"keys":["flag"]}`, string(body))
+		assert.Equal(t, "*", resp.Header.Get("Access-Control-Allow-Origin"))
+		assert.Equal(t, "Content-Length,ETag,Date,Content-Encoding,h1", resp.Header.Get("Access-Control-Expose-Headers"))
+		assert.Equal(t, "v1", resp.Header.Get("h1"))
+	})
+	t.Run("ok sdk key", func(t *testing.T) {
+		req, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/keys", srv.URL), http.NoBody)
+		req.Header.Set("X-AUTH", "key")
+		req.Header.Set(api.SdkKeyHeader, key)
 		resp, _ := http.DefaultClient.Do(req)
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 		body, _ := io.ReadAll(resp.Body)
@@ -304,7 +345,7 @@ func TestAPI_Keys(t *testing.T) {
 }
 
 func TestAPI_Keys_Headers(t *testing.T) {
-	router := newAPIRouter(t, config.ApiConfig{Enabled: true, CORS: config.CORSConfig{Enabled: false}, AuthHeaders: map[string]string{"X-AUTH": "key"}})
+	router, _ := newAPIRouter(t, config.ApiConfig{Enabled: true, CORS: config.CORSConfig{Enabled: false}, AuthHeaders: map[string]string{"X-AUTH": "key"}})
 	srv := httptest.NewServer(router)
 	path := fmt.Sprintf("%s/api/test/keys", srv.URL)
 
@@ -335,7 +376,7 @@ func TestAPI_Keys_Headers(t *testing.T) {
 }
 
 func TestAPI_Refresh(t *testing.T) {
-	router := newAPIRouter(t, config.ApiConfig{Enabled: true, CORS: config.CORSConfig{Enabled: true}, Headers: map[string]string{"h1": "v1"}, AuthHeaders: map[string]string{"X-AUTH": "key"}})
+	router, key := newAPIRouter(t, config.ApiConfig{Enabled: true, CORS: config.CORSConfig{Enabled: true}, Headers: map[string]string{"h1": "v1"}, AuthHeaders: map[string]string{"X-AUTH": "key"}})
 	srv := httptest.NewServer(router)
 	path := fmt.Sprintf("%s/api/test/refresh", srv.URL)
 
@@ -372,6 +413,19 @@ func TestAPI_Refresh(t *testing.T) {
 		assert.Equal(t, "Content-Length,ETag,Date,Content-Encoding,h1", resp.Header.Get("Access-Control-Expose-Headers"))
 		assert.Equal(t, "v1", resp.Header.Get("h1"))
 	})
+	t.Run("ok sdk key", func(t *testing.T) {
+		req, _ := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/api/refresh", srv.URL), http.NoBody)
+		req.Header.Set("X-AUTH", "key")
+		req.Header.Set(api.SdkKeyHeader, key)
+		resp, _ := http.DefaultClient.Do(req)
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+		body, _ := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+		assert.Equal(t, "", string(body))
+		assert.Equal(t, "*", resp.Header.Get("Access-Control-Allow-Origin"))
+		assert.Equal(t, "Content-Length,ETag,Date,Content-Encoding,h1", resp.Header.Get("Access-Control-Expose-Headers"))
+		assert.Equal(t, "v1", resp.Header.Get("h1"))
+	})
 	t.Run("get not allowed", func(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodGet, path, http.NoBody)
 		resp, _ := http.DefaultClient.Do(req)
@@ -395,7 +449,7 @@ func TestAPI_Refresh(t *testing.T) {
 }
 
 func TestAPI_Refresh_Headers(t *testing.T) {
-	router := newAPIRouter(t, config.ApiConfig{Enabled: true, CORS: config.CORSConfig{Enabled: false}, AuthHeaders: map[string]string{"X-AUTH": "key"}})
+	router, _ := newAPIRouter(t, config.ApiConfig{Enabled: true, CORS: config.CORSConfig{Enabled: false}, AuthHeaders: map[string]string{"X-AUTH": "key"}})
 	srv := httptest.NewServer(router)
 	path := fmt.Sprintf("%s/api/test/refresh", srv.URL)
 
@@ -425,7 +479,7 @@ func TestAPI_Refresh_Headers(t *testing.T) {
 	})
 }
 
-func newAPIRouter(t *testing.T, conf config.ApiConfig) *HttpRouter {
-	reg, _, _ := sdk.NewTestRegistrarT(t)
-	return NewRouter(reg, nil, status.NewEmptyReporter(), &config.HttpConfig{Api: conf}, &config.ProfileConfig{}, log.NewNullLogger())
+func newAPIRouter(t *testing.T, conf config.ApiConfig) (*HttpRouter, string) {
+	reg, _, k := sdk.NewTestRegistrarT(t)
+	return NewRouter(reg, telemetry.NewEmptyReporter(), status.NewEmptyReporter(), &config.HttpConfig{Api: conf}, &config.ProfileConfig{}, log.NewNullLogger()), k
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/configcat/configcat-proxy/config"
+	"github.com/configcat/configcat-proxy/diag/telemetry"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/redis/go-redis/v9"
 )
@@ -13,7 +14,7 @@ type redisStore struct {
 	log     log.Logger
 }
 
-func newRedis(conf *config.RedisConfig, log log.Logger) (External, error) {
+func newRedis(conf *config.RedisConfig, telemetryReporter telemetry.Reporter, log log.Logger) (External, error) {
 	opts := &redis.UniversalOptions{
 		Addrs:    conf.Addresses,
 		Password: conf.Password,
@@ -30,9 +31,11 @@ func newRedis(conf *config.RedisConfig, log log.Logger) (External, error) {
 		}
 		opts.TLSConfig = t
 	}
+	rdb := redis.NewUniversalClient(opts)
+	telemetryReporter.InstrumentRedis(rdb)
 	log.Reportf("using Redis for cache storage")
 	return &redisStore{
-		redisDb: redis.NewUniversalClient(opts),
+		redisDb: rdb,
 		log:     log,
 	}, nil
 }

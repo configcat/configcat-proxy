@@ -18,39 +18,40 @@ import (
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/redis"
+	"github.com/testcontainers/testcontainers-go/modules/valkey"
 )
 
-type redisTestSuite struct {
+type valkeyTestSuite struct {
 	suite.Suite
 
-	db     *redis.RedisContainer
+	db     *valkey.ValkeyContainer
 	dbPort string
 }
 
-func (s *redisTestSuite) SetupSuite() {
+func (s *valkeyTestSuite) SetupSuite() {
 	ctx := context.Background()
 
-	redisContainer, err := redis.Run(ctx, "redis")
+	valkeyContainer, err := valkey.Run(ctx, "valkey/valkey")
 	if err != nil {
 		panic("failed to start container: " + err.Error() + "")
 	}
-	s.db = redisContainer
+	s.db = valkeyContainer
 	p, _ := nat.NewPort("tcp", "6379")
 	dbPort, _ := s.db.MappedPort(ctx, p)
 	s.dbPort = dbPort.Port()
 }
 
-func (s *redisTestSuite) TearDownSuite() {
+func (s *valkeyTestSuite) TearDownSuite() {
 	if err := testcontainers.TerminateContainer(s.db); err != nil {
 		panic("failed to terminate container: " + err.Error() + "")
 	}
 }
 
-func TestRedisSuite(t *testing.T) {
-	suite.Run(t, new(redisTestSuite))
+func TestValkeySuite(t *testing.T) {
+	suite.Run(t, new(valkeyTestSuite))
 }
 
-func (s *redisTestSuite) TestRedisStorage() {
+func (s *valkeyTestSuite) TestValkeyStorage() {
 	store, err := newRedis(&config.RedisConfig{Addresses: []string{"localhost:" + s.dbPort}}, telemetry.NewEmptyReporter(), log.NewNullLogger())
 	assert.NoError(s.T(), err)
 	srv := store.(*redisStore)
@@ -67,7 +68,7 @@ func (s *redisTestSuite) TestRedisStorage() {
 	assert.Equal(s.T(), `test`, string(j))
 }
 
-func (s *redisTestSuite) TestRedisStorage_Unavailable() {
+func (s *valkeyTestSuite) TestValkeyStorage_Unavailable() {
 	store, err := newRedis(&config.RedisConfig{Addresses: []string{"nonexisting"}}, telemetry.NewEmptyReporter(), log.NewNullLogger())
 	assert.NoError(s.T(), err)
 	srv := store.(*redisStore)
@@ -80,19 +81,19 @@ func (s *redisTestSuite) TestRedisStorage_Unavailable() {
 	assert.Error(s.T(), err)
 }
 
-func (s *redisTestSuite) TestSetupExternalCache() {
+func (s *valkeyTestSuite) TestSetupExternalCache() {
 	store, err := SetupExternalCache(context.Background(), &config.CacheConfig{Redis: config.RedisConfig{Addresses: []string{"localhost:" + s.dbPort}, Enabled: true}}, telemetry.NewEmptyReporter(), log.NewNullLogger())
 	assert.NoError(s.T(), err)
 	defer store.Shutdown()
 	assert.IsType(s.T(), &redisStore{}, store)
 }
 
-func TestRedisStorage_TLS(t *testing.T) {
+func TestValkeyStorage_TLS(t *testing.T) {
 	ctx := context.Background()
 
-	redisContainer, err := redis.Run(ctx, "redis", redis.WithTLS())
+	valkeyContainer, err := redis.Run(ctx, "redis", redis.WithTLS())
 	defer func() {
-		if err := testcontainers.TerminateContainer(redisContainer); err != nil {
+		if err := testcontainers.TerminateContainer(valkeyContainer); err != nil {
 			panic("failed to terminate container: " + err.Error() + "")
 		}
 	}()
@@ -101,9 +102,9 @@ func TestRedisStorage_TLS(t *testing.T) {
 	}
 
 	p, _ := nat.NewPort("tcp", "6379")
-	dbPort, _ := redisContainer.MappedPort(t.Context(), p)
+	dbPort, _ := valkeyContainer.MappedPort(t.Context(), p)
 
-	tls := redisContainer.TLSConfig()
+	tls := valkeyContainer.TLSConfig()
 
 	cert := tls.Certificates[0]
 

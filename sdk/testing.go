@@ -11,6 +11,7 @@ import (
 
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/diag/status"
+	"github.com/configcat/configcat-proxy/diag/telemetry"
 	"github.com/configcat/configcat-proxy/internal/utils"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/model"
@@ -27,7 +28,7 @@ func NewTestRegistrarWithStatusReporter(conf *config.SDKConfig, cache store.Cach
 	ctx := NewTestSdkContext(conf, cache)
 	reg, _ := NewRegistrar(&config.Config{
 		SDKs: map[string]*config.SDKConfig{"test": conf},
-	}, ctx.MetricsReporter, reporter, cache, log.NewNullLogger())
+	}, ctx.TelemetryReporter, reporter, cache, log.NewNullLogger())
 	return reg
 }
 
@@ -79,11 +80,12 @@ func NewTestSdkClient(t *testing.T) (map[string]Client, *configcattest.Handler, 
 
 func NewTestSdkContext(conf *config.SDKConfig, cache store.Cache) *Context {
 	return &Context{
-		SDKConf:        conf,
-		Transport:      http.DefaultTransport,
-		StatusReporter: status.NewEmptyReporter(),
-		SdkId:          "test",
-		ExternalCache:  cache,
+		SDKConf:           conf,
+		Transport:         http.DefaultTransport,
+		StatusReporter:    status.NewEmptyReporter(),
+		TelemetryReporter: telemetry.NewEmptyReporter(),
+		SdkId:             "test",
+		ExternalCache:     cache,
 	}
 }
 
@@ -96,7 +98,7 @@ func NewTestAutoRegistrarWithCache(t *testing.T, cachePoll int, cache store.Cach
 		CachePollInterval: cachePoll,
 		Enabled:           true,
 	}}
-	reg, _ := newAutoRegistrar(&conf, nil, status.NewEmptyReporter(), cache, logger)
+	reg, _ := newAutoRegistrar(&conf, telemetry.NewEmptyReporter(), status.NewEmptyReporter(), cache, logger)
 	t.Cleanup(reg.Close)
 	return reg
 }
@@ -121,7 +123,7 @@ func NewTestAutoRegistrar(t *testing.T, conf config.Config, cache store.Cache, l
 
 	conf.Profile.SDKs.BaseUrl = sdkSrv.URL
 	conf.Profile.BaseUrl = configSrv.URL
-	reg, _ := newAutoRegistrar(&conf, nil, status.NewEmptyReporter(), cache, logger)
+	reg, _ := newAutoRegistrar(&conf, telemetry.NewEmptyReporter(), status.NewEmptyReporter(), cache, logger)
 	t.Cleanup(func() {
 		sdkSrv.Close()
 		configSrv.Close()

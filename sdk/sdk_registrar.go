@@ -5,8 +5,8 @@ import (
 	"net/url"
 
 	"github.com/configcat/configcat-proxy/config"
-	"github.com/configcat/configcat-proxy/diag/metrics"
 	"github.com/configcat/configcat-proxy/diag/status"
+	"github.com/configcat/configcat-proxy/diag/telemetry"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/sdk/store"
 )
@@ -23,15 +23,15 @@ type manualRegistrar struct {
 	sdkClients map[string]Client
 }
 
-func NewRegistrar(conf *config.Config, metricsReporter metrics.Reporter, statusReporter status.Reporter, externalCache store.Cache, log log.Logger) (Registrar, error) {
+func NewRegistrar(conf *config.Config, telemetryReporter telemetry.Reporter, statusReporter status.Reporter, externalCache store.Cache, log log.Logger) (Registrar, error) {
 	if conf.Profile.IsSet() {
-		return newAutoRegistrar(conf, metricsReporter, statusReporter, externalCache, log)
+		return newAutoRegistrar(conf, telemetryReporter, statusReporter, externalCache, log)
 	} else {
-		return newManualRegistrar(conf, metricsReporter, statusReporter, externalCache, log)
+		return newManualRegistrar(conf, telemetryReporter, statusReporter, externalCache, log)
 	}
 }
 
-func newManualRegistrar(conf *config.Config, metricsReporter metrics.Reporter, statusReporter status.Reporter, externalCache store.Cache, log log.Logger) (*manualRegistrar, error) {
+func newManualRegistrar(conf *config.Config, telemetryReporter telemetry.Reporter, statusReporter status.Reporter, externalCache store.Cache, log log.Logger) (*manualRegistrar, error) {
 	regLog := log.WithPrefix("sdk-registrar").WithLevel(conf.Profile.Log.GetLevel())
 	transport := buildTransport(&conf.HttpProxy, regLog)
 	sdkClients := make(map[string]Client, len(conf.SDKs))
@@ -39,7 +39,7 @@ func newManualRegistrar(conf *config.Config, metricsReporter metrics.Reporter, s
 		statusReporter.RegisterSdk(key, sdkConf)
 		sdkClients[key] = NewClient(&Context{
 			SDKConf:            sdkConf,
-			MetricsReporter:    metricsReporter,
+			TelemetryReporter:  telemetryReporter,
 			StatusReporter:     statusReporter,
 			GlobalDefaultAttrs: conf.DefaultAttrs,
 			SdkId:              key,

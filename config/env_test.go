@@ -206,6 +206,14 @@ func TestDiagConfig_ENV(t *testing.T) {
 	t.Setenv("CONFIGCAT_DIAG_PORT", "8091")
 	t.Setenv("CONFIGCAT_DIAG_METRICS_ENABLED", "false")
 	t.Setenv("CONFIGCAT_DIAG_STATUS_ENABLED", "false")
+	t.Setenv("CONFIGCAT_DIAG_METRICS_PROMETHEUS_ENABLED", "false")
+	t.Setenv("CONFIGCAT_DIAG_METRICS_OTLP_ENABLED", "true")
+	t.Setenv("CONFIGCAT_DIAG_METRICS_OTLP_PROTOCOL", "grpc")
+	t.Setenv("CONFIGCAT_DIAG_METRICS_OTLP_ENDPOINT", "http://localhost:4317")
+	t.Setenv("CONFIGCAT_DIAG_TRACES_ENABLED", "false")
+	t.Setenv("CONFIGCAT_DIAG_TRACES_OTLP_ENABLED", "true")
+	t.Setenv("CONFIGCAT_DIAG_TRACES_OTLP_PROTOCOL", "grpc")
+	t.Setenv("CONFIGCAT_DIAG_TRACES_OTLP_ENDPOINT", "http://localhost:4317")
 
 	conf, err := LoadConfigFromFileAndEnvironment("")
 	require.NoError(t, err)
@@ -214,6 +222,14 @@ func TestDiagConfig_ENV(t *testing.T) {
 	assert.Equal(t, 8091, conf.Diag.Port)
 	assert.False(t, conf.Diag.Status.Enabled)
 	assert.False(t, conf.Diag.Metrics.Enabled)
+	assert.False(t, conf.Diag.Metrics.Prometheus.Enabled)
+	assert.True(t, conf.Diag.Metrics.Otlp.Enabled)
+	assert.Equal(t, "grpc", conf.Diag.Metrics.Otlp.Protocol)
+	assert.Equal(t, "http://localhost:4317", conf.Diag.Metrics.Otlp.Endpoint)
+	assert.False(t, conf.Diag.Traces.Enabled)
+	assert.True(t, conf.Diag.Traces.Otlp.Enabled)
+	assert.Equal(t, "grpc", conf.Diag.Traces.Otlp.Protocol)
+	assert.Equal(t, "http://localhost:4317", conf.Diag.Traces.Otlp.Endpoint)
 }
 
 func TestGlobalOfflineConfig_ENV(t *testing.T) {

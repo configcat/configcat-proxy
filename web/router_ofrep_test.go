@@ -11,8 +11,10 @@ import (
 
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/diag/status"
+	"github.com/configcat/configcat-proxy/diag/telemetry"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/sdk"
+	"github.com/configcat/configcat-proxy/web/api"
 	"github.com/configcat/configcat-proxy/web/ofrep"
 	configcat "github.com/configcat/go-sdk/v9"
 	"github.com/configcat/go-sdk/v9/configcattest"
@@ -43,44 +45,78 @@ func TestOFREP_Integration(t *testing.T) {
 	})
 
 	reg.RefreshAll()
-	router := NewRouter(reg, nil, status.NewEmptyReporter(), &config.HttpConfig{OFREP: config.OFREPConfig{Enabled: true, AuthHeaders: map[string]string{"X-API-Key": "secret"}}}, &config.ProfileConfig{}, log.NewNullLogger())
+	router := NewRouter(reg, telemetry.NewEmptyReporter(), status.NewEmptyReporter(), &config.HttpConfig{OFREP: config.OFREPConfig{Enabled: true, AuthHeaders: map[string]string{"X-API-Key": "secret"}}}, &config.ProfileConfig{}, log.NewNullLogger())
 	srv := httptest.NewServer(router)
 	defer srv.Close()
 
-	provider := ofrepprovider.NewProvider(srv.URL, ofrepprovider.WithHeaderProvider(func() (string, string) {
-		return ofrep.SdkIdHeader, "test"
-	}), ofrepprovider.WithApiKeyAuth("secret"))
-	_ = openfeature.SetProviderAndWait(provider)
-	ctx := openfeature.NewEvaluationContext("id", nil)
-	client := openfeature.NewClient("cl")
+	t.Run("sdk id header", func(t *testing.T) {
+		provider := ofrepprovider.NewProvider(srv.URL, ofrepprovider.WithHeaderProvider(func() (string, string) {
+			return ofrep.SdkIdHeader, "test"
+		}), ofrepprovider.WithApiKeyAuth("secret"))
+		_ = openfeature.SetProviderAndWait(provider)
+		ctx := openfeature.NewEvaluationContext("id", nil)
+		client := openfeature.NewClient("cl")
 
-	boolVal, _ := client.BooleanValueDetails(context.Background(), "bool", false, ctx)
-	assert.True(t, boolVal.Value)
-	assert.Equal(t, "v0_bool", boolVal.Variant)
-	assert.Equal(t, openfeature.TargetingMatchReason, boolVal.Reason)
-	assert.Equal(t, "bool", boolVal.FlagKey)
+		boolVal, _ := client.BooleanValueDetails(context.Background(), "bool", false, ctx)
+		assert.True(t, boolVal.Value)
+		assert.Equal(t, "v0_bool", boolVal.Variant)
+		assert.Equal(t, openfeature.TargetingMatchReason, boolVal.Reason)
+		assert.Equal(t, "bool", boolVal.FlagKey)
 
-	strVal, _ := client.StringValueDetails(context.Background(), "str", "", ctx)
-	assert.Equal(t, "test", strVal.Value)
-	assert.Equal(t, "v0_str", strVal.Variant)
-	assert.Equal(t, openfeature.TargetingMatchReason, strVal.Reason)
-	assert.Equal(t, "str", strVal.FlagKey)
+		strVal, _ := client.StringValueDetails(context.Background(), "str", "", ctx)
+		assert.Equal(t, "test", strVal.Value)
+		assert.Equal(t, "v0_str", strVal.Variant)
+		assert.Equal(t, openfeature.TargetingMatchReason, strVal.Reason)
+		assert.Equal(t, "str", strVal.FlagKey)
 
-	intVal, _ := client.IntValueDetails(context.Background(), "int", 0, ctx)
-	assert.Equal(t, int64(42), intVal.Value)
-	assert.Equal(t, "v0_int", intVal.Variant)
-	assert.Equal(t, openfeature.TargetingMatchReason, intVal.Reason)
-	assert.Equal(t, "int", intVal.FlagKey)
+		intVal, _ := client.IntValueDetails(context.Background(), "int", 0, ctx)
+		assert.Equal(t, int64(42), intVal.Value)
+		assert.Equal(t, "v0_int", intVal.Variant)
+		assert.Equal(t, openfeature.TargetingMatchReason, intVal.Reason)
+		assert.Equal(t, "int", intVal.FlagKey)
 
-	doubleVal, _ := client.FloatValueDetails(context.Background(), "double", 0.0, ctx)
-	assert.Equal(t, 3.14, doubleVal.Value)
-	assert.Equal(t, "v0_double", doubleVal.Variant)
-	assert.Equal(t, openfeature.TargetingMatchReason, doubleVal.Reason)
-	assert.Equal(t, "double", doubleVal.FlagKey)
+		doubleVal, _ := client.FloatValueDetails(context.Background(), "double", 0.0, ctx)
+		assert.Equal(t, 3.14, doubleVal.Value)
+		assert.Equal(t, "v0_double", doubleVal.Variant)
+		assert.Equal(t, openfeature.TargetingMatchReason, doubleVal.Reason)
+		assert.Equal(t, "double", doubleVal.FlagKey)
+	})
+	t.Run("sdk key header", func(t *testing.T) {
+		provider := ofrepprovider.NewProvider(srv.URL, ofrepprovider.WithHeaderProvider(func() (string, string) {
+			return api.SdkKeyHeader, key
+		}), ofrepprovider.WithApiKeyAuth("secret"))
+		_ = openfeature.SetProviderAndWait(provider)
+		ctx := openfeature.NewEvaluationContext("id", nil)
+		client := openfeature.NewClient("cl")
+
+		boolVal, _ := client.BooleanValueDetails(context.Background(), "bool", false, ctx)
+		assert.True(t, boolVal.Value)
+		assert.Equal(t, "v0_bool", boolVal.Variant)
+		assert.Equal(t, openfeature.TargetingMatchReason, boolVal.Reason)
+		assert.Equal(t, "bool", boolVal.FlagKey)
+
+		strVal, _ := client.StringValueDetails(context.Background(), "str", "", ctx)
+		assert.Equal(t, "test", strVal.Value)
+		assert.Equal(t, "v0_str", strVal.Variant)
+		assert.Equal(t, openfeature.TargetingMatchReason, strVal.Reason)
+		assert.Equal(t, "str", strVal.FlagKey)
+
+		intVal, _ := client.IntValueDetails(context.Background(), "int", 0, ctx)
+		assert.Equal(t, int64(42), intVal.Value)
+		assert.Equal(t, "v0_int", intVal.Variant)
+		assert.Equal(t, openfeature.TargetingMatchReason, intVal.Reason)
+		assert.Equal(t, "int", intVal.FlagKey)
+
+		doubleVal, _ := client.FloatValueDetails(context.Background(), "double", 0.0, ctx)
+		assert.Equal(t, 3.14, doubleVal.Value)
+		assert.Equal(t, "v0_double", doubleVal.Variant)
+		assert.Equal(t, openfeature.TargetingMatchReason, doubleVal.Reason)
+		assert.Equal(t, "double", doubleVal.FlagKey)
+	})
 }
 
 func TestOFREP_Eval(t *testing.T) {
-	router := newOFREPRouter(t, config.OFREPConfig{Enabled: true, CORS: config.CORSConfig{Enabled: true}, Headers: map[string]string{"h1": "v1"}, AuthHeaders: map[string]string{"X-AUTH": "key"}})
+	router, key := newOFREPRouter(t, config.OFREPConfig{Enabled: true, CORS: config.CORSConfig{Enabled: true}, Headers: map[string]string{"h1": "v1"}, AuthHeaders: map[string]string{"X-AUTH": "key"}})
 	srv := httptest.NewServer(router)
 	path := fmt.Sprintf("%s/ofrep/v1/evaluate/flags/flag", srv.URL)
 
@@ -111,6 +147,19 @@ func TestOFREP_Eval(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPost, path, http.NoBody)
 		req.Header.Set("X-AUTH", "key")
 		req.Header.Set(ofrep.SdkIdHeader, "test")
+		resp, _ := http.DefaultClient.Do(req)
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+		body, _ := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+		assert.Equal(t, `{"key":"flag","reason":"DEFAULT","variant":"v_flag","value":true}`, string(body))
+		assert.Equal(t, "*", resp.Header.Get("Access-Control-Allow-Origin"))
+		assert.Equal(t, "Content-Length,ETag,Date,Content-Encoding,h1", resp.Header.Get("Access-Control-Expose-Headers"))
+		assert.Equal(t, "v1", resp.Header.Get("h1"))
+	})
+	t.Run("ok sdk key", func(t *testing.T) {
+		req, _ := http.NewRequest(http.MethodPost, path, http.NoBody)
+		req.Header.Set("X-AUTH", "key")
+		req.Header.Set(api.SdkKeyHeader, key)
 		resp, _ := http.DefaultClient.Do(req)
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 		body, _ := io.ReadAll(resp.Body)
@@ -159,7 +208,7 @@ func TestOFREP_Eval(t *testing.T) {
 }
 
 func TestOFREP_Eval_Headers(t *testing.T) {
-	router := newOFREPRouter(t, config.OFREPConfig{Enabled: true, CORS: config.CORSConfig{Enabled: false}, AuthHeaders: map[string]string{"X-AUTH": "key"}})
+	router, _ := newOFREPRouter(t, config.OFREPConfig{Enabled: true, CORS: config.CORSConfig{Enabled: false}, AuthHeaders: map[string]string{"X-AUTH": "key"}})
 	srv := httptest.NewServer(router)
 	path := fmt.Sprintf("%s/ofrep/v1/evaluate/flags/flag", srv.URL)
 
@@ -192,7 +241,7 @@ func TestOFREP_Eval_Headers(t *testing.T) {
 }
 
 func TestOFREP_EvalAll(t *testing.T) {
-	router := newOFREPRouter(t, config.OFREPConfig{Enabled: true, CORS: config.CORSConfig{Enabled: true}, Headers: map[string]string{"h1": "v1"}, AuthHeaders: map[string]string{"X-AUTH": "key"}})
+	router, key := newOFREPRouter(t, config.OFREPConfig{Enabled: true, CORS: config.CORSConfig{Enabled: true}, Headers: map[string]string{"h1": "v1"}, AuthHeaders: map[string]string{"X-AUTH": "key"}})
 	srv := httptest.NewServer(router)
 	path := fmt.Sprintf("%s/ofrep/v1/evaluate/flags", srv.URL)
 
@@ -223,6 +272,19 @@ func TestOFREP_EvalAll(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPost, path, http.NoBody)
 		req.Header.Set("X-AUTH", "key")
 		req.Header.Set(ofrep.SdkIdHeader, "test")
+		resp, _ := http.DefaultClient.Do(req)
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+		body, _ := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+		assert.Equal(t, `{"flags":[{"key":"flag","reason":"DEFAULT","variant":"v_flag","value":true}]}`, string(body))
+		assert.Equal(t, "*", resp.Header.Get("Access-Control-Allow-Origin"))
+		assert.Equal(t, "Content-Length,ETag,Date,Content-Encoding,h1", resp.Header.Get("Access-Control-Expose-Headers"))
+		assert.Equal(t, "v1", resp.Header.Get("h1"))
+	})
+	t.Run("ok", func(t *testing.T) {
+		req, _ := http.NewRequest(http.MethodPost, path, http.NoBody)
+		req.Header.Set("X-AUTH", "key")
+		req.Header.Set(api.SdkKeyHeader, key)
 		resp, _ := http.DefaultClient.Do(req)
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 		body, _ := io.ReadAll(resp.Body)
@@ -271,7 +333,7 @@ func TestOFREP_EvalAll(t *testing.T) {
 }
 
 func TestOFREP_EvalAll_Headers(t *testing.T) {
-	router := newOFREPRouter(t, config.OFREPConfig{Enabled: true, CORS: config.CORSConfig{Enabled: false}, AuthHeaders: map[string]string{"X-AUTH": "key"}})
+	router, _ := newOFREPRouter(t, config.OFREPConfig{Enabled: true, CORS: config.CORSConfig{Enabled: false}, AuthHeaders: map[string]string{"X-AUTH": "key"}})
 	srv := httptest.NewServer(router)
 	path := fmt.Sprintf("%s/ofrep/v1/evaluate/flags", srv.URL)
 
@@ -303,7 +365,7 @@ func TestOFREP_EvalAll_Headers(t *testing.T) {
 	})
 }
 
-func newOFREPRouter(t *testing.T, conf config.OFREPConfig) *HttpRouter {
-	reg, _, _ := sdk.NewTestRegistrarT(t)
-	return NewRouter(reg, nil, status.NewEmptyReporter(), &config.HttpConfig{OFREP: conf}, &config.ProfileConfig{}, log.NewNullLogger())
+func newOFREPRouter(t *testing.T, conf config.OFREPConfig) (*HttpRouter, string) {
+	reg, _, k := sdk.NewTestRegistrarT(t)
+	return NewRouter(reg, telemetry.NewEmptyReporter(), status.NewEmptyReporter(), &config.HttpConfig{OFREP: conf}, &config.ProfileConfig{}, log.NewNullLogger()), k
 }

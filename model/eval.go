@@ -18,8 +18,9 @@ type ResponsePayload struct {
 }
 
 type EvalRequest struct {
-	Key  string    `json:"key"`
-	User UserAttrs `json:"user"`
+	SdkKey string    `json:"sdkKey"`
+	Key    string    `json:"key"`
+	User   UserAttrs `json:"user"`
 }
 
 func PayloadFromEvalData(evalData *EvalData) ResponsePayload {

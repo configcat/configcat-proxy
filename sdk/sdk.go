@@ -3,13 +3,12 @@ package sdk
 import (
 	"context"
 	"net/http"
-	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/configcat/configcat-proxy/config"
-	"github.com/configcat/configcat-proxy/diag/metrics"
 	"github.com/configcat/configcat-proxy/diag/status"
+	"github.com/configcat/configcat-proxy/diag/telemetry"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/model"
 	"github.com/configcat/configcat-proxy/pubsub"
@@ -31,7 +30,6 @@ type Client interface {
 	EvalAll(user model.UserAttrs) map[string]model.EvalData
 	Keys() []string
 	GetCachedJson() *store.EntryWithEtag
-	Ready() <-chan struct{}
 	Refresh() error
 	Close()
 	SdkKeys() (string, *string)
@@ -46,7 +44,7 @@ type Context struct {
 	SecondarySdkKey    atomic.Pointer[string]
 	SDKConf            *config.SDKConfig
 	GlobalDefaultAttrs model.UserAttrs
-	MetricsReporter    metrics.Reporter
+	TelemetryReporter  telemetry.Reporter
 	StatusReporter     status.Reporter
 	EvalReporter       statistics.Reporter
 	ExternalCache      store.Cache
@@ -56,7 +54,6 @@ type Context struct {
 type client struct {
 	configCatClient *configcat.Client
 	defaultAttrs    model.UserAttrs
-	readyOnce       sync.Once
 	log             log.Logger
 	cache           store.EntryStore
 	sdkCtx          *Context
@@ -78,7 +75,7 @@ func NewClient(sdkCtx *Context, log log.Logger) Client {
 	} else if offline && sdkCtx.SDKConf.Offline.UseCache && sdkCtx.ExternalCache != nil {
 		cacheKey := configcatcache.ProduceCacheKey(sdkCtx.SDKConf.Key, configcatcache.ConfigJSONName, configcatcache.ConfigJSONCacheVersion)
 		cacheStore := cache.NewCacheStore(sdkCtx.ExternalCache, sdkCtx.StatusReporter)
-		storage = cache.NewNotifyingCacheStore(sdkCtx.SdkId, cacheKey, cacheStore, &sdkCtx.SDKConf.Offline, sdkCtx.StatusReporter, log.WithLevel(sdkCtx.SDKConf.Offline.Log.GetLevel()))
+		storage = cache.NewNotifyingCacheStore(sdkCtx.SdkId, cacheKey, cacheStore, &sdkCtx.SDKConf.Offline, sdkCtx.TelemetryReporter, sdkCtx.StatusReporter, log.WithLevel(sdkCtx.SDKConf.Offline.Log.GetLevel()))
 	} else if !offline && sdkCtx.ExternalCache != nil {
 		storage = cache.NewCacheStore(sdkCtx.ExternalCache, sdkCtx.StatusReporter)
 	} else {
@@ -93,8 +90,7 @@ func NewClient(sdkCtx *Context, log log.Logger) Client {
 	}
 	client.ctx, client.ctxCancel = context.WithCancel(context.Background())
 	clientConfig := configcat.Config{
-		PollingMode:    configcat.AutoPoll,
-		PollInterval:   time.Duration(sdkCtx.SDKConf.PollInterval) * time.Second,
+		PollingMode:    configcat.Manual,
 		Offline:        offline,
 		BaseURL:        sdkCtx.SDKConf.BaseUrl,
 		Cache:          storage,
@@ -105,16 +101,15 @@ func NewClient(sdkCtx *Context, log log.Logger) Client {
 		Transport:      sdkCtx.Transport,
 		Hooks:          &configcat.Hooks{},
 	}
-	if !sdkCtx.SDKConf.Offline.Enabled {
+	if !offline {
 		clientConfig.Hooks.OnConfigChanged = func() {
 			client.signal()
 		}
-		if sdkCtx.MetricsReporter != nil {
-			clientConfig.Transport = metrics.InterceptSdk(sdkCtx.SdkId, sdkCtx.MetricsReporter, clientConfig.Transport)
-		}
-		clientConfig.Transport = status.InterceptSdk(sdkCtx.SdkId, sdkCtx.StatusReporter, clientConfig.Transport)
-	} else {
-		clientConfig.PollingMode = configcat.Manual
+		clientConfig.Transport = sdkCtx.TelemetryReporter.InstrumentHttpClient(
+			status.InterceptSdk(sdkCtx.SdkId, sdkCtx.StatusReporter, clientConfig.Transport),
+			telemetry.NewKV("configcat.sdk.id", sdkCtx.SdkId),
+			telemetry.NewKV("configcat.source", "sdk"))
+
 	}
 	if sdkCtx.EvalReporter != nil {
 		clientConfig.Hooks.OnFlagEvaluated = func(details *configcat.EvaluationDetails) {
@@ -135,14 +130,12 @@ func NewClient(sdkCtx *Context, log log.Logger) Client {
 		clientConfig.DataGovernance = configcat.EUOnly
 	}
 	client.configCatClient = configcat.NewCustomClient(clientConfig)
-
-	// sync up values to the SDK from the OFFLINE store
-	if sdkCtx.SDKConf.Offline.Enabled {
-		_ = client.Refresh()
-	}
+	_ = client.Refresh()
 
 	if notifier, ok := storage.(store.NotifyingStore); ok {
 		go client.listen(notifier)
+	} else {
+		go client.poll()
 	}
 	sdkLog.Reportf("started")
 	return client
@@ -153,6 +146,23 @@ func (c *client) listen(notifier store.NotifyingStore) {
 		select {
 		case <-notifier.Modified():
 			c.signal()
+		case <-c.ctx.Done():
+			return
+		}
+	}
+}
+
+func (c *client) poll() {
+	interval := c.sdkCtx.SDKConf.PollInterval
+	if interval < 1 {
+		interval = config.DefaultSdkPollInterval
+	}
+	poller := time.NewTicker(time.Duration(interval) * time.Second)
+	defer poller.Stop()
+	for {
+		select {
+		case <-poller.C:
+			_ = c.Refresh()
 		case <-c.ctx.Done():
 			return
 		}
@@ -195,21 +205,14 @@ func (c *client) Keys() []string {
 }
 
 func (c *client) GetCachedJson() *store.EntryWithEtag {
-	c.readyOnce.Do(func() {
-		select {
-		case <-c.configCatClient.Ready():
-		case <-c.ctx.Done():
-		}
-	})
 	return c.cache.LoadEntry()
 }
 
 func (c *client) Refresh() error {
-	return c.configCatClient.Refresh(c.ctx)
-}
+	ctx, span := c.sdkCtx.TelemetryReporter.StartSpan(c.ctx, c.sdkCtx.SdkId+" refresh")
+	defer span.End()
 
-func (c *client) Ready() <-chan struct{} {
-	return c.configCatClient.Ready()
+	return c.configCatClient.RefreshWithContextPassthrough(ctx)
 }
 
 func (c *client) SdkKeys() (string, *string) {

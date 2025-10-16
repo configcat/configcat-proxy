@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/configcat/configcat-proxy/config"
+	"github.com/configcat/configcat-proxy/diag/telemetry"
 	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/sdk"
@@ -26,6 +27,29 @@ func TestSSE_Get(t *testing.T) {
 	defer cancel()
 	data := base64.URLEncoding.EncodeToString([]byte(`{"key":"flag"}`))
 	testutils.AddSdkIdContextParam(req)
+	req.SetPathValue(streamDataName, data)
+	req = req.WithContext(ctx)
+	srv.SingleFlag(res, req)
+
+	assert.Equal(t, http.StatusOK, res.Code)
+	// line breaks are intentional
+	assert.Equal(t, `data: {"value":true,"variationId":"v_flag"}
+
+`, res.Body.String())
+	assert.Equal(t, "text/event-stream", res.Header().Get("Content-Type"))
+	assert.Equal(t, "no-cache", res.Header().Get("Cache-Control"))
+	assert.Equal(t, "keep-alive", res.Header().Get("Connection"))
+}
+
+func TestSSE_Get_With_Sdk_Key(t *testing.T) {
+	res := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	srv, sdkKey := newServerWithSdkKey(t, &config.SseConfig{Enabled: true})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+	data := base64.URLEncoding.EncodeToString([]byte(`{"key":"flag", "sdkKey":"` + sdkKey + `"}`))
 	req.SetPathValue(streamDataName, data)
 	req = req.WithContext(ctx)
 	srv.SingleFlag(res, req)
@@ -87,6 +111,26 @@ func TestSSE_NonExisting_SDK(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, res.Code)
 }
 
+func TestSSE_NonExisting_SDK_With_Key(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	srv := newServer(t, &config.SseConfig{Enabled: true})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+	data := base64.URLEncoding.EncodeToString([]byte(`{"key":"flag", "sdkKey":"non-existing"}`))
+	req.SetPathValue(streamDataName, data)
+	req = req.WithContext(ctx)
+
+	res := httptest.NewRecorder()
+	srv.SingleFlag(res, req)
+	assert.Equal(t, http.StatusNotFound, res.Code)
+
+	res = httptest.NewRecorder()
+	srv.AllFlags(res, req)
+	assert.Equal(t, http.StatusNotFound, res.Code)
+}
+
 func TestSSE_NonExisting_Flag(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 
@@ -122,12 +166,12 @@ func TestSSE_SDK_InvalidState(t *testing.T) {
 	res := httptest.NewRecorder()
 	srv.SingleFlag(res, req)
 	assert.Equal(t, http.StatusInternalServerError, res.Code)
-	assert.Equal(t, "SDK with identifier 'test' is in an invalid state; please check the logs for more details\n", res.Body.String())
+	assert.Equal(t, "requested SDK is in an invalid state; please check the logs for more details\n", res.Body.String())
 
 	res = httptest.NewRecorder()
 	srv.AllFlags(res, req)
 	assert.Equal(t, http.StatusInternalServerError, res.Code)
-	assert.Equal(t, "SDK with identifier 'test' is in an invalid state; please check the logs for more details\n", res.Body.String())
+	assert.Equal(t, "requested SDK is in an invalid state; please check the logs for more details\n", res.Body.String())
 }
 
 func TestSSE_Get_All(t *testing.T) {
@@ -266,16 +310,25 @@ func TestSSE_Get_All_User_Invalid(t *testing.T) {
 
 func newServer(t *testing.T, conf *config.SseConfig) *Server {
 	reg, _, _ := sdk.NewTestRegistrarT(t)
-	server := NewServer(reg, nil, conf, log.NewNullLogger())
+	server := NewServer(reg, telemetry.NewEmptyReporter(), conf, log.NewNullLogger())
 	t.Cleanup(func() {
 		server.Close()
 	})
 	return server
 }
 
+func newServerWithSdkKey(t *testing.T, conf *config.SseConfig) (*Server, string) {
+	reg, _, k := sdk.NewTestRegistrarT(t)
+	server := NewServer(reg, telemetry.NewEmptyReporter(), conf, log.NewNullLogger())
+	t.Cleanup(func() {
+		server.Close()
+	})
+	return server, k
+}
+
 func newServerWithAutoRegistrar(t *testing.T, conf *config.SseConfig) (*Server, *sdk.TestSdkRegistrarHandler) {
 	reg, h, _ := sdk.NewTestAutoRegistrarWithAutoConfig(t, config.ProfileConfig{PollInterval: 1}, log.NewNullLogger())
-	server := NewServer(reg, nil, conf, log.NewNullLogger())
+	server := NewServer(reg, telemetry.NewEmptyReporter(), conf, log.NewNullLogger())
 	t.Cleanup(func() {
 		server.Close()
 	})

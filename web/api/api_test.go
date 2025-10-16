@@ -27,6 +27,25 @@ func TestAPI_Eval(t *testing.T) {
 		assert.Equal(t, 200, res.Code)
 		assert.Equal(t, `{"value":true,"variationId":"v_flag"}`, res.Body.String())
 	})
+	t.Run("online with sdk key", func(t *testing.T) {
+		res := httptest.NewRecorder()
+		req, _ := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"key":"flag"}`))
+		srv, _, sdkKey := newServerWithHandler(t, config.ApiConfig{Enabled: true})
+		req.Header.Set(SdkKeyHeader, sdkKey)
+		srv.Eval(res, req)
+
+		assert.Equal(t, 200, res.Code)
+		assert.Equal(t, `{"value":true,"variationId":"v_flag"}`, res.Body.String())
+	})
+	t.Run("without sdkId or sdkKey", func(t *testing.T) {
+		res := httptest.NewRecorder()
+		req, _ := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"key":"flag"}`))
+		srv := newServer(t, config.ApiConfig{Enabled: true})
+		srv.Eval(res, req)
+
+		assert.Equal(t, http.StatusBadRequest, res.Code)
+		assert.Equal(t, "either the 'sdkId' path variable or 'X-ConfigCat-SdkKey' header must be set\n", res.Body.String())
+	})
 	t.Run("flag not found", func(t *testing.T) {
 		res := httptest.NewRecorder()
 		req, _ := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"key":"non-existing"}`))
@@ -47,7 +66,7 @@ func TestAPI_Eval(t *testing.T) {
 		srv.Eval(res, req)
 
 		assert.Equal(t, http.StatusInternalServerError, res.Code)
-		assert.Equal(t, "SDK with identifier 'test' is in an invalid state; please check the logs for more details\n", res.Body.String())
+		assert.Equal(t, "requested SDK is in an invalid state; please check the logs for more details\n", res.Body.String())
 	})
 	t.Run("online user", func(t *testing.T) {
 		res := httptest.NewRecorder()
@@ -55,6 +74,17 @@ func TestAPI_Eval(t *testing.T) {
 
 		srv := newServer(t, config.ApiConfig{Enabled: true})
 		testutils.AddSdkIdContextParam(req)
+		srv.Eval(res, req)
+
+		assert.Equal(t, 200, res.Code)
+		assert.Equal(t, `{"value":false,"variationId":"v0_flag"}`, res.Body.String())
+	})
+	t.Run("online user with sdk key", func(t *testing.T) {
+		res := httptest.NewRecorder()
+		req, _ := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"key":"flag","user":{"Identifier":"test"}}`))
+
+		srv, _, sdkKey := newServerWithHandler(t, config.ApiConfig{Enabled: true})
+		req.Header.Set(SdkKeyHeader, sdkKey)
 		srv.Eval(res, req)
 
 		assert.Equal(t, 200, res.Code)
@@ -94,7 +124,7 @@ func TestAPI_Eval(t *testing.T) {
 			srv.Eval(res, req)
 
 			assert.Equal(t, http.StatusInternalServerError, res.Code)
-			assert.Equal(t, "SDK with identifier 'test' is in an invalid state; please check the logs for more details\n", res.Body.String())
+			assert.Equal(t, "requested SDK is in an invalid state; please check the logs for more details\n", res.Body.String())
 		})
 	})
 }
@@ -120,7 +150,7 @@ func TestAPI_EvalAll(t *testing.T) {
 		srv.EvalAll(res, req)
 
 		assert.Equal(t, http.StatusInternalServerError, res.Code)
-		assert.Equal(t, "SDK with identifier 'test' is in an invalid state; please check the logs for more details\n", res.Body.String())
+		assert.Equal(t, "requested SDK is in an invalid state; please check the logs for more details\n", res.Body.String())
 	})
 	t.Run("online user", func(t *testing.T) {
 		res := httptest.NewRecorder()
@@ -167,7 +197,7 @@ func TestAPI_EvalAll(t *testing.T) {
 			srv.EvalAll(res, req)
 
 			assert.Equal(t, http.StatusInternalServerError, res.Code)
-			assert.Equal(t, "SDK with identifier 'test' is in an invalid state; please check the logs for more details\n", res.Body.String())
+			assert.Equal(t, "requested SDK is in an invalid state; please check the logs for more details\n", res.Body.String())
 		})
 	})
 }
@@ -206,7 +236,7 @@ func TestAPI_Keys(t *testing.T) {
 		srv.Keys(res, req)
 
 		assert.Equal(t, http.StatusInternalServerError, res.Code)
-		assert.Equal(t, "SDK with identifier 'test' is in an invalid state; please check the logs for more details\n", res.Body.String())
+		assert.Equal(t, "requested SDK is in an invalid state; please check the logs for more details\n", res.Body.String())
 	})
 	t.Run("offline", func(t *testing.T) {
 		testutils.UseTempFile(`{"f":{"flag":{"i":"","v":{"b":true},"t":0}}}`, func(path string) {
@@ -231,7 +261,7 @@ func TestAPI_Keys(t *testing.T) {
 			srv.Keys(res, req)
 
 			assert.Equal(t, http.StatusInternalServerError, res.Code)
-			assert.Equal(t, "SDK with identifier 'test' is in an invalid state; please check the logs for more details\n", res.Body.String())
+			assert.Equal(t, "requested SDK is in an invalid state; please check the logs for more details\n", res.Body.String())
 		})
 	})
 }
@@ -276,7 +306,7 @@ func TestAPI_WrongSdkId(t *testing.T) {
 		srv.Eval(res, req)
 
 		assert.Equal(t, 404, res.Code)
-		assert.Equal(t, res.Body.String(), "invalid SDK identifier: 'non-existing'\n")
+		assert.Equal(t, "could not identify a configured SDK\n", res.Body.String())
 	})
 	t.Run("EvalAll", func(t *testing.T) {
 		res := httptest.NewRecorder()
@@ -287,7 +317,7 @@ func TestAPI_WrongSdkId(t *testing.T) {
 		srv.EvalAll(res, req)
 
 		assert.Equal(t, 404, res.Code)
-		assert.Equal(t, res.Body.String(), "invalid SDK identifier: 'non-existing'\n")
+		assert.Equal(t, "could not identify a configured SDK\n", res.Body.String())
 	})
 	t.Run("Keys", func(t *testing.T) {
 		res := httptest.NewRecorder()
@@ -298,7 +328,7 @@ func TestAPI_WrongSdkId(t *testing.T) {
 		srv.Keys(res, req)
 
 		assert.Equal(t, 404, res.Code)
-		assert.Equal(t, res.Body.String(), "invalid SDK identifier: 'non-existing'\n")
+		assert.Equal(t, "could not identify a configured SDK\n", res.Body.String())
 	})
 	t.Run("Refresh", func(t *testing.T) {
 		res := httptest.NewRecorder()
@@ -309,7 +339,7 @@ func TestAPI_WrongSdkId(t *testing.T) {
 		srv.Refresh(res, req)
 
 		assert.Equal(t, 404, res.Code)
-		assert.Equal(t, res.Body.String(), "invalid SDK identifier: 'non-existing'\n")
+		assert.Equal(t, "could not identify a configured SDK\n", res.Body.String())
 	})
 }
 
@@ -326,7 +356,7 @@ func TestAPI_WrongSDKState(t *testing.T) {
 		srv.Eval(res, req)
 
 		assert.Equal(t, http.StatusInternalServerError, res.Code)
-		assert.Equal(t, "SDK with identifier 'test' is in an invalid state; please check the logs for more details\n", res.Body.String())
+		assert.Equal(t, "requested SDK is in an invalid state; please check the logs for more details\n", res.Body.String())
 	})
 	t.Run("EvalAll", func(t *testing.T) {
 		res := httptest.NewRecorder()
@@ -337,7 +367,7 @@ func TestAPI_WrongSDKState(t *testing.T) {
 		srv.EvalAll(res, req)
 
 		assert.Equal(t, http.StatusInternalServerError, res.Code)
-		assert.Equal(t, "SDK with identifier 'test' is in an invalid state; please check the logs for more details\n", res.Body.String())
+		assert.Equal(t, "requested SDK is in an invalid state; please check the logs for more details\n", res.Body.String())
 	})
 	t.Run("Keys", func(t *testing.T) {
 		res := httptest.NewRecorder()
@@ -348,7 +378,7 @@ func TestAPI_WrongSDKState(t *testing.T) {
 		srv.Keys(res, req)
 
 		assert.Equal(t, http.StatusInternalServerError, res.Code)
-		assert.Equal(t, "SDK with identifier 'test' is in an invalid state; please check the logs for more details\n", res.Body.String())
+		assert.Equal(t, "requested SDK is in an invalid state; please check the logs for more details\n", res.Body.String())
 	})
 }
 

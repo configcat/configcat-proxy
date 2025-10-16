@@ -7,11 +7,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/diag/status"
-	"github.com/configcat/configcat-proxy/internal/testutils"
+	"github.com/configcat/configcat-proxy/diag/telemetry"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/sdk"
 	"github.com/stretchr/testify/assert"
@@ -75,9 +74,5 @@ func TestStatus_Not_Allowed_Methods(t *testing.T) {
 func newStatusRouter(t *testing.T) *HttpRouter {
 	reporter := status.NewEmptyReporter()
 	reg, _, _ := sdk.NewTestRegistrarTWithStatusReporter(t, reporter)
-	client := reg.GetSdkOrNil("test")
-	testutils.WithTimeout(2*time.Second, func() {
-		<-client.Ready()
-	})
-	return NewRouter(reg, nil, reporter, &config.HttpConfig{Status: config.StatusConfig{Enabled: true}}, &config.ProfileConfig{}, log.NewNullLogger())
+	return NewRouter(reg, telemetry.NewEmptyReporter(), reporter, &config.HttpConfig{Status: config.StatusConfig{Enabled: true}}, &config.ProfileConfig{}, log.NewNullLogger())
 }

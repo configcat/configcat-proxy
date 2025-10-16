@@ -4,8 +4,8 @@ import (
 	"net/http"
 
 	"github.com/configcat/configcat-proxy/config"
-	"github.com/configcat/configcat-proxy/diag/metrics"
 	"github.com/configcat/configcat-proxy/diag/status"
+	"github.com/configcat/configcat-proxy/diag/telemetry"
 	"github.com/configcat/configcat-proxy/internal/utils"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/sdk"
@@ -18,21 +18,21 @@ import (
 )
 
 type HttpRouter struct {
-	router         *http.ServeMux
-	sseServer      *sse.Server
-	webhookServer  *webhook.Server
-	cdnProxyServer *cdnproxy.Server
-	apiServer      *api.Server
-	ofrepServer    *ofrep.Server
-	metrics        metrics.Reporter
+	router            *http.ServeMux
+	sseServer         *sse.Server
+	webhookServer     *webhook.Server
+	cdnProxyServer    *cdnproxy.Server
+	apiServer         *api.Server
+	ofrepServer       *ofrep.Server
+	telemetryReporter telemetry.Reporter
 }
 
-func NewRouter(sdkRegistrar sdk.Registrar, metrics metrics.Reporter, reporter status.Reporter, conf *config.HttpConfig, autoSdkConfig *config.ProfileConfig, log log.Logger) *HttpRouter {
+func NewRouter(sdkRegistrar sdk.Registrar, telemetryReporter telemetry.Reporter, reporter status.Reporter, conf *config.HttpConfig, autoSdkConfig *config.ProfileConfig, log log.Logger) *HttpRouter {
 	httpLog := log.WithLevel(conf.Log.GetLevel()).WithPrefix("http")
 
 	r := &HttpRouter{
-		router:  http.NewServeMux(),
-		metrics: metrics,
+		router:            http.NewServeMux(),
+		telemetryReporter: telemetryReporter,
 	}
 	if conf.Sse.Enabled {
 		r.setupSSERoutes(&conf.Sse, sdkRegistrar, httpLog)
@@ -70,11 +70,13 @@ func (s *HttpRouter) Close() {
 }
 
 func (s *HttpRouter) setupSSERoutes(conf *config.SseConfig, sdkRegistrar sdk.Registrar, l log.Logger) {
-	s.sseServer = sse.NewServer(sdkRegistrar, s.metrics, conf, l)
+	s.sseServer = sse.NewServer(sdkRegistrar, s.telemetryReporter, conf, l)
 	endpoints := []endpoint{
 		{path: "/sse/{sdkId}/eval/{data}", handler: http.HandlerFunc(s.sseServer.SingleFlag), method: http.MethodGet},
 		{path: "/sse/{sdkId}/eval-all/{data}", handler: http.HandlerFunc(s.sseServer.AllFlags), method: http.MethodGet},
 		{path: "/sse/{sdkId}/eval-all", handler: http.HandlerFunc(s.sseServer.AllFlags), method: http.MethodGet},
+		{path: "/sse/eval/k/{data}", handler: http.HandlerFunc(s.sseServer.SingleFlag), method: http.MethodGet},
+		{path: "/sse/eval-all/k/{data}", handler: http.HandlerFunc(s.sseServer.AllFlags), method: http.MethodGet},
 	}
 	for _, endpoint := range endpoints {
 		endpoint.handler = mware.AutoOptions(endpoint.handler)
@@ -106,18 +108,14 @@ func (s *HttpRouter) setupWebhookRoutes(conf *config.WebhookConfig, autoSdkConfi
 	if len(conf.AuthHeaders) > 0 {
 		handler = mware.HeaderAuth(conf.AuthHeaders, l, handler)
 	}
-	if s.metrics != nil {
-		handler = metrics.Measure(s.metrics, handler)
-		testHandler = metrics.Measure(s.metrics, testHandler)
-	}
 	if l.Level() == log.Debug {
 		handler = mware.DebugLog(l, handler)
 		testHandler = mware.DebugLog(l, testHandler)
 	}
-	s.router.HandleFunc(addHttpMethod(path, http.MethodGet), handler)
-	s.router.HandleFunc(addHttpMethod(path, http.MethodPost), handler)
-	s.router.HandleFunc(addHttpMethod(testPath, http.MethodGet), testHandler)
-	s.router.HandleFunc(addHttpMethod(testPath, http.MethodPost), testHandler)
+	s.router.HandleFunc(addHttpMethod(path, http.MethodGet), s.telemetryReporter.InstrumentHttp(path, http.MethodGet, handler))
+	s.router.HandleFunc(addHttpMethod(path, http.MethodPost), s.telemetryReporter.InstrumentHttp(path, http.MethodPost, handler))
+	s.router.HandleFunc(addHttpMethod(testPath, http.MethodGet), s.telemetryReporter.InstrumentHttp(path, http.MethodGet, testHandler))
+	s.router.HandleFunc(addHttpMethod(testPath, http.MethodPost), s.telemetryReporter.InstrumentHttp(path, http.MethodPost, testHandler))
 	l.Reportf("webhook enabled, accepting requests on path: %s", path)
 }
 
@@ -132,23 +130,17 @@ func (s *HttpRouter) setupCDNProxyRoutes(conf *config.CdnProxyConfig, sdkRegistr
 		handler = mware.CORS([]string{http.MethodGet, http.MethodOptions}, conf.CORS.AllowedOrigins,
 			utils.KeysOfMap(conf.Headers), nil, &conf.CORS.AllowedOriginsRegex, handler)
 	}
-	if s.metrics != nil {
-		handler = metrics.Measure(s.metrics, handler)
-	}
 	if l.Level() == log.Debug {
 		handler = mware.DebugLog(l, handler)
 	}
-	s.router.HandleFunc(addHttpMethod(path, http.MethodGet), handler)
-	s.router.HandleFunc(addHttpMethod(path, http.MethodOptions), handler)
+	s.router.HandleFunc(addHttpMethod(path, http.MethodGet), s.telemetryReporter.InstrumentHttp(path, http.MethodGet, handler))
+	s.router.HandleFunc(addHttpMethod(path, http.MethodOptions), s.telemetryReporter.InstrumentHttp(path, http.MethodOptions, handler))
 	l.Reportf("CDN proxy enabled, accepting requests on path: %s", path)
 }
 
 func (s *HttpRouter) setupStatusRoutes(reporter status.Reporter, l log.Logger) {
 	path := "/status"
 	handler := mware.AutoOptions(mware.GZip(reporter.HttpHandler()))
-	if s.metrics != nil {
-		handler = metrics.Measure(s.metrics, handler)
-	}
 	s.router.HandleFunc(addHttpMethod(path, http.MethodGet), handler)
 	s.router.HandleFunc(addHttpMethod(path, http.MethodOptions), handler)
 	l.Reportf("status enabled, accepting requests on path: %s", path)
@@ -167,7 +159,11 @@ func (s *HttpRouter) setupAPIRoutes(conf *config.ApiConfig, sdkRegistrar sdk.Reg
 		{path: "/api/{sdkId}/eval-all", handler: mware.GZip(s.apiServer.EvalAll), method: http.MethodPost},
 		{path: "/api/{sdkId}/keys", handler: mware.GZip(s.apiServer.Keys), method: http.MethodGet},
 		{path: "/api/{sdkId}/refresh", handler: http.HandlerFunc(s.apiServer.Refresh), method: http.MethodPost},
-		{path: "/api/{sdkId}/icanhascoffee", handler: http.HandlerFunc(s.apiServer.ICanHasCoffee), method: http.MethodGet},
+		{path: "/api/eval", handler: mware.GZip(s.apiServer.Eval), method: http.MethodPost},
+		{path: "/api/eval-all", handler: mware.GZip(s.apiServer.EvalAll), method: http.MethodPost},
+		{path: "/api/keys", handler: mware.GZip(s.apiServer.Keys), method: http.MethodGet},
+		{path: "/api/refresh", handler: http.HandlerFunc(s.apiServer.Refresh), method: http.MethodPost},
+		{path: "/api/icanhascoffee", handler: http.HandlerFunc(s.apiServer.ICanHasCoffee), method: http.MethodGet},
 	}
 	for _, endpoint := range endpoints {
 		if len(conf.AuthHeaders) > 0 {
@@ -181,14 +177,11 @@ func (s *HttpRouter) setupAPIRoutes(conf *config.ApiConfig, sdkRegistrar sdk.Reg
 			endpoint.handler = mware.CORS([]string{endpoint.method, http.MethodOptions}, conf.CORS.AllowedOrigins,
 				utils.KeysOfMap(conf.Headers), utils.KeysOfMap(conf.AuthHeaders), &conf.CORS.AllowedOriginsRegex, endpoint.handler)
 		}
-		if s.metrics != nil {
-			endpoint.handler = metrics.Measure(s.metrics, endpoint.handler)
-		}
 		if l.Level() == log.Debug {
 			endpoint.handler = mware.DebugLog(l, endpoint.handler)
 		}
-		s.router.HandleFunc(addHttpMethod(endpoint.path, endpoint.method), endpoint.handler)
-		s.router.HandleFunc(addHttpMethod(endpoint.path, http.MethodOptions), endpoint.handler)
+		s.router.HandleFunc(addHttpMethod(endpoint.path, endpoint.method), s.telemetryReporter.InstrumentHttp(endpoint.path, endpoint.method, endpoint.handler))
+		s.router.HandleFunc(addHttpMethod(endpoint.path, http.MethodOptions), s.telemetryReporter.InstrumentHttp(endpoint.path, http.MethodOptions, endpoint.handler))
 	}
 	l.Reportf("API enabled, accepting requests on path: /api/{sdkId}/*")
 }
@@ -212,14 +205,11 @@ func (s *HttpRouter) setupOFREPRoutes(conf *config.OFREPConfig, sdkRegistrar sdk
 			endpoint.handler = mware.CORS([]string{endpoint.method, http.MethodOptions}, conf.CORS.AllowedOrigins,
 				utils.KeysOfMap(conf.Headers), allowedHeaders, &conf.CORS.AllowedOriginsRegex, endpoint.handler)
 		}
-		if s.metrics != nil {
-			endpoint.handler = metrics.Measure(s.metrics, endpoint.handler)
-		}
 		if l.Level() == log.Debug {
 			endpoint.handler = mware.DebugLog(l, endpoint.handler)
 		}
-		s.router.HandleFunc(addHttpMethod(endpoint.path, endpoint.method), endpoint.handler)
-		s.router.HandleFunc(addHttpMethod(endpoint.path, http.MethodOptions), endpoint.handler)
+		s.router.HandleFunc(addHttpMethod(endpoint.path, endpoint.method), s.telemetryReporter.InstrumentHttp(endpoint.path, endpoint.method, endpoint.handler))
+		s.router.HandleFunc(addHttpMethod(endpoint.path, http.MethodOptions), s.telemetryReporter.InstrumentHttp(endpoint.path, http.MethodOptions, endpoint.handler))
 	}
 	l.Reportf("OFREP enabled, accepting requests on path: /ofrep/v1/evaluate/flags/*")
 }

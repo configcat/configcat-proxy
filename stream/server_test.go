@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/configcat/configcat-proxy/config"
+	"github.com/configcat/configcat-proxy/diag/telemetry"
 	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/model"
@@ -14,7 +15,7 @@ import (
 
 func TestServer_GetStreamOrNil(t *testing.T) {
 	reg, _, _ := sdk.NewTestRegistrarT(t)
-	srv := NewServer(reg, nil, log.NewNullLogger(), "test").(*server)
+	srv := NewServer(reg, telemetry.NewEmptyReporter(), log.NewNullLogger(), "test").(*server)
 
 	str := srv.GetStreamOrNil("test")
 	assert.NotNil(t, str)
@@ -29,7 +30,7 @@ func TestServer_GetStreamOrNil(t *testing.T) {
 
 func TestServer_AutoRegistrar(t *testing.T) {
 	reg, h, _ := sdk.NewTestAutoRegistrarWithAutoConfig(t, config.ProfileConfig{PollInterval: 60}, log.NewNullLogger())
-	srv := NewServer(reg, nil, log.NewNullLogger(), "test").(*server)
+	srv := NewServer(reg, telemetry.NewEmptyReporter(), log.NewNullLogger(), "test").(*server)
 
 	str := srv.GetStreamOrNil("test")
 	assert.NotNil(t, str)

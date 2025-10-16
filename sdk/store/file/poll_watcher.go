@@ -44,7 +44,11 @@ func newPollWatcher(conf *config.LocalConfig, log log.Logger) (*pollWatcher, err
 }
 
 func (p *pollWatcher) run(interval int) {
-	poller := time.NewTicker(time.Duration(interval) * time.Second)
+	inter := interval
+	if inter < 1 {
+		inter = config.DefaultCachePollInterval
+	}
+	poller := time.NewTicker(time.Duration(inter) * time.Second)
 	defer poller.Stop()
 	for {
 		select {

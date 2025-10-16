@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/configcat/configcat-proxy/config"
-	"github.com/configcat/configcat-proxy/diag/metrics"
 	"github.com/configcat/configcat-proxy/diag/status"
+	"github.com/configcat/configcat-proxy/diag/telemetry"
 	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/sdk"
@@ -35,7 +35,7 @@ func TestNewServer(t *testing.T) {
 	conf := config.Config{Grpc: config.GrpcConfig{Port: 5061, HealthCheckEnabled: true, ServerReflectionEnabled: true, KeepAlive: config.KeepAliveConfig{Timeout: 10}}, SDKs: map[string]*config.SDKConfig{key: &sdkConf}}
 	defer reg.Close()
 
-	srv, _ := NewServer(reg, metrics.NewReporter(), status.NewReporter(&conf.Cache), &conf, log.NewDebugLogger(), errChan)
+	srv, _ := NewServer(reg, telemetry.NewEmptyReporter(), status.NewReporter(&conf.Cache), &conf, log.NewDebugLogger(), errChan)
 
 	wg := sync.WaitGroup{}
 	wg.Add(1)
@@ -121,7 +121,7 @@ MK4Li/LGWcksyoF+hbPNXMFCIA==
 			conf := config.Config{Grpc: config.GrpcConfig{Port: 5062}, Tls: tlsConf, SDKs: map[string]*config.SDKConfig{key: &sdkConf}}
 			defer reg.Close()
 
-			srv, _ := NewServer(reg, nil, status.NewReporter(&conf.Cache), &conf, log.NewNullLogger(), errChan)
+			srv, _ := NewServer(reg, telemetry.NewEmptyReporter(), status.NewReporter(&conf.Cache), &conf, log.NewNullLogger(), errChan)
 
 			wg := sync.WaitGroup{}
 			wg.Add(1)
@@ -162,7 +162,7 @@ func TestNewServer_TLS_Missing_Cert(t *testing.T) {
 	conf := config.Config{Grpc: config.GrpcConfig{Port: 5063}, Tls: tlsConf, SDKs: map[string]*config.SDKConfig{key: &sdkConf}}
 	defer reg.Close()
 
-	_, err := NewServer(reg, nil, status.NewReporter(&conf.Cache), &conf, log.NewNullLogger(), errChan)
+	_, err := NewServer(reg, telemetry.NewEmptyReporter(), status.NewReporter(&conf.Cache), &conf, log.NewNullLogger(), errChan)
 	assert.Error(t, err)
 }
 

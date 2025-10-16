@@ -198,6 +198,23 @@ func (d *DiagConfig) validate() error {
 	if d.Port < 1 || d.Port > 65535 {
 		return fmt.Errorf("diag: invalid port %d", d.Port)
 	}
+	if d.IsMetricsEnabled() && d.Metrics.Otlp.Enabled {
+		if err := d.Metrics.Otlp.validate(); err != nil {
+			return err
+		}
+	}
+	if d.IsTracesEnabled() && d.Traces.Otlp.Enabled {
+		if err := d.Traces.Otlp.validate(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (o *OtlpExporterConfig) validate() error {
+	if o.Protocol != "http" && o.Protocol != "https" && o.Protocol != "grpc" {
+		return fmt.Errorf("diag: invalid otlp protocol %s (only 'http', 'https', or 'grpc' allowed)", o.Protocol)
+	}
 	return nil
 }
 

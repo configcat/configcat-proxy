@@ -9,30 +9,27 @@ import (
 	"time"
 
 	"github.com/configcat/configcat-proxy/config"
-	"github.com/configcat/configcat-proxy/diag/metrics"
 	"github.com/configcat/configcat-proxy/diag/status"
+	"github.com/configcat/configcat-proxy/diag/telemetry"
 	"github.com/configcat/configcat-proxy/log"
 )
 
 type Server struct {
-	httpServer      *http.Server
-	log             log.Logger
-	conf            *config.DiagConfig
-	errorChannel    chan error
-	statusReporter  status.Reporter
-	metricsReporter metrics.Reporter
+	httpServer   *http.Server
+	log          log.Logger
+	conf         *config.DiagConfig
+	errorChannel chan error
 }
 
-func NewServer(conf *config.DiagConfig, statusReporter status.Reporter, metricsReporter metrics.Reporter, log log.Logger, errorChan chan error) *Server {
+func NewServer(conf *config.DiagConfig, telemetryReporter telemetry.Reporter, statusReporter status.Reporter, log log.Logger, errorChan chan error) *Server {
 	diagLog := log.WithPrefix("diag")
 	mux := http.NewServeMux()
 
-	if metricsReporter != nil && conf.Metrics.Enabled {
-		mux.Handle("/metrics", metricsReporter.HttpHandler())
-		diagLog.Reportf("metrics enabled, accepting requests on path: /metrics")
+	if conf.IsMetricsEnabled() && conf.IsPrometheusExporterEnabled() {
+		mux.Handle("/metrics", telemetryReporter.GetPrometheusHttpHandler())
 	}
 
-	if statusReporter != nil && conf.Status.Enabled {
+	if conf.IsStatusEnabled() {
 		mux.Handle("/status", statusReporter.HttpHandler())
 		diagLog.Reportf("status enabled, accepting requests on path: /status")
 	}
@@ -45,12 +42,10 @@ func NewServer(conf *config.DiagConfig, statusReporter status.Reporter, metricsR
 	}
 
 	return &Server{
-		log:             diagLog,
-		httpServer:      httpServer,
-		conf:            conf,
-		errorChannel:    errorChan,
-		statusReporter:  statusReporter,
-		metricsReporter: metricsReporter,
+		log:          diagLog,
+		httpServer:   httpServer,
+		conf:         conf,
+		errorChannel: errorChan,
 	}
 }
 
@@ -84,5 +79,6 @@ func (s *Server) Shutdown() {
 	if err != nil {
 		s.log.Errorf("shutdown error: %s", err)
 	}
+
 	s.log.Reportf("server shutdown complete")
 }

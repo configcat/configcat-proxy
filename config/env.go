@@ -424,12 +424,50 @@ func (d *DiagConfig) loadEnv(prefix string) error {
 	if err := d.Metrics.loadEnv(prefix); err != nil {
 		return err
 	}
+	if err := d.Traces.loadEnv(prefix); err != nil {
+		return err
+	}
 	return nil
 }
 
 func (m *MetricsConfig) loadEnv(prefix string) error {
 	prefix = concatPrefix(prefix, "METRICS")
 	if err := readEnv(prefix, "ENABLED", &m.Enabled, toBool); err != nil {
+		return err
+	}
+	if err := m.Prometheus.loadEnv(prefix); err != nil {
+		return err
+	}
+	if err := m.Otlp.loadEnv(prefix); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (m *TraceConfig) loadEnv(prefix string) error {
+	prefix = concatPrefix(prefix, "TRACES")
+	if err := readEnv(prefix, "ENABLED", &m.Enabled, toBool); err != nil {
+		return err
+	}
+	if err := m.Otlp.loadEnv(prefix); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (p *PrometheusExporterConfig) loadEnv(prefix string) error {
+	prefix = concatPrefix(prefix, "PROMETHEUS")
+	if err := readEnv(prefix, "ENABLED", &p.Enabled, toBool); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (o *OtlpExporterConfig) loadEnv(prefix string) error {
+	prefix = concatPrefix(prefix, "OTLP")
+	readEnvString(prefix, "PROTOCOL", &o.Protocol)
+	readEnvString(prefix, "ENDPOINT", &o.Endpoint)
+	if err := readEnv(prefix, "ENABLED", &o.Enabled, toBool); err != nil {
 		return err
 	}
 	return nil

@@ -72,9 +72,6 @@ func TestWebhook_Signature_Ok(t *testing.T) {
 		testutils.AddSdkIdContextParam(req)
 		sub := make(chan struct{})
 		reg.GetSdkOrNil("test").Subscribe(sub)
-		testutils.WithTimeout(2*time.Second, func() {
-			<-reg.GetSdkOrNil("test").Ready()
-		}) // wait for the SDK to do the initialization
 		_ = h.SetFlags(key, map[string]*configcattest.Flag{"flag": {Default: false}})
 		srv.ServeWebhookSdkId(res, req)
 		testutils.WithTimeout(2*time.Second, func() {
@@ -101,9 +98,6 @@ func TestWebhook_Signature_Ok(t *testing.T) {
 		testutils.AddSdkIdContextParam(req)
 		sub := make(chan struct{})
 		reg.GetSdkOrNil("test").Subscribe(sub)
-		testutils.WithTimeout(2*time.Second, func() {
-			<-reg.GetSdkOrNil("test").Ready()
-		}) // wait for the SDK to do the initialization
 		_ = h.SetFlags(key, map[string]*configcattest.Flag{"flag": {Default: false}})
 		srv.ServeWebhookSdkId(res, req)
 		testutils.WithTimeout(2*time.Second, func() {

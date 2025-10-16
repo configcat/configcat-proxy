@@ -5,6 +5,7 @@ import (
 
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/diag/status"
+	"github.com/configcat/configcat-proxy/diag/telemetry"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/sdk/store"
 	"github.com/configcat/go-sdk/v9/configcatcache"
@@ -27,10 +28,10 @@ type cacheStore struct {
 	actualCache store.Cache
 }
 
-func SetupExternalCache(ctx context.Context, conf *config.CacheConfig, log log.Logger) (External, error) {
+func SetupExternalCache(ctx context.Context, conf *config.CacheConfig, telemetryReporter telemetry.Reporter, log log.Logger) (External, error) {
 	cacheLog := log.WithPrefix("cache")
 	if conf.Redis.Enabled {
-		redis, err := newRedis(&conf.Redis, cacheLog)
+		redis, err := newRedis(&conf.Redis, telemetryReporter, cacheLog)
 		if err != nil {
 			return nil, err
 		}

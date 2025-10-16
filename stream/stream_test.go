@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/configcat/configcat-proxy/config"
+	"github.com/configcat/configcat-proxy/diag/telemetry"
 	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/model"
@@ -18,7 +19,7 @@ import (
 func TestStream_Receive(t *testing.T) {
 	clients, h, key := sdk.NewTestSdkClient(t)
 
-	str := NewStream("test", clients["test"], nil, log.NewNullLogger(), "test")
+	str := NewStream("test", clients["test"], telemetry.NewEmptyReporter(), log.NewNullLogger(), "test")
 	defer str.Close()
 
 	assert.True(t, str.CanEval("flag"))
@@ -56,7 +57,7 @@ func TestStream_Offline_Receive(t *testing.T) {
 		client := sdk.NewClient(ctx, log.NewNullLogger())
 		defer client.Close()
 
-		str := NewStream("test", client, nil, log.NewNullLogger(), "test")
+		str := NewStream("test", client, telemetry.NewEmptyReporter(), log.NewNullLogger(), "test")
 		defer str.Close()
 
 		sConn := str.CreateConnection("flag", nil)
@@ -84,7 +85,7 @@ func TestStream_Offline_Receive(t *testing.T) {
 func TestStream_Receive_Close(t *testing.T) {
 	clients, _, _ := sdk.NewTestSdkClient(t)
 
-	str := NewStream("test", clients["test"], nil, log.NewNullLogger(), "test")
+	str := NewStream("test", clients["test"], telemetry.NewEmptyReporter(), log.NewNullLogger(), "test")
 	sConn := str.CreateConnection("flag", nil)
 	aConn := str.CreateConnection(AllFlagsDiscriminator, nil)
 	testutils.WithTimeout(2*time.Second, func() {
@@ -117,7 +118,7 @@ func TestStream_IsInValidState_True(t *testing.T) {
 	client := sdk.NewClient(ctx, log.NewNullLogger())
 	defer client.Close()
 
-	str := NewStream("test", client, nil, log.NewNullLogger(), "test")
+	str := NewStream("test", client, telemetry.NewEmptyReporter(), log.NewNullLogger(), "test")
 	assert.True(t, str.IsInValidState())
 }
 
@@ -126,14 +127,14 @@ func TestStream_IsInValidState_False(t *testing.T) {
 	client := sdk.NewClient(ctx, log.NewNullLogger())
 	defer client.Close()
 
-	str := NewStream("test", client, nil, log.NewNullLogger(), "test")
+	str := NewStream("test", client, telemetry.NewEmptyReporter(), log.NewNullLogger(), "test")
 	assert.False(t, str.IsInValidState())
 }
 
 func TestStream_Goroutines(t *testing.T) {
 	clients, _, _ := sdk.NewTestSdkClient(t)
 
-	str := NewStream("test", clients["test"], nil, log.NewNullLogger(), "test")
+	str := NewStream("test", clients["test"], telemetry.NewEmptyReporter(), log.NewNullLogger(), "test")
 	defer str.Close()
 
 	time.Sleep(100 * time.Millisecond)
@@ -181,7 +182,7 @@ func TestStream_ResetSdk(t *testing.T) {
 	client := sdk.NewClient(ctx, log.NewNullLogger())
 	defer client.Close()
 
-	str := NewStream("test", client, nil, log.NewNullLogger(), "test").(*stream)
+	str := NewStream("test", client, telemetry.NewEmptyReporter(), log.NewNullLogger(), "test").(*stream)
 
 	assert.Same(t, client, str.sdkClient.Load())
 
