@@ -52,7 +52,7 @@ func (s *mongoTestSuite) TestSetupExternalCache() {
 	}}, telemetry.NewEmptyReporter(), log.NewNullLogger())
 	assert.NoError(s.T(), err)
 	defer store.Shutdown()
-	assert.IsType(s.T(), &dynamoDbStore{}, store)
+	assert.IsType(s.T(), &mongoDbStore{}, store)
 }
 
 func (s *redisTestSuite) TestSetupExternalCache() {
