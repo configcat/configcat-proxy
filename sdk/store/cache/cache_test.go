@@ -44,10 +44,11 @@ func TestSetupExternalCache_OnlyOneSelected(t *testing.T) {
 }
 
 func (s *mongoTestSuite) TestSetupExternalCache() {
-	store, err := SetupExternalCache(s.T().Context(), &config.CacheConfig{DynamoDb: config.DynamoDbConfig{
-		Enabled: true,
-		Table:   tableName,
-		Url:     s.addr,
+	store, err := SetupExternalCache(s.T().Context(), &config.CacheConfig{MongoDb: config.MongoDbConfig{
+		Enabled:    true,
+		Url:        s.addr,
+		Database:   "test_db",
+		Collection: "coll",
 	}}, telemetry.NewEmptyReporter(), log.NewNullLogger())
 	assert.NoError(s.T(), err)
 	defer store.Shutdown()
