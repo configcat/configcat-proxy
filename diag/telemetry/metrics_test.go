@@ -1,14 +1,19 @@
 package telemetry
 
 import (
+	"context"
+	"net/http/httptest"
 	"testing"
 
+	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/stretchr/testify/assert"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata/metricdatatest"
+	otlpmpb "go.opentelemetry.io/proto/otlp/collector/metrics/v1"
+	mpb "go.opentelemetry.io/proto/otlp/metrics/v1"
 )
 
 func TestConnection(t *testing.T) {
@@ -114,4 +119,106 @@ func TestConnection(t *testing.T) {
 				},
 			},
 		}}, m1, metricdatatest.IgnoreTimestamp())
+}
+
+func TestOtlpMetricsExporterGrpc(t *testing.T) {
+	collector, err := newInMemoryMetricGrpcCollector()
+	assert.NoError(t, err)
+	defer collector.Shutdown()
+
+	handler := newMetricsHandler(t.Context(), buildResource("0.1.0"),
+		&config.MetricsConfig{Enabled: true, Otlp: config.OtlpExporterConfig{Enabled: true, Protocol: "grpc", Endpoint: collector.Addr()}}, log.NewNullLogger())
+	assert.NotNil(t, handler)
+
+	handler.recordConnections(1, "test", "t1", "n1")
+	_ = handler.provider.ForceFlush(t.Context())
+
+	assert.True(t, collector.hasMetric("stream.connections"))
+}
+
+func TestOtlpMetricsExporterHttp(t *testing.T) {
+	collector := newInMemoryMetricHttpCollector()
+	defer collector.Shutdown()
+
+	handler := newMetricsHandler(t.Context(), buildResource("0.1.0"),
+		&config.MetricsConfig{Enabled: true, Otlp: config.OtlpExporterConfig{Enabled: true, Protocol: "http", Endpoint: collector.Addr()}}, log.NewNullLogger())
+	assert.NotNil(t, handler)
+
+	handler.recordConnections(1, "test", "t1", "n1")
+	_ = handler.provider.ForceFlush(t.Context())
+
+	assert.True(t, hasMetric(collector, "stream.connections"))
+}
+
+type inMemoryMetricGrpcCollector struct {
+	otlpmpb.UnimplementedMetricsServiceServer
+	*grpcCollector
+
+	metrics []*mpb.ResourceMetrics
+}
+
+func newInMemoryMetricGrpcCollector() (*inMemoryMetricGrpcCollector, error) {
+	gc, err := newGrpcCollector()
+	if err != nil {
+		return nil, err
+	}
+	c := &inMemoryMetricGrpcCollector{
+		grpcCollector: gc,
+		metrics:       make([]*mpb.ResourceMetrics, 0),
+	}
+	otlpmpb.RegisterMetricsServiceServer(c.srv, c)
+	go func() { _ = c.srv.Serve(c.listener) }()
+
+	return c, nil
+}
+
+func (c *inMemoryMetricGrpcCollector) Export(_ context.Context, req *otlpmpb.ExportMetricsServiceRequest) (*otlpmpb.ExportMetricsServiceResponse, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.metrics = append(c.metrics, req.ResourceMetrics...)
+
+	return &otlpmpb.ExportMetricsServiceResponse{}, nil
+}
+
+func (c *inMemoryMetricGrpcCollector) hasMetric(name string) bool {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	for _, t := range c.metrics {
+		for _, span := range t.ScopeMetrics {
+			for _, s := range span.Metrics {
+				if s.Name == name {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+func newInMemoryMetricHttpCollector() *inMemoryHttpCollector[*otlpmpb.ExportMetricsServiceRequest] {
+	c := &inMemoryHttpCollector[*otlpmpb.ExportMetricsServiceRequest]{
+		records: make([]*otlpmpb.ExportMetricsServiceRequest, 0),
+	}
+	c.srv = httptest.NewServer(c)
+	return c
+}
+
+func hasMetric(c *inMemoryHttpCollector[*otlpmpb.ExportMetricsServiceRequest], name string) bool {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	for _, r := range c.records {
+		for _, t := range r.ResourceMetrics {
+			for _, span := range t.ScopeMetrics {
+				for _, s := range span.Metrics {
+					if s.Name == name {
+						return true
+					}
+				}
+			}
+		}
+	}
+	return false
 }

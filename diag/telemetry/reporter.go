@@ -5,11 +5,15 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/redis/go-redis/extra/redisotel/v9"
 	"github.com/redis/go-redis/v9"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws"
+	"go.opentelemetry.io/contrib/instrumentation/go.mongodb.org/mongo-driver/v2/mongo/otelmongo"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
@@ -41,12 +45,15 @@ type Reporter interface {
 	AddSentMessageCount(count int, sdkId string, streamType string, flag string)
 
 	StartSpan(ctx context.Context, name string) (context.Context, trace.Span)
+	ForceFlush(ctx context.Context)
 
 	InstrumentHttp(operation string, method string, handler http.HandlerFunc) http.HandlerFunc
 	InstrumentHttpClient(handler http.RoundTripper, attributes ...KV) http.RoundTripper
 	InstrumentGrpc(opts []grpc.ServerOption) []grpc.ServerOption
 
 	InstrumentRedis(rdb redis.UniversalClient)
+	InstrumentMongoDb(opts *options.ClientOptions)
+	InstrumentAws(opts *aws.Config)
 
 	Shutdown()
 }
@@ -103,6 +110,21 @@ func (r *reporter) GetPrometheusHttpHandler() http.Handler {
 	return promhttp.Handler()
 }
 
+func (r *reporter) ForceFlush(ctx context.Context) {
+	if r.metricsHandler != nil {
+		err := r.metricsHandler.provider.ForceFlush(ctx)
+		if err != nil {
+			r.log.Errorf("failed to force flush metrics: %v", err)
+		}
+	}
+	if r.traceHandler != nil {
+		err := r.traceHandler.provider.ForceFlush(ctx)
+		if err != nil {
+			r.log.Errorf("failed to force flush traces: %v", err)
+		}
+	}
+}
+
 func (r *reporter) RecordConnections(count int64, sdkId string, streamType string, flag string) {
 	if r.metricsHandler == nil {
 		return
@@ -152,7 +174,7 @@ func (r *reporter) InstrumentHttpClient(handler http.RoundTripper, attributes ..
 		}
 	}
 	if r.traceHandler != nil {
-		otelOpts = append(otelOpts, otelhttp.WithTracerProvider(r.traceHandler.provider), otelhttp.WithSpanOptions())
+		otelOpts = append(otelOpts, otelhttp.WithTracerProvider(r.traceHandler.provider))
 	}
 	if len(otelOpts) > 0 {
 		return otelhttp.NewTransport(handler, otelOpts...)
@@ -186,6 +208,18 @@ func (r *reporter) InstrumentRedis(rdb redis.UniversalClient) {
 		if err != nil {
 			r.log.Errorf("failed to instrument redis: %v", err)
 		}
+	}
+}
+
+func (r *reporter) InstrumentMongoDb(opts *options.ClientOptions) {
+	if r.traceHandler != nil {
+		opts.Monitor = otelmongo.NewMonitor(otelmongo.WithTracerProvider(r.traceHandler.provider))
+	}
+}
+
+func (r *reporter) InstrumentAws(opts *aws.Config) {
+	if r.traceHandler != nil {
+		otelaws.AppendMiddlewares(&opts.APIOptions, otelaws.WithTracerProvider(r.traceHandler.provider))
 	}
 }
 

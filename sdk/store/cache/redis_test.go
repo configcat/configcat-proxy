@@ -2,7 +2,6 @@ package cache
 
 import (
 	"bytes"
-	"context"
 	"crypto/x509"
 	"encoding/pem"
 	"testing"
@@ -28,15 +27,13 @@ type redisTestSuite struct {
 }
 
 func (s *redisTestSuite) SetupSuite() {
-	ctx := context.Background()
-
-	redisContainer, err := redis.Run(ctx, "redis")
+	redisContainer, err := redis.Run(s.T().Context(), "redis")
 	if err != nil {
 		panic("failed to start container: " + err.Error() + "")
 	}
 	s.db = redisContainer
 	p, _ := nat.NewPort("tcp", "6379")
-	dbPort, _ := s.db.MappedPort(ctx, p)
+	dbPort, _ := s.db.MappedPort(s.T().Context(), p)
 	s.dbPort = dbPort.Port()
 }
 
@@ -80,15 +77,8 @@ func (s *redisTestSuite) TestRedisStorage_Unavailable() {
 	assert.Error(s.T(), err)
 }
 
-func (s *redisTestSuite) TestSetupExternalCache() {
-	store, err := SetupExternalCache(context.Background(), &config.CacheConfig{Redis: config.RedisConfig{Addresses: []string{"localhost:" + s.dbPort}, Enabled: true}}, telemetry.NewEmptyReporter(), log.NewNullLogger())
-	assert.NoError(s.T(), err)
-	defer store.Shutdown()
-	assert.IsType(s.T(), &redisStore{}, store)
-}
-
 func TestRedisStorage_TLS(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	redisContainer, err := redis.Run(ctx, "redis", redis.WithTLS())
 	defer func() {

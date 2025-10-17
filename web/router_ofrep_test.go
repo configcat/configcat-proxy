@@ -2,7 +2,6 @@ package web
 
 import (
 	"compress/gzip"
-	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -57,25 +56,25 @@ func TestOFREP_Integration(t *testing.T) {
 		ctx := openfeature.NewEvaluationContext("id", nil)
 		client := openfeature.NewClient("cl")
 
-		boolVal, _ := client.BooleanValueDetails(context.Background(), "bool", false, ctx)
+		boolVal, _ := client.BooleanValueDetails(t.Context(), "bool", false, ctx)
 		assert.True(t, boolVal.Value)
 		assert.Equal(t, "v0_bool", boolVal.Variant)
 		assert.Equal(t, openfeature.TargetingMatchReason, boolVal.Reason)
 		assert.Equal(t, "bool", boolVal.FlagKey)
 
-		strVal, _ := client.StringValueDetails(context.Background(), "str", "", ctx)
+		strVal, _ := client.StringValueDetails(t.Context(), "str", "", ctx)
 		assert.Equal(t, "test", strVal.Value)
 		assert.Equal(t, "v0_str", strVal.Variant)
 		assert.Equal(t, openfeature.TargetingMatchReason, strVal.Reason)
 		assert.Equal(t, "str", strVal.FlagKey)
 
-		intVal, _ := client.IntValueDetails(context.Background(), "int", 0, ctx)
+		intVal, _ := client.IntValueDetails(t.Context(), "int", 0, ctx)
 		assert.Equal(t, int64(42), intVal.Value)
 		assert.Equal(t, "v0_int", intVal.Variant)
 		assert.Equal(t, openfeature.TargetingMatchReason, intVal.Reason)
 		assert.Equal(t, "int", intVal.FlagKey)
 
-		doubleVal, _ := client.FloatValueDetails(context.Background(), "double", 0.0, ctx)
+		doubleVal, _ := client.FloatValueDetails(t.Context(), "double", 0.0, ctx)
 		assert.Equal(t, 3.14, doubleVal.Value)
 		assert.Equal(t, "v0_double", doubleVal.Variant)
 		assert.Equal(t, openfeature.TargetingMatchReason, doubleVal.Reason)
@@ -89,25 +88,25 @@ func TestOFREP_Integration(t *testing.T) {
 		ctx := openfeature.NewEvaluationContext("id", nil)
 		client := openfeature.NewClient("cl")
 
-		boolVal, _ := client.BooleanValueDetails(context.Background(), "bool", false, ctx)
+		boolVal, _ := client.BooleanValueDetails(t.Context(), "bool", false, ctx)
 		assert.True(t, boolVal.Value)
 		assert.Equal(t, "v0_bool", boolVal.Variant)
 		assert.Equal(t, openfeature.TargetingMatchReason, boolVal.Reason)
 		assert.Equal(t, "bool", boolVal.FlagKey)
 
-		strVal, _ := client.StringValueDetails(context.Background(), "str", "", ctx)
+		strVal, _ := client.StringValueDetails(t.Context(), "str", "", ctx)
 		assert.Equal(t, "test", strVal.Value)
 		assert.Equal(t, "v0_str", strVal.Variant)
 		assert.Equal(t, openfeature.TargetingMatchReason, strVal.Reason)
 		assert.Equal(t, "str", strVal.FlagKey)
 
-		intVal, _ := client.IntValueDetails(context.Background(), "int", 0, ctx)
+		intVal, _ := client.IntValueDetails(t.Context(), "int", 0, ctx)
 		assert.Equal(t, int64(42), intVal.Value)
 		assert.Equal(t, "v0_int", intVal.Variant)
 		assert.Equal(t, openfeature.TargetingMatchReason, intVal.Reason)
 		assert.Equal(t, "int", intVal.FlagKey)
 
-		doubleVal, _ := client.FloatValueDetails(context.Background(), "double", 0.0, ctx)
+		doubleVal, _ := client.FloatValueDetails(t.Context(), "double", 0.0, ctx)
 		assert.Equal(t, 3.14, doubleVal.Value)
 		assert.Equal(t, "v0_double", doubleVal.Variant)
 		assert.Equal(t, openfeature.TargetingMatchReason, doubleVal.Reason)

@@ -17,9 +17,9 @@ import (
 func TestCacheStore(t *testing.T) {
 	store := NewCacheStore(&testCache{}, status.NewEmptyReporter()).(*cacheStore)
 
-	err := store.Set(context.Background(), "key", configcatcache.CacheSegmentsToBytes(time.Now(), "etag", []byte(`test`)))
+	err := store.Set(t.Context(), "key", configcatcache.CacheSegmentsToBytes(time.Now(), "etag", []byte(`test`)))
 	assert.NoError(t, err)
-	res, err := store.Get(context.Background(), "key")
+	res, err := store.Get(t.Context(), "key")
 	assert.NoError(t, err)
 	_, _, j, err := configcatcache.CacheSegmentsFromBytes(res)
 	assert.NoError(t, err)
@@ -29,7 +29,7 @@ func TestCacheStore(t *testing.T) {
 
 func TestSetupExternalCache_OnlyOneSelected(t *testing.T) {
 	s := miniredis.RunT(t)
-	store, err := SetupExternalCache(context.Background(), &config.CacheConfig{
+	store, err := SetupExternalCache(t.Context(), &config.CacheConfig{
 		Redis: config.RedisConfig{Addresses: []string{s.Addr()}, Enabled: true},
 		MongoDb: config.MongoDbConfig{
 			Enabled:    true,
@@ -41,6 +41,42 @@ func TestSetupExternalCache_OnlyOneSelected(t *testing.T) {
 	assert.NoError(t, err)
 	defer store.Shutdown()
 	assert.IsType(t, &redisStore{}, store)
+}
+
+func (s *mongoTestSuite) TestSetupExternalCache() {
+	store, err := SetupExternalCache(s.T().Context(), &config.CacheConfig{DynamoDb: config.DynamoDbConfig{
+		Enabled: true,
+		Table:   tableName,
+		Url:     s.addr,
+	}}, telemetry.NewEmptyReporter(), log.NewNullLogger())
+	assert.NoError(s.T(), err)
+	defer store.Shutdown()
+	assert.IsType(s.T(), &dynamoDbStore{}, store)
+}
+
+func (s *redisTestSuite) TestSetupExternalCache() {
+	store, err := SetupExternalCache(s.T().Context(), &config.CacheConfig{Redis: config.RedisConfig{Addresses: []string{"localhost:" + s.dbPort}, Enabled: true}}, telemetry.NewEmptyReporter(), log.NewNullLogger())
+	assert.NoError(s.T(), err)
+	defer store.Shutdown()
+	assert.IsType(s.T(), &redisStore{}, store)
+}
+
+func (s *valkeyTestSuite) TestSetupExternalCache() {
+	store, err := SetupExternalCache(s.T().Context(), &config.CacheConfig{Redis: config.RedisConfig{Addresses: []string{"localhost:" + s.dbPort}, Enabled: true}}, telemetry.NewEmptyReporter(), log.NewNullLogger())
+	assert.NoError(s.T(), err)
+	defer store.Shutdown()
+	assert.IsType(s.T(), &redisStore{}, store)
+}
+
+func (s *dynamoDbTestSuite) TestSetupExternalCache() {
+	store, err := SetupExternalCache(s.T().Context(), &config.CacheConfig{DynamoDb: config.DynamoDbConfig{
+		Enabled: true,
+		Table:   tableName,
+		Url:     s.addr,
+	}}, telemetry.NewEmptyReporter(), log.NewNullLogger())
+	assert.NoError(s.T(), err)
+	defer store.Shutdown()
+	assert.IsType(s.T(), &dynamoDbStore{}, store)
 }
 
 type testCache struct {

@@ -1,7 +1,6 @@
 package cache
 
 import (
-	"context"
 	"net/http"
 	"sync"
 	"testing"
@@ -32,9 +31,9 @@ func TestRedisNotify(t *testing.T) {
 		<-srv.Modified()
 	})
 	s.CheckGet(t, cacheKey, string(cacheEntry))
-	err = srv.Set(context.Background(), "", []byte{}) // set does nothing
+	err = srv.Set(t.Context(), "", []byte{}) // set does nothing
 	assert.NoError(t, err)
-	res, err := srv.Get(context.Background(), "")
+	res, err := srv.Get(t.Context(), "")
 	_, _, j, _ := configcatcache.CacheSegmentsFromBytes(res)
 	assert.NoError(t, err)
 	assert.Equal(t, `{"f":{"flag":{"v":{"b":true}}},"p":null}`, string(j))
@@ -53,7 +52,7 @@ func TestRedisNotify_Initial(t *testing.T) {
 	r := NewCacheStore(red, status.NewEmptyReporter())
 	srv := NewNotifyingCacheStore("test", cacheKey, r, &config.OfflineConfig{CachePollInterval: 1}, telemetry.NewEmptyReporter(), status.NewEmptyReporter(), log.NewNullLogger())
 	s.CheckGet(t, cacheKey, string(cacheEntry))
-	res, err := srv.Get(context.Background(), "")
+	res, err := srv.Get(t.Context(), "")
 	_, _, j, _ := configcatcache.CacheSegmentsFromBytes(res)
 	assert.NoError(t, err)
 	assert.Equal(t, `{"f":{"flag":{"v":{"b":true}}},"p":null}`, string(j))
@@ -72,7 +71,7 @@ func TestRedisNotify_Notify(t *testing.T) {
 	r := NewCacheStore(red, status.NewEmptyReporter())
 	srv := NewNotifyingCacheStore("test", cacheKey, r, &config.OfflineConfig{CachePollInterval: 1}, telemetry.NewEmptyReporter(), status.NewEmptyReporter(), log.NewNullLogger()).(*notifyingCacheStore)
 	s.CheckGet(t, cacheKey, string(cacheEntry))
-	res, err := srv.Get(context.Background(), "")
+	res, err := srv.Get(t.Context(), "")
 	_, _, j, _ := configcatcache.CacheSegmentsFromBytes(res)
 	assert.NoError(t, err)
 	assert.Equal(t, `{"f":{"flag":{"v":{"b":false}}},"p":null}`, string(j))
@@ -83,7 +82,7 @@ func TestRedisNotify_Notify(t *testing.T) {
 	testutils.WithTimeout(2*time.Second, func() {
 		<-srv.Modified()
 	})
-	res, err = srv.Get(context.Background(), "")
+	res, err = srv.Get(t.Context(), "")
 	_, _, j, _ = configcatcache.CacheSegmentsFromBytes(res)
 	assert.NoError(t, err)
 	assert.Equal(t, `{"f":{"flag":{"v":{"b":true}}},"p":null}`, string(j))
@@ -100,7 +99,7 @@ func TestRedisNotify_BadJson(t *testing.T) {
 	assert.NoError(t, err)
 	r := NewCacheStore(red, status.NewEmptyReporter())
 	srv := NewNotifyingCacheStore("test", cacheKey, r, &config.OfflineConfig{CachePollInterval: 1}, telemetry.NewEmptyReporter(), status.NewEmptyReporter(), log.NewNullLogger())
-	res, err := srv.Get(context.Background(), "")
+	res, err := srv.Get(t.Context(), "")
 	_, _, j, _ := configcatcache.CacheSegmentsFromBytes(res)
 	assert.NoError(t, err)
 	assert.Equal(t, `{"f":null,"s":null,"p":null}`, string(j))
@@ -117,7 +116,7 @@ func TestRedisNotify_MalformedCacheEntry(t *testing.T) {
 	assert.NoError(t, err)
 	r := NewCacheStore(red, status.NewEmptyReporter())
 	srv := NewNotifyingCacheStore("test", cacheKey, r, &config.OfflineConfig{CachePollInterval: 1}, telemetry.NewEmptyReporter(), status.NewEmptyReporter(), log.NewNullLogger())
-	res, err := srv.Get(context.Background(), "")
+	res, err := srv.Get(t.Context(), "")
 	_, _, j, _ := configcatcache.CacheSegmentsFromBytes(res)
 	assert.NoError(t, err)
 	assert.Equal(t, `{"f":null,"s":null,"p":null}`, string(j))
@@ -135,7 +134,7 @@ func TestRedisNotify_MalformedJson(t *testing.T) {
 	assert.NoError(t, err)
 	r := NewCacheStore(red, status.NewEmptyReporter())
 	srv := NewNotifyingCacheStore("test", cacheKey, r, &config.OfflineConfig{CachePollInterval: 1}, telemetry.NewEmptyReporter(), status.NewEmptyReporter(), log.NewNullLogger())
-	res, err := srv.Get(context.Background(), "")
+	res, err := srv.Get(t.Context(), "")
 	_, _, j, _ := configcatcache.CacheSegmentsFromBytes(res)
 	assert.NoError(t, err)
 	assert.Equal(t, `{"f":null,"s":null,"p":null}`, string(j))
@@ -180,7 +179,7 @@ func TestRedisNotify_Unavailable(t *testing.T) {
 	assert.NoError(t, err)
 	r := NewCacheStore(red, status.NewEmptyReporter())
 	srv := NewNotifyingCacheStore("test", "", r, &config.OfflineConfig{CachePollInterval: 1}, telemetry.NewEmptyReporter(), status.NewEmptyReporter(), log.NewNullLogger())
-	res, err := srv.Get(context.Background(), "")
+	res, err := srv.Get(t.Context(), "")
 	_, _, j, _ := configcatcache.CacheSegmentsFromBytes(res)
 	assert.NoError(t, err)
 	assert.Equal(t, `{"f":null,"s":null,"p":null}`, string(j))

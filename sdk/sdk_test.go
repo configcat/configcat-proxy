@@ -164,7 +164,7 @@ func TestSdk_BadConfig_WithCache(t *testing.T) {
 	err := s.Set(cacheKey, string(cacheEntry))
 	assert.NoError(t, err)
 
-	ctx := NewTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key, Log: config.LogConfig{Level: "debug"}}, newRedisCache(s.Addr()))
+	ctx := NewTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key, Log: config.LogConfig{Level: "debug"}}, newRedisCache(t.Context(), s.Addr()))
 	client := NewClient(ctx, log.NewDebugLogger())
 	defer client.Close()
 	data := client.Eval("flag", nil)
@@ -239,7 +239,7 @@ func TestSdk_Signal_Offline_Redis_Watch(t *testing.T) {
 	ctx := NewTestSdkContext(&config.SDKConfig{
 		Key:     sdkKey,
 		Offline: config.OfflineConfig{Enabled: true, UseCache: true, CachePollInterval: 1},
-	}, newRedisCache(s.Addr()))
+	}, newRedisCache(t.Context(), s.Addr()))
 	client := NewClient(ctx, log.NewNullLogger())
 	defer client.Close()
 	sub := make(chan struct{})
@@ -443,7 +443,7 @@ func TestSdk_IsInValidState_False(t *testing.T) {
 
 func TestSdk_IsInValidState_EmptyCache_False(t *testing.T) {
 	r := miniredis.RunT(t)
-	ctx := NewTestSdkContext(&config.SDKConfig{BaseUrl: "https://localhost", Key: configcattest.RandomSDKKey()}, newRedisCache(r.Addr()))
+	ctx := NewTestSdkContext(&config.SDKConfig{BaseUrl: "https://localhost", Key: configcattest.RandomSDKKey()}, newRedisCache(t.Context(), r.Addr()))
 	client := NewClient(ctx, log.NewDebugLogger())
 	defer client.Close()
 
@@ -467,7 +467,7 @@ func TestSdk_Cache_Rebuild(t *testing.T) {
 
 	redis := miniredis.RunT(t)
 	cacheKey := configcatcache.ProduceCacheKey(key, configcatcache.ConfigJSONName, configcatcache.ConfigJSONCacheVersion)
-	ctx := NewTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key, PollInterval: 1}, newRedisCache(redis.Addr()))
+	ctx := NewTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key, PollInterval: 1}, newRedisCache(t.Context(), redis.Addr()))
 	client := NewClient(ctx, log.NewNullLogger())
 	defer client.Close()
 
@@ -494,8 +494,8 @@ func TestSdk_Cache_Rebuild(t *testing.T) {
 	assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true,"s":null,"i":null,"d":null},"t":0,"r":[],"p":null}},"s":null,"p":null}`, string(j))
 }
 
-func newRedisCache(addr string) store.Cache {
-	c, _ := cache.SetupExternalCache(context.Background(), &config.CacheConfig{Redis: config.RedisConfig{Enabled: true, Addresses: []string{addr}}}, telemetry.NewEmptyReporter(), log.NewNullLogger())
+func newRedisCache(ctx context.Context, addr string) store.Cache {
+	c, _ := cache.SetupExternalCache(ctx, &config.CacheConfig{Redis: config.RedisConfig{Enabled: true, Addresses: []string{addr}}}, telemetry.NewEmptyReporter(), log.NewNullLogger())
 	return c
 }
 

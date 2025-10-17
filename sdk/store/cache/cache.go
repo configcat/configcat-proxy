@@ -37,13 +37,13 @@ func SetupExternalCache(ctx context.Context, conf *config.CacheConfig, telemetry
 		}
 		return redis, nil
 	} else if conf.MongoDb.Enabled {
-		mongoDb, err := newMongoDb(ctx, &conf.MongoDb, cacheLog)
+		mongoDb, err := newMongoDb(ctx, &conf.MongoDb, telemetryReporter, cacheLog)
 		if err != nil {
 			return nil, err
 		}
 		return mongoDb, nil
 	} else if conf.DynamoDb.Enabled {
-		dynamoDb, err := newDynamoDb(ctx, &conf.DynamoDb, cacheLog)
+		dynamoDb, err := newDynamoDb(ctx, &conf.DynamoDb, telemetryReporter, cacheLog)
 		if err != nil {
 			return nil, err
 		}

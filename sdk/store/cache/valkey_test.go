@@ -2,7 +2,6 @@ package cache
 
 import (
 	"bytes"
-	"context"
 	"crypto/x509"
 	"encoding/pem"
 	"testing"
@@ -29,15 +28,13 @@ type valkeyTestSuite struct {
 }
 
 func (s *valkeyTestSuite) SetupSuite() {
-	ctx := context.Background()
-
-	valkeyContainer, err := valkey.Run(ctx, "valkey/valkey")
+	valkeyContainer, err := valkey.Run(s.T().Context(), "valkey/valkey")
 	if err != nil {
 		panic("failed to start container: " + err.Error() + "")
 	}
 	s.db = valkeyContainer
 	p, _ := nat.NewPort("tcp", "6379")
-	dbPort, _ := s.db.MappedPort(ctx, p)
+	dbPort, _ := s.db.MappedPort(s.T().Context(), p)
 	s.dbPort = dbPort.Port()
 }
 
@@ -81,15 +78,8 @@ func (s *valkeyTestSuite) TestValkeyStorage_Unavailable() {
 	assert.Error(s.T(), err)
 }
 
-func (s *valkeyTestSuite) TestSetupExternalCache() {
-	store, err := SetupExternalCache(context.Background(), &config.CacheConfig{Redis: config.RedisConfig{Addresses: []string{"localhost:" + s.dbPort}, Enabled: true}}, telemetry.NewEmptyReporter(), log.NewNullLogger())
-	assert.NoError(s.T(), err)
-	defer store.Shutdown()
-	assert.IsType(s.T(), &redisStore{}, store)
-}
-
 func TestValkeyStorage_TLS(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	valkeyContainer, err := redis.Run(ctx, "redis", redis.WithTLS())
 	defer func() {

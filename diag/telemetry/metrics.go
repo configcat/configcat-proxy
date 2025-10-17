@@ -64,6 +64,7 @@ func newMetricsHandler(ctx context.Context, resource *resource.Resource, conf *c
 			}
 			providerOpts = append(providerOpts, metric.WithReader(metric.NewPeriodicReader(r)))
 		case "http":
+			fallthrough
 		case "https":
 			var opts []otlpmetrichttp.Option
 			if conf.Otlp.Endpoint != "" {

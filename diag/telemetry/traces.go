@@ -38,6 +38,7 @@ func newTraceHandler(ctx context.Context, resource *resource.Resource, conf *con
 			}
 			providerOpts = append(providerOpts, trace.WithBatcher(r))
 		case "http":
+			fallthrough
 		case "https":
 			var opts []otlptracehttp.Option
 			if conf.Otlp.Endpoint != "" {
@@ -60,13 +61,8 @@ func newTraceHandler(ctx context.Context, resource *resource.Resource, conf *con
 		}
 		logger.Reportf("otlp exporter enabled over %s%s", conf.Otlp.Protocol, ep)
 	}
-	return newTraceHandlerWithOpts(providerOpts, logger)
-}
-
-func newTraceHandlerWithOpts(opts []trace.TracerProviderOption, log log.Logger) *traceHandler {
-	provider := trace.NewTracerProvider(opts...)
 	return &traceHandler{
-		provider: provider,
+		provider: trace.NewTracerProvider(providerOpts...),
 		log:      log,
 	}
 }

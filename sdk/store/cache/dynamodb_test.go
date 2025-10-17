@@ -32,11 +32,11 @@ type dynamoDbTestSuite struct {
 }
 
 func (s *dynamoDbTestSuite) SetupSuite() {
-	mongodbContainer, err := tcdynamodb.Run(s.T().Context(), "amazon/dynamodb-local")
+	dynamoDbContainer, err := tcdynamodb.Run(s.T().Context(), "amazon/dynamodb-local")
 	if err != nil {
 		panic("failed to start container: " + err.Error() + "")
 	}
-	s.db = mongodbContainer
+	s.db = dynamoDbContainer
 	str, _ := s.db.ConnectionString(s.T().Context())
 	s.addr = "http://" + str
 
@@ -57,76 +57,65 @@ func TestRunDynamoDbSuite(t *testing.T) {
 }
 
 func (s *dynamoDbTestSuite) TestDynamoDbStore() {
-	assert.NoError(s.T(), createTableIfNotExist(s.addr))
+	assert.NoError(s.T(), createTableIfNotExist(s.T().Context(), s.addr))
 
 	s.Run("ok", func() {
-		store, err := newDynamoDb(context.Background(), &config.DynamoDbConfig{
+		store, err := newDynamoDb(s.T().Context(), &config.DynamoDbConfig{
 			Enabled: true,
 			Table:   tableName,
 			Url:     s.addr,
-		}, log.NewNullLogger())
+		}, telemetry.NewEmptyReporter(), log.NewNullLogger())
 		assert.NoError(s.T(), err)
 		defer store.Shutdown()
 
 		cacheEntry := configcatcache.CacheSegmentsToBytes(time.Now(), "etag", []byte(`test`))
 
-		err = store.Set(context.Background(), "k1", cacheEntry)
+		err = store.Set(s.T().Context(), "k1", cacheEntry)
 		assert.NoError(s.T(), err)
 
-		res, err := store.Get(context.Background(), "k1")
+		res, err := store.Get(s.T().Context(), "k1")
 		assert.NoError(s.T(), err)
 		assert.Equal(s.T(), cacheEntry, res)
 
 		cacheEntry = configcatcache.CacheSegmentsToBytes(time.Now(), "etag", []byte(`test2`))
 
-		err = store.Set(context.Background(), "k1", cacheEntry)
+		err = store.Set(s.T().Context(), "k1", cacheEntry)
 		assert.NoError(s.T(), err)
 
-		res, err = store.Get(context.Background(), "k1")
+		res, err = store.Get(s.T().Context(), "k1")
 		assert.NoError(s.T(), err)
 		assert.Equal(s.T(), cacheEntry, res)
 	})
 
 	s.Run("empty", func() {
-		store, err := newDynamoDb(context.Background(), &config.DynamoDbConfig{
+		store, err := newDynamoDb(s.T().Context(), &config.DynamoDbConfig{
 			Enabled: true,
 			Table:   tableName,
 			Url:     s.addr,
-		}, log.NewNullLogger())
+		}, telemetry.NewEmptyReporter(), log.NewNullLogger())
 		assert.NoError(s.T(), err)
 		defer store.Shutdown()
 
-		_, err = store.Get(context.Background(), "k2")
+		_, err = store.Get(s.T().Context(), "k2")
 		assert.Error(s.T(), err)
 	})
 
 	s.Run("no-table", func() {
-		store, err := newDynamoDb(context.Background(), &config.DynamoDbConfig{
+		store, err := newDynamoDb(s.T().Context(), &config.DynamoDbConfig{
 			Enabled: true,
 			Table:   "nonexisting",
 			Url:     s.addr,
-		}, log.NewNullLogger())
+		}, telemetry.NewEmptyReporter(), log.NewNullLogger())
 		assert.NoError(s.T(), err)
 		defer store.Shutdown()
 
-		_, err = store.Get(context.Background(), "k3")
+		_, err = store.Get(s.T().Context(), "k3")
 		assert.Error(s.T(), err)
 	})
 }
 
-func (s *dynamoDbTestSuite) TestSetupExternalCache() {
-	store, err := SetupExternalCache(context.Background(), &config.CacheConfig{DynamoDb: config.DynamoDbConfig{
-		Enabled: true,
-		Table:   tableName,
-		Url:     s.addr,
-	}}, telemetry.NewEmptyReporter(), log.NewNullLogger())
-	assert.NoError(s.T(), err)
-	defer store.Shutdown()
-	assert.IsType(s.T(), &dynamoDbStore{}, store)
-}
-
-func createTableIfNotExist(addr string) error {
-	awsCtx, err := awsconfig.LoadDefaultConfig(context.Background())
+func createTableIfNotExist(ctx context.Context, addr string) error {
+	awsCtx, err := awsconfig.LoadDefaultConfig(ctx)
 	if err != nil {
 		return err
 	}
@@ -137,13 +126,13 @@ func createTableIfNotExist(addr string) error {
 
 	client := dynamodb.NewFromConfig(awsCtx, opts...)
 
-	_, err = client.DescribeTable(context.Background(), &dynamodb.DescribeTableInput{
+	_, err = client.DescribeTable(ctx, &dynamodb.DescribeTableInput{
 		TableName: aws.String(tableName),
 	})
 	if err == nil {
 		return nil
 	}
-	_, err = client.CreateTable(context.Background(), &dynamodb.CreateTableInput{
+	_, err = client.CreateTable(ctx, &dynamodb.CreateTableInput{
 		TableName: aws.String(tableName),
 		AttributeDefinitions: []types.AttributeDefinition{
 			{
@@ -174,7 +163,7 @@ func createTableIfNotExist(addr string) error {
 		case <-timeout:
 			return fmt.Errorf("table creation timed out")
 		case <-ticker.C:
-			res, err := client.DescribeTable(context.Background(), &dynamodb.DescribeTableInput{
+			res, err := client.DescribeTable(ctx, &dynamodb.DescribeTableInput{
 				TableName: aws.String(tableName),
 			})
 			if err == nil && res.Table.TableStatus == types.TableStatusActive {

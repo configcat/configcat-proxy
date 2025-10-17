@@ -23,7 +23,7 @@ func TestSSE_Get(t *testing.T) {
 
 	srv := newServer(t, &config.SseConfig{Enabled: true})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
 	defer cancel()
 	data := base64.URLEncoding.EncodeToString([]byte(`{"key":"flag"}`))
 	testutils.AddSdkIdContextParam(req)
@@ -47,7 +47,7 @@ func TestSSE_Get_With_Sdk_Key(t *testing.T) {
 
 	srv, sdkKey := newServerWithSdkKey(t, &config.SseConfig{Enabled: true})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
 	defer cancel()
 	data := base64.URLEncoding.EncodeToString([]byte(`{"key":"flag", "sdkKey":"` + sdkKey + `"}`))
 	req.SetPathValue(streamDataName, data)
@@ -95,7 +95,7 @@ func TestSSE_NonExisting_SDK(t *testing.T) {
 
 	srv := newServer(t, &config.SseConfig{Enabled: true})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
 	defer cancel()
 	data := base64.URLEncoding.EncodeToString([]byte(`{"key":"flag"}`))
 	testutils.AddSdkIdContextParamWithSdkId(req, "non-existing")
@@ -116,7 +116,7 @@ func TestSSE_NonExisting_SDK_With_Key(t *testing.T) {
 
 	srv := newServer(t, &config.SseConfig{Enabled: true})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
 	defer cancel()
 	data := base64.URLEncoding.EncodeToString([]byte(`{"key":"flag", "sdkKey":"non-existing"}`))
 	req.SetPathValue(streamDataName, data)
@@ -136,7 +136,7 @@ func TestSSE_NonExisting_Flag(t *testing.T) {
 
 	srv := newServer(t, &config.SseConfig{Enabled: true})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
 	defer cancel()
 	data := base64.URLEncoding.EncodeToString([]byte(`{"key":"non-existing"}`))
 	testutils.AddSdkIdContextParam(req)
@@ -156,7 +156,7 @@ func TestSSE_SDK_InvalidState(t *testing.T) {
 
 	srv := NewServer(reg, nil, &config.SseConfig{Enabled: true}, log.NewNullLogger())
 
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
 	defer cancel()
 	data := base64.URLEncoding.EncodeToString([]byte(`{"key":"flag"}`))
 	testutils.AddSdkIdContextParam(req)
@@ -180,7 +180,7 @@ func TestSSE_Get_All(t *testing.T) {
 
 	srv := newServer(t, &config.SseConfig{Enabled: true})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
 	defer cancel()
 	data := base64.URLEncoding.EncodeToString([]byte(`{"key":"flag"}`))
 	testutils.AddSdkIdContextParam(req)
@@ -230,7 +230,7 @@ func TestSSE_Get_User(t *testing.T) {
 
 	srv := newServer(t, &config.SseConfig{Enabled: true})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
 	defer cancel()
 	data := base64.URLEncoding.EncodeToString([]byte(`{"key":"flag","user":{"Identifier":"test"}}`))
 	testutils.AddSdkIdContextParam(req)
@@ -254,7 +254,7 @@ func TestSSE_Get_User_Invalid(t *testing.T) {
 
 	srv := newServer(t, &config.SseConfig{Enabled: true})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
 	defer cancel()
 	data := base64.URLEncoding.EncodeToString([]byte(`{"key":"flag","user":{"Identifier":false}}`))
 	testutils.AddSdkIdContextParam(req)
@@ -272,7 +272,7 @@ func TestSSE_Get_All_User(t *testing.T) {
 
 	srv := newServer(t, &config.SseConfig{Enabled: true})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
 	defer cancel()
 	data := base64.URLEncoding.EncodeToString([]byte(`{"key":"flag","user":{"Identifier":"test"}}`))
 	testutils.AddSdkIdContextParam(req)
@@ -296,7 +296,7 @@ func TestSSE_Get_All_User_Invalid(t *testing.T) {
 
 	srv := newServer(t, &config.SseConfig{Enabled: true})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
 	defer cancel()
 	data := base64.URLEncoding.EncodeToString([]byte(`{"key":"flag","user":{"Identifier":false}}`))
 	testutils.AddSdkIdContextParam(req)

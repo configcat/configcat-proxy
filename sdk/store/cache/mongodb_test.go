@@ -43,61 +43,61 @@ func TestRunMongoSuite(t *testing.T) {
 }
 
 func (s *mongoTestSuite) TestMongoDbStore() {
-	store, err := newMongoDb(context.Background(), &config.MongoDbConfig{
+	store, err := newMongoDb(s.T().Context(), &config.MongoDbConfig{
 		Enabled:    true,
 		Url:        s.addr,
 		Database:   "test_db",
 		Collection: "coll",
-	}, log.NewNullLogger())
+	}, telemetry.NewEmptyReporter(), log.NewNullLogger())
 	assert.NoError(s.T(), err)
 	defer store.Shutdown()
 
 	cacheEntry := configcatcache.CacheSegmentsToBytes(time.Now(), "etag", []byte(`test`))
 
-	err = store.Set(context.Background(), "k1", cacheEntry)
+	err = store.Set(s.T().Context(), "k1", cacheEntry)
 	assert.NoError(s.T(), err)
 
-	res, err := store.Get(context.Background(), "k1")
+	res, err := store.Get(s.T().Context(), "k1")
 	assert.NoError(s.T(), err)
 	assert.Equal(s.T(), cacheEntry, res)
 
 	cacheEntry = configcatcache.CacheSegmentsToBytes(time.Now(), "etag", []byte(`test2`))
 
-	err = store.Set(context.Background(), "k1", cacheEntry)
+	err = store.Set(s.T().Context(), "k1", cacheEntry)
 	assert.NoError(s.T(), err)
 
-	res, err = store.Get(context.Background(), "k1")
+	res, err = store.Get(s.T().Context(), "k1")
 	assert.NoError(s.T(), err)
 	assert.Equal(s.T(), cacheEntry, res)
 }
 
 func (s *mongoTestSuite) TestMongoDbStore_Empty() {
-	store, err := newMongoDb(context.Background(), &config.MongoDbConfig{
+	store, err := newMongoDb(s.T().Context(), &config.MongoDbConfig{
 		Enabled:    true,
 		Url:        s.addr,
 		Database:   "test_db",
 		Collection: "coll",
-	}, log.NewNullLogger())
+	}, telemetry.NewEmptyReporter(), log.NewNullLogger())
 	assert.NoError(s.T(), err)
 	defer store.Shutdown()
 
-	_, err = store.Get(context.Background(), "k2")
+	_, err = store.Get(s.T().Context(), "k2")
 	assert.Error(s.T(), err)
 }
 
 func (s *mongoTestSuite) TestMongoDbStore_Invalid() {
-	_, err := newMongoDb(context.Background(), &config.MongoDbConfig{
+	_, err := newMongoDb(s.T().Context(), &config.MongoDbConfig{
 		Enabled:    true,
 		Url:        "invalid",
 		Database:   "test_db",
 		Collection: "coll",
-	}, log.NewNullLogger())
+	}, telemetry.NewEmptyReporter(), log.NewNullLogger())
 
 	assert.Error(s.T(), err)
 }
 
 func (s *mongoTestSuite) TestMongoDbStore_TLS_Invalid() {
-	store, err := newMongoDb(context.Background(), &config.MongoDbConfig{
+	store, err := newMongoDb(s.T().Context(), &config.MongoDbConfig{
 		Enabled:    true,
 		Url:        s.addr,
 		Database:   "test_db",
@@ -109,13 +109,13 @@ func (s *mongoTestSuite) TestMongoDbStore_TLS_Invalid() {
 				{Key: "nonexisting", Cert: "nonexisting"},
 			},
 		},
-	}, log.NewNullLogger())
+	}, telemetry.NewEmptyReporter(), log.NewNullLogger())
 	assert.ErrorContains(s.T(), err, "failed to load certificate and key files")
 	assert.Nil(s.T(), store)
 }
 
 func (s *mongoTestSuite) TestMongoDbStore_Connect_Fails() {
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	ctx, cancel := context.WithTimeout(s.T().Context(), 1*time.Second)
 	defer cancel()
 
 	store, err := newMongoDb(ctx, &config.MongoDbConfig{
@@ -123,18 +123,7 @@ func (s *mongoTestSuite) TestMongoDbStore_Connect_Fails() {
 		Url:        "mongodb://localhost:12345",
 		Database:   "test_db",
 		Collection: "coll",
-	}, log.NewNullLogger())
+	}, telemetry.NewEmptyReporter(), log.NewNullLogger())
 	assert.ErrorContains(s.T(), err, "context deadline exceeded")
 	assert.Nil(s.T(), store)
-}
-
-func (s *mongoTestSuite) TestSetupExternalCache() {
-	store, err := SetupExternalCache(context.Background(), &config.CacheConfig{DynamoDb: config.DynamoDbConfig{
-		Enabled: true,
-		Table:   tableName,
-		Url:     s.addr,
-	}}, telemetry.NewEmptyReporter(), log.NewNullLogger())
-	assert.NoError(s.T(), err)
-	defer store.Shutdown()
-	assert.IsType(s.T(), &dynamoDbStore{}, store)
 }

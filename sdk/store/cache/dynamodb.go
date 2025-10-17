@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/configcat/configcat-proxy/config"
+	"github.com/configcat/configcat-proxy/diag/telemetry"
 	"github.com/configcat/configcat-proxy/log"
 )
 
@@ -18,9 +19,10 @@ type dynamoDbStore struct {
 	log      log.Logger
 }
 
-func newDynamoDb(ctx context.Context, conf *config.DynamoDbConfig, log log.Logger) (External, error) {
+func newDynamoDb(ctx context.Context, conf *config.DynamoDbConfig, telemetryReporter telemetry.Reporter, log log.Logger) (External, error) {
 	dynamoLog := log.WithPrefix("dynamodb")
 	awsCtx, err := awsconfig.LoadDefaultConfig(ctx)
+	telemetryReporter.InstrumentAws(&awsCtx)
 	if err != nil {
 		dynamoLog.Errorf("couldn't read aws config for DynamoDB: %s", err)
 		return nil, err
