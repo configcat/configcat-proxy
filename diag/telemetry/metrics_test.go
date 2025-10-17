@@ -19,6 +19,7 @@ import (
 func TestConnection(t *testing.T) {
 	reader := metric.NewManualReader()
 	handler := newMetricsHandlerWithOpts([]metric.Option{metric.WithReader(reader)}, log.NewNullLogger())
+	defer handler.shutdown()
 
 	handler.recordConnections(1, "test", "t1", "n1")
 	handler.recordConnections(2, "test", "t1", "n1")

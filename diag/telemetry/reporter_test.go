@@ -19,6 +19,7 @@ import (
 	"github.com/testcontainers/testcontainers-go/modules/mongodb"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.opentelemetry.io/otel/trace/noop"
 	"google.golang.org/grpc"
 )
 
@@ -33,6 +34,7 @@ func TestHandler_Metrics_Prometheus_Export(t *testing.T) {
 	defer handler.Shutdown()
 
 	mSrv := httptest.NewServer(handler.GetPrometheusHttpHandler())
+	defer mSrv.Close()
 
 	t.Run("http", func(t *testing.T) {
 		h := handler.InstrumentHttp("t", http.MethodGet, func(writer http.ResponseWriter, request *http.Request) {
@@ -88,6 +90,26 @@ func TestHandler_Metrics_Prometheus_Export(t *testing.T) {
 		opts := handler.InstrumentGrpc([]grpc.ServerOption{})
 		assert.Equal(t, 1, len(opts))
 	})
+	t.Run("conn", func(t *testing.T) {
+		handler.RecordConnections(5, "sdk", "grpc", "flag")
+
+		req, _ := http.NewRequest(http.MethodGet, mSrv.URL, http.NoBody)
+		resp, _ := http.DefaultClient.Do(req)
+		body, _ := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+
+		assert.Contains(t, string(body), "configcat_stream_connections{flag=\"flag\"")
+	})
+	t.Run("sent msgs", func(t *testing.T) {
+		handler.AddSentMessageCount(5, "sdk", "grpc", "flag")
+
+		req, _ := http.NewRequest(http.MethodGet, mSrv.URL, http.NoBody)
+		resp, _ := http.DefaultClient.Do(req)
+		body, _ := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+
+		assert.Contains(t, string(body), "configcat_stream_msg_sent_total{flag=\"flag\"")
+	})
 	t.Run("redis", func(t *testing.T) {
 		r := miniredis.RunT(t)
 		opts := &redis.UniversalOptions{Addrs: []string{r.Addr()}}
@@ -114,6 +136,7 @@ func TestHandler_Metrics_Otlp_Export(t *testing.T) {
 	}
 
 	handler := NewReporter(&conf, "0.1.0", log.NewNullLogger()).(*reporter)
+	defer handler.Shutdown()
 
 	t.Run("http", func(t *testing.T) {
 		h := handler.InstrumentHttp("t", http.MethodGet, func(writer http.ResponseWriter, request *http.Request) {
@@ -143,6 +166,20 @@ func TestHandler_Metrics_Otlp_Export(t *testing.T) {
 
 		assert.True(t, collector.hasMetric("http.client.request.body.size"))
 	})
+	t.Run("conn", func(t *testing.T) {
+		handler.RecordConnections(5, "sdk", "grpc", "flag")
+
+		handler.ForceFlush(t.Context())
+
+		assert.True(t, collector.hasMetric("stream.connections"))
+	})
+	t.Run("sent msgs", func(t *testing.T) {
+		handler.AddSentMessageCount(5, "sdk", "grpc", "flag")
+
+		handler.ForceFlush(t.Context())
+
+		assert.True(t, collector.hasMetric("stream.msg.sent.total"))
+	})
 	t.Run("redis", func(t *testing.T) {
 		r := miniredis.RunT(t)
 		opts := &redis.UniversalOptions{Addrs: []string{r.Addr()}}
@@ -168,6 +205,7 @@ func TestHandler_Traces_Otlp_Export(t *testing.T) {
 	}
 
 	handler := NewReporter(&conf, "0.1.0", log.NewDebugLogger())
+	defer handler.Shutdown()
 
 	t.Run("http", func(t *testing.T) {
 		h := handler.InstrumentHttp("test", http.MethodGet, func(writer http.ResponseWriter, request *http.Request) {
@@ -265,4 +303,29 @@ func TestHandler_Traces_Otlp_Export(t *testing.T) {
 
 		assert.True(t, collector.hasTrace("DynamoDB.DescribeTable"))
 	})
+}
+
+func Test_Empty_Instrument(t *testing.T) {
+	handler := NewEmptyReporter()
+
+	assert.Nil(t, handler.InstrumentHttp("t", http.MethodGet, nil))
+	assert.Equal(t, http.DefaultTransport, handler.InstrumentHttpClient(http.DefaultTransport))
+	assert.Empty(t, handler.InstrumentGrpc([]grpc.ServerOption{}))
+	_, span := handler.StartSpan(t.Context(), "t")
+	assert.Equal(t, noop.Span{}, span)
+
+	handler.ForceFlush(t.Context())
+	handler.RecordConnections(5, "sdk", "grpc", "flag")
+	handler.AddSentMessageCount(5, "sdk", "grpc", "flag")
+	handler.InstrumentRedis(nil)
+
+	opts := &options.ClientOptions{}
+	handler.InstrumentMongoDb(opts)
+	assert.Nil(t, opts.Monitor)
+
+	conf := &aws.Config{}
+	handler.InstrumentAws(conf)
+	assert.Empty(t, conf.APIOptions)
+
+	handler.Shutdown()
 }
