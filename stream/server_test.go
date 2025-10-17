@@ -14,15 +14,19 @@ import (
 )
 
 func TestServer_GetStreamOrNil(t *testing.T) {
-	reg, _, _ := sdk.NewTestRegistrarT(t)
+	reg, _, key := sdk.NewTestRegistrarT(t)
 	srv := NewServer(reg, telemetry.NewEmptyReporter(), log.NewNullLogger(), "test").(*server)
 
 	str := srv.GetStreamOrNil("test")
 	assert.NotNil(t, str)
-	assert.Equal(t, 1, srv.streams.Size())
 
-	str = srv.GetStreamOrNil("nonexisting")
-	assert.Nil(t, str)
+	strBySdkKey := srv.GetStreamBySdkKeyOrNil(key)
+	assert.Equal(t, str, strBySdkKey)
+
+	assert.Nil(t, srv.GetStreamOrNil("nonexisting"))
+	assert.Nil(t, srv.GetStreamBySdkKeyOrNil("nonexisting"))
+
+	assert.Equal(t, 1, srv.streams.Size())
 
 	srv.Close()
 	assert.Equal(t, 0, srv.streams.Size())
