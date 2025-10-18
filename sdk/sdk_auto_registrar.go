@@ -28,20 +28,21 @@ type AutoRegistrar interface {
 }
 
 type autoRegistrar struct {
-	refreshChan       chan struct{}
-	options           *model.OptionsModel
-	cacheKey          string
-	etag              string
-	sdkClients        *xsync.MapOf[string, Client]
-	httpClient        *http.Client
-	ctx               context.Context
-	ctxCancel         func()
-	conf              *config.Config
-	telemetryReporter telemetry.Reporter
-	statusReporter    status.Reporter
-	cache             store.Cache
-	log               log.Logger
-	sdkTransport      http.RoundTripper
+	refreshChan        chan struct{}
+	options            *model.OptionsModel
+	cacheKey           string
+	etag               string
+	sdkClients         *xsync.MapOf[string, Client]
+	sdkClientsBySdkKey *xsync.MapOf[string, Client]
+	httpClient         *http.Client
+	ctx                context.Context
+	ctxCancel          func()
+	conf               *config.Config
+	telemetryReporter  telemetry.Reporter
+	statusReporter     status.Reporter
+	cache              store.Cache
+	log                log.Logger
+	sdkTransport       http.RoundTripper
 	pubsub.Publisher[string]
 }
 
@@ -50,14 +51,15 @@ func newAutoRegistrar(conf *config.Config, telemetryReporter telemetry.Reporter,
 	transport := buildTransport(&conf.HttpProxy, regLog)
 	var profileTransport = telemetryReporter.InstrumentHttpClient(transport, telemetry.NewKV("configcat.source", "profile"))
 	registrar := &autoRegistrar{
-		refreshChan:       make(chan struct{}),
-		conf:              conf,
-		sdkClients:        xsync.NewMapOf[string, Client](),
-		telemetryReporter: telemetryReporter,
-		statusReporter:    statusReporter,
-		cache:             cache,
-		log:               regLog,
-		Publisher:         pubsub.NewPublisher[string](),
+		refreshChan:        make(chan struct{}),
+		conf:               conf,
+		sdkClients:         xsync.NewMapOf[string, Client](),
+		sdkClientsBySdkKey: xsync.NewMapOf[string, Client](),
+		telemetryReporter:  telemetryReporter,
+		statusReporter:     statusReporter,
+		cache:              cache,
+		log:                regLog,
+		Publisher:          pubsub.NewPublisher[string](),
 		httpClient: &http.Client{
 			Timeout:   30 * time.Second,
 			Transport: profileTransport,
@@ -79,7 +81,14 @@ func newAutoRegistrar(conf *config.Config, telemetryReporter telemetry.Reporter,
 	for sdkId, sdkModel := range autoConfig.SDKs {
 		sdkConfig := registrar.buildSdkConfig(sdkId, sdkModel)
 		statusReporter.RegisterSdk(sdkId, sdkConfig)
-		registrar.sdkClients.Store(sdkId, registrar.buildSdkClient(sdkId, sdkConfig, sdkModel))
+		sdkClient := registrar.buildSdkClient(sdkId, sdkConfig, sdkModel)
+		registrar.sdkClients.Store(sdkId, sdkClient)
+		if sdkModel.Key1 != "" {
+			registrar.sdkClientsBySdkKey.Store(sdkModel.Key1, sdkClient)
+		}
+		if sdkModel.Key2 != "" {
+			registrar.sdkClientsBySdkKey.Store(sdkModel.Key2, sdkClient)
+		}
 	}
 	var interval int
 	if conf.GlobalOfflineConfig.Enabled {
@@ -91,24 +100,18 @@ func newAutoRegistrar(conf *config.Config, telemetryReporter telemetry.Reporter,
 	return registrar, nil
 }
 
-func (r *autoRegistrar) GetSdkOrNil(sdkId string) Client {
-	if sdk, ok := r.sdkClients.Load(sdkId); ok {
+func (r *autoRegistrar) GetSdkOrNil(key string) Client {
+	if sdk, ok := r.sdkClients.Load(key); ok {
 		return sdk
 	}
 	return nil
 }
 
 func (r *autoRegistrar) GetSdkByKeyOrNil(sdkKey string) Client {
-	var sdkClient Client
-	r.sdkClients.Range(func(key string, value Client) bool {
-		key1, key2 := value.SdkKeys()
-		if key1 == sdkKey || (key2 != nil && len(*key2) > 0 && *key2 == sdkKey) {
-			sdkClient = value
-			return false
-		}
-		return true
-	})
-	return sdkClient
+	if sdk, ok := r.sdkClientsBySdkKey.Load(sdkKey); ok {
+		return sdk
+	}
+	return nil
 }
 
 func (r *autoRegistrar) RefreshAll() {
@@ -144,6 +147,7 @@ func (r *autoRegistrar) Close() {
 		r.sdkClients.Delete(key)
 		return true
 	})
+	r.sdkClientsBySdkKey.Clear()
 	r.log.Reportf("shutdown complete")
 }
 
@@ -192,9 +196,14 @@ func (r *autoRegistrar) refreshConfig() {
 							resetKeys = append(resetKeys, sdkId)
 							continue
 						}
-						if (key2 == nil && sdkConfig.Key2 != "") ||
-							(key2 != nil && *key2 != sdkConfig.Key2) { // Secondary SDK key changed, update client
+						if key2 == nil && sdkConfig.Key2 != "" { // Secondary SDK key added, update client
 							sdkClient.SetSecondarySdkKey(sdkConfig.Key2)
+							r.sdkClientsBySdkKey.Store(sdkConfig.Key2, sdkClient)
+						}
+						if key2 != nil && *key2 != sdkConfig.Key2 { // Secondary SDK key changed, update client
+							sdkClient.SetSecondarySdkKey(sdkConfig.Key2)
+							r.sdkClientsBySdkKey.Delete(*key2)
+							r.sdkClientsBySdkKey.Store(sdkConfig.Key2, sdkClient)
 						}
 					}
 				}
@@ -336,6 +345,13 @@ func (r *autoRegistrar) deleteSdkClients(sdkIds []string) {
 	r.log.Debugf("removing %d SDK clients", len(sdkIds))
 	for _, sdkId := range sdkIds {
 		if sdkClient, ok := r.sdkClients.LoadAndDelete(sdkId); ok {
+			key1, key2 := sdkClient.SdkKeys()
+			if key1 != "" {
+				r.sdkClientsBySdkKey.Delete(key1)
+			}
+			if key2 != nil && *key2 != "" {
+				r.sdkClientsBySdkKey.Delete(*key2)
+			}
 			sdkClient.Close()
 			r.statusReporter.RemoveSdk(sdkId)
 			r.Publish(sdkId)
@@ -353,9 +369,15 @@ func (r *autoRegistrar) addSdkClients(sdkIds []string, config *model.ProxyConfig
 	for _, sdkId := range sdkIds {
 		if sdkModel, ok := config.SDKs[sdkId]; ok {
 			sdkConfig := r.buildSdkConfig(sdkId, sdkModel)
-			if _, loaded := r.sdkClients.LoadOrCompute(sdkId, func() Client {
+			if cl, loaded := r.sdkClients.LoadOrCompute(sdkId, func() Client {
 				return r.buildSdkClient(sdkId, sdkConfig, sdkModel)
 			}); !loaded {
+				if sdkModel.Key1 != "" {
+					r.sdkClientsBySdkKey.Store(sdkModel.Key1, cl)
+				}
+				if sdkModel.Key2 != "" {
+					r.sdkClientsBySdkKey.Store(sdkModel.Key2, cl)
+				}
 				r.statusReporter.RegisterSdk(sdkId, sdkConfig)
 				r.Publish(sdkId)
 			}
@@ -375,9 +397,22 @@ func (r *autoRegistrar) resetSdkClients(sdkIds []string, config *model.ProxyConf
 			sdkConfig := r.buildSdkConfig(sdkId, sdkModel)
 			sdkClient := r.buildSdkClient(sdkId, sdkConfig, sdkModel)
 			if existing, loaded := r.sdkClients.LoadAndStore(sdkId, sdkClient); loaded {
+				key1, key2 := existing.SdkKeys()
+				if key1 != "" {
+					r.sdkClientsBySdkKey.Delete(key1)
+				}
+				if key2 != nil && *key2 != "" {
+					r.sdkClientsBySdkKey.Delete(*key2)
+				}
 				existing.Close()
 				r.statusReporter.UpdateSdk(sdkId, sdkConfig)
 				r.Publish(sdkId)
+			}
+			if sdkModel.Key1 != "" {
+				r.sdkClientsBySdkKey.Store(sdkModel.Key1, sdkClient)
+			}
+			if sdkModel.Key2 != "" {
+				r.sdkClientsBySdkKey.Store(sdkModel.Key2, sdkClient)
 			}
 		}
 	}
