@@ -42,6 +42,7 @@ services:
       - CONFIGCAT_DIAG_TRACES_OTLP_ENABLED=true
       - CONFIGCAT_DIAG_TRACES_OTLP_PROTOCOL=grpc
       - CONFIGCAT_DIAG_TRACES_OTLP_ENDPOINT=aspire-dashboard:18889
+      - OTEL_EXPORTER_OTLP_HEADERS=x-otlp-api-key=test
 #      - CONFIGCAT_OFFLINE_ENABLED=true
 #      - CONFIGCAT_SDKS={"sdk1":"XxPbCKmzIUGORk4vsufpzw/iC_KABprDEueeQs3yovVnQ", "sdk2":"XxPbCKmzIUGORk4vsufpzw/6ft7XQudcEuIXY49grZM9w"}
 #      - CONFIGCAT_SDK1_BASE_URL=https://test-cdn-global.configcat.com
@@ -125,7 +126,9 @@ services:
       - "4318:18890"
       - "18888:18888"
     environment:
-      - DOTNET_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS=true
+      - Dashboard__Frontend__AuthMode=Unsecured
+      - Dashboard__Otlp__AuthMode=ApiKey
+      - Dashboard__Otlp__PrimaryApiKey=test
 
   squid:
     image: ubuntu/squid

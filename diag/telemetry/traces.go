@@ -63,7 +63,7 @@ func newTraceHandler(ctx context.Context, resource *resource.Resource, conf *con
 	}
 	return &traceHandler{
 		provider: trace.NewTracerProvider(providerOpts...),
-		log:      log,
+		log:      logger,
 	}
 }
 

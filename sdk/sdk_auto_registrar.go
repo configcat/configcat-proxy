@@ -199,11 +199,12 @@ func (r *autoRegistrar) refreshConfig() {
 						if key2 == nil && sdkConfig.Key2 != "" { // Secondary SDK key added, update client
 							sdkClient.SetSecondarySdkKey(sdkConfig.Key2)
 							r.sdkClientsBySdkKey.Store(sdkConfig.Key2, sdkClient)
-						}
-						if key2 != nil && *key2 != sdkConfig.Key2 { // Secondary SDK key changed, update client
+							r.Publish(sdkId)
+						} else if key2 != nil && *key2 != sdkConfig.Key2 { // Secondary SDK key changed, update client
 							sdkClient.SetSecondarySdkKey(sdkConfig.Key2)
 							r.sdkClientsBySdkKey.Delete(*key2)
 							r.sdkClientsBySdkKey.Store(sdkConfig.Key2, sdkClient)
+							r.Publish(sdkId)
 						}
 					}
 				}

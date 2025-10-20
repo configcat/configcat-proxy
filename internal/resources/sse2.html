@@ -15,6 +15,7 @@
 <script>
     for (let i = 0; i < 200; i++) {
         const user = {
+            sdkKey: "XxPbCKmzIUGORk4vsufpzw/iC_KABprDEueeQs3yovVnQ",
             key: "textsetting",
             user: {
                 Identifier: "user" + i
@@ -29,7 +30,7 @@
         document.getElementById("main").appendChild(div);
 
         const data = btoa(JSON.stringify(user))
-        const evtSource = new EventSource("https://localhost:8050/sse/sdk-336/eval/" + data);
+        const evtSource = new EventSource("https://localhost:8050/sse/eval/k/" + data);
         evtSource.onmessage = (event) => {
             console.log(event.data);
             const main = document.getElementById("main");

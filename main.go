@@ -53,17 +53,20 @@ func run(closeSignal chan os.Signal) int {
 	logger = logger.WithLevel(conf.Log.GetLevel())
 
 	errorChan := make(chan error)
+	shutdownFuncs := make([]func(), 0)
 
 	// in the future we might implement an evaluation statistics reporter
 	// var evalReporter statistics.Reporter
 
 	statusReporter := status.NewReporter(&conf.Cache)
 	telemetryReporter := telemetry.NewReporter(&conf.Diag, sdk.Version(), logger)
+	shutdownFuncs = append(shutdownFuncs, func() { telemetryReporter.Shutdown() })
 
 	var diagServer *diag.Server
 	if conf.Diag.ShouldRunDiagServer() {
 		diagServer = diag.NewServer(&conf.Diag, telemetryReporter, statusReporter, logger, errorChan)
 		diagServer.Listen()
+		shutdownFuncs = append(shutdownFuncs, func() { diagServer.Shutdown() })
 	}
 
 	var externalCache cache.External
@@ -75,6 +78,7 @@ func run(closeSignal chan os.Signal) int {
 		if err != nil {
 			return exitFailure
 		}
+		shutdownFuncs = append(shutdownFuncs, func() { externalCache.Shutdown() })
 	}
 
 	sdkRegistrar, err := sdk.NewRegistrar(&conf, telemetryReporter, statusReporter, externalCache, logger)
@@ -91,6 +95,7 @@ func run(closeSignal chan os.Signal) int {
 			return exitFailure
 		}
 		httpServer.Listen()
+		shutdownFuncs = append(shutdownFuncs, func() { httpServer.Shutdown() })
 	}
 
 	var grpcServer *grpc.Server
@@ -100,6 +105,7 @@ func run(closeSignal chan os.Signal) int {
 			return exitFailure
 		}
 		grpcServer.Listen()
+		shutdownFuncs = append(shutdownFuncs, func() { grpcServer.Shutdown() })
 	}
 
 	for {
@@ -112,53 +118,13 @@ func run(closeSignal chan os.Signal) int {
 				router.Close()
 			}
 
-			shutDownCount := 0
-			if externalCache != nil {
-				shutDownCount++
-			}
-			if httpServer != nil {
-				shutDownCount++
-			}
-			if grpcServer != nil {
-				shutDownCount++
-			}
-			if diagServer != nil {
-				shutDownCount++
-			}
-			if telemetryReporter != nil {
-				shutDownCount++
-			}
 			wg := sync.WaitGroup{}
-			wg.Add(shutDownCount)
-			if externalCache != nil {
-				go func() {
-					externalCache.Shutdown()
+			wg.Add(len(shutdownFuncs))
+			for _, fn := range shutdownFuncs {
+				go func(f func()) {
+					f()
 					wg.Done()
-				}()
-			}
-			if httpServer != nil {
-				go func() {
-					httpServer.Shutdown()
-					wg.Done()
-				}()
-			}
-			if diagServer != nil {
-				go func() {
-					diagServer.Shutdown()
-					wg.Done()
-				}()
-			}
-			if grpcServer != nil {
-				go func() {
-					grpcServer.Shutdown()
-					wg.Done()
-				}()
-			}
-			if telemetryReporter != nil {
-				go func() {
-					telemetryReporter.Shutdown()
-					wg.Done()
-				}()
+				}(fn)
 			}
 			wg.Wait()
 			return exitOk

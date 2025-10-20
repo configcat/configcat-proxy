@@ -93,7 +93,7 @@ func (s *HttpRouter) setupSSERoutes(conf *config.SseConfig, sdkRegistrar sdk.Reg
 		s.router.HandleFunc(addHttpMethod(endpoint.path, endpoint.method), endpoint.handler)
 		s.router.HandleFunc(addHttpMethod(endpoint.path, http.MethodOptions), endpoint.handler)
 	}
-	l.Reportf("SSE enabled, accepting requests on path: /sse/{sdkId}/*")
+	l.Reportf("SSE enabled, accepting requests on path: /sse/*")
 }
 
 func (s *HttpRouter) setupWebhookRoutes(conf *config.WebhookConfig, autoSdkConfig *config.ProfileConfig, sdkRegistrar sdk.Registrar, l log.Logger) {
@@ -183,7 +183,7 @@ func (s *HttpRouter) setupAPIRoutes(conf *config.ApiConfig, sdkRegistrar sdk.Reg
 		s.router.HandleFunc(addHttpMethod(endpoint.path, endpoint.method), s.telemetryReporter.InstrumentHttp(endpoint.path, endpoint.method, endpoint.handler))
 		s.router.HandleFunc(addHttpMethod(endpoint.path, http.MethodOptions), s.telemetryReporter.InstrumentHttp(endpoint.path, http.MethodOptions, endpoint.handler))
 	}
-	l.Reportf("API enabled, accepting requests on path: /api/{sdkId}/*")
+	l.Reportf("API enabled, accepting requests on path: /api/*")
 }
 
 func (s *HttpRouter) setupOFREPRoutes(conf *config.OFREPConfig, sdkRegistrar sdk.Registrar, l log.Logger) {

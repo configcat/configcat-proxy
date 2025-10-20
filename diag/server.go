@@ -37,8 +37,11 @@ func NewServer(conf *config.DiagConfig, telemetryReporter telemetry.Reporter, st
 	setupDebugEndpoints(mux)
 
 	httpServer := &http.Server{
-		Addr:    ":" + strconv.Itoa(conf.Port),
-		Handler: mux,
+		Addr:         ":" + strconv.Itoa(conf.Port),
+		Handler:      mux,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  120 * time.Second,
 	}
 
 	return &Server{

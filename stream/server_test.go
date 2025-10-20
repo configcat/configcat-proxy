@@ -76,3 +76,70 @@ func TestServer_AutoRegistrar(t *testing.T) {
 	srv.Close()
 	assert.Equal(t, 0, srv.streams.Size())
 }
+
+func TestServer_AutoRegistrar_SdkKey(t *testing.T) {
+	reg, h, key := sdk.NewTestAutoRegistrarWithAutoConfig(t, config.ProfileConfig{PollInterval: 60}, log.NewNullLogger())
+	srv := NewServer(reg, telemetry.NewEmptyReporter(), log.NewNullLogger(), "test").(*server)
+
+	str := srv.GetStreamBySdkKeyOrNil(key)
+	assert.NotNil(t, str)
+	assert.Equal(t, 1, srv.streams.Size())
+
+	key2 := h.AddSdk("test2")
+	reg.Refresh()
+
+	testutils.WaitUntil(5*time.Second, func() bool {
+		return nil != srv.GetStreamBySdkKeyOrNil(key2)
+	})
+
+	str = srv.GetStreamBySdkKeyOrNil(key2)
+	assert.NotNil(t, str)
+
+	h.RemoveSdk("test2")
+	reg.Refresh()
+
+	// test that stream closed on removed sdk
+	<-str.Closed()
+
+	// test that modified global options resets the sdk client
+	str1 := srv.GetStreamBySdkKeyOrNil(key).(*stream)
+	assert.NotNil(t, str1)
+	sdkClient := str1.sdkClient.Load()
+
+	h.ModifyGlobalOpts(model.OptionsModel{PollInterval: 120})
+	reg.Refresh()
+
+	testutils.WaitUntil(5*time.Second, func() bool {
+		return nil != srv.GetStreamBySdkKeyOrNil(key)
+	})
+
+	testutils.WaitUntil(5*time.Second, func() bool {
+		return sdkClient != str1.sdkClient.Load()
+	})
+	sdkClient2 := str1.sdkClient.Load()
+	assert.NotSame(t, sdkClient, sdkClient2)
+
+	secKey := h.RotateSdkKey("test")
+	reg.Refresh()
+
+	testutils.WaitUntil(5*time.Second, func() bool {
+		return nil != srv.GetStreamBySdkKeyOrNil(secKey)
+	})
+	testutils.WaitUntil(5*time.Second, func() bool {
+		return nil != srv.GetStreamBySdkKeyOrNil(key)
+	})
+
+	h.RemoveSdkKey("test", true)
+	reg.Refresh()
+
+	testutils.WaitUntil(5*time.Second, func() bool {
+		return nil != srv.GetStreamBySdkKeyOrNil(secKey)
+	})
+	testutils.WaitUntil(5*time.Second, func() bool {
+		return nil == srv.GetStreamBySdkKeyOrNil(key)
+	})
+
+	// test close
+	srv.Close()
+	assert.Equal(t, 0, srv.streams.Size())
+}

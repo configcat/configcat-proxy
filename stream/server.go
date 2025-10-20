@@ -16,6 +16,7 @@ type Server interface {
 
 type server struct {
 	streams           *xsync.MapOf[string, Stream]
+	streamsBySdkKey   *xsync.MapOf[string, Stream]
 	log               log.Logger
 	sdkRegistrar      sdk.Registrar
 	telemetryReporter telemetry.Reporter
@@ -27,12 +28,22 @@ type server struct {
 func NewServer(sdkRegistrar sdk.Registrar, telemetryReporter telemetry.Reporter, log log.Logger, serverType string) Server {
 	strLog := log.WithPrefix("stream-server")
 	streams := xsync.NewMapOf[string, Stream]()
+	streamsBySdkKey := xsync.NewMapOf[string, Stream]()
 	for id, sdkClient := range sdkRegistrar.GetAll() {
-		streams.Store(id, NewStream(id, sdkClient, telemetryReporter, strLog, serverType))
+		str := NewStream(id, sdkClient, telemetryReporter, strLog, serverType)
+		streams.Store(id, str)
+		key1, key2 := str.SdkKeys()
+		if key1 != "" {
+			streamsBySdkKey.Store(key1, str)
+		}
+		if key2 != nil && len(*key2) > 0 {
+			streamsBySdkKey.Store(*key2, str)
+		}
 	}
 	srv := &server{
 		log:               strLog,
 		streams:           streams,
+		streamsBySdkKey:   streamsBySdkKey,
 		sdkRegistrar:      sdkRegistrar,
 		telemetryReporter: telemetryReporter,
 		serverType:        serverType,
@@ -60,14 +71,36 @@ func (s *server) run() {
 func (s *server) handleSdkId(sdkId string) {
 	sdkClient := s.sdkRegistrar.GetSdkOrNil(sdkId)
 	if sdkClient != nil {
-		if str, loaded := s.streams.LoadOrCompute(sdkId, func() Stream {
+		str, loaded := s.streams.LoadOrCompute(sdkId, func() Stream {
 			return NewStream(sdkId, sdkClient, s.telemetryReporter, s.log, s.serverType)
-		}); loaded {
+		})
+		if loaded {
+			key1, key2 := str.SdkKeys()
+			if key1 != "" {
+				s.streamsBySdkKey.Delete(key1)
+			}
+			if key2 != nil && *key2 != "" {
+				s.streamsBySdkKey.Delete(*key2)
+			}
 			str.ResetSdk(sdkClient)
 		}
+		key1, key2 := sdkClient.SdkKeys()
+		if key1 != "" {
+			s.streamsBySdkKey.Store(key1, str)
+		}
+		if key2 != nil && *key2 != "" {
+			s.streamsBySdkKey.Store(*key2, str)
+		}
 	} else {
-		if str, ok := s.streams.LoadAndDelete(sdkId); ok {
-			str.Close()
+		if existing, loaded := s.streams.LoadAndDelete(sdkId); loaded {
+			key1, key2 := existing.SdkKeys()
+			if key1 != "" {
+				s.streamsBySdkKey.Delete(key1)
+			}
+			if key2 != nil && len(*key2) > 0 {
+				s.streamsBySdkKey.Delete(*key2)
+			}
+			existing.Close()
 		}
 	}
 }
@@ -78,15 +111,7 @@ func (s *server) GetStreamOrNil(sdkId string) Stream {
 }
 
 func (s *server) GetStreamBySdkKeyOrNil(sdkKey string) Stream {
-	var str Stream
-	s.streams.Range(func(key string, value Stream) bool {
-		key1, key2 := value.SdkKeys()
-		if key1 == sdkKey || (key2 != nil && len(*key2) > 0 && *key2 == sdkKey) {
-			str = value
-			return false
-		}
-		return true
-	})
+	str, _ := s.streamsBySdkKey.Load(sdkKey)
 	return str
 }
 
@@ -100,5 +125,6 @@ func (s *server) Close() {
 		s.streams.Delete(key)
 		return true
 	})
+	s.streamsBySdkKey.Clear()
 	s.log.Reportf("shutdown complete")
 }
