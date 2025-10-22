@@ -212,7 +212,7 @@ func (c *client) Refresh() error {
 	ctx, span := c.sdkCtx.TelemetryReporter.StartSpan(c.ctx, c.sdkCtx.SdkId+" refresh")
 	defer span.End()
 
-	return c.configCatClient.RefreshWithContextPassthrough(ctx)
+	return c.configCatClient.RefreshWithContext(ctx)
 }
 
 func (c *client) SdkKeys() (string, *string) {
