@@ -12,6 +12,11 @@ import (
 	"go.opentelemetry.io/otel/sdk/trace"
 )
 
+var (
+	SdkId  = K("configcat.sdk.id")
+	Source = K("configcat.source")
+)
+
 type traceHandler struct {
 	provider *trace.TracerProvider
 	log      log.Logger

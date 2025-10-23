@@ -40,7 +40,7 @@ func TestStream_Receive(t *testing.T) {
 			Default: false,
 		},
 	})
-	_ = clients["test"].Refresh()
+	_ = clients["test"].Refresh(t.Context())
 	testutils.WithTimeout(2*time.Second, func() {
 		pyl := <-sConn.Receive()
 		assert.False(t, pyl.(*model.ResponsePayload).Value.(bool))

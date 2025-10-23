@@ -92,18 +92,11 @@ func (s *stream) run() {
 }
 
 func (s *stream) CanEval(key string) bool {
-	keys := s.sdkClient.Load().(sdk.Client).Keys()
-	for _, k := range keys {
-		if k == key {
-			return true
-		}
-	}
-	return false
+	return s.sdkClient.Load().(sdk.Client).HasKey(key)
 }
 
 func (s *stream) SdkKeys() (string, *string) {
-	sdkClient := s.sdkClient.Load().(sdk.Client)
-	return sdkClient.SdkKeys()
+	return s.sdkClient.Load().(sdk.Client).SdkKeys()
 }
 
 func (s *stream) IsInValidState() bool {
@@ -192,9 +185,10 @@ func (s *stream) removeConnection(closed *connClosed) {
 
 func (s *stream) notifyConnections() {
 	sent := 0
+	sdkClient := s.sdkClient.Load().(sdk.Client)
 	for key, bucket := range s.channels {
 		for _, ch := range bucket {
-			count := ch.Notify(s.sdkClient.Load().(sdk.Client), key)
+			count := ch.Notify(sdkClient, key)
 			sent += count
 			s.telemetryReporter.AddSentMessageCount(count, s.sdkId, s.serverType, key)
 		}

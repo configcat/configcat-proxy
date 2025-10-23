@@ -106,7 +106,7 @@ func (s *Server) Refresh(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), code)
 		return
 	}
-	err = sdkClient.Refresh()
+	err = sdkClient.Refresh(r.Context())
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

@@ -29,8 +29,9 @@ type Client interface {
 	Eval(key string, user model.UserAttrs) model.EvalData
 	EvalAll(user model.UserAttrs) map[string]model.EvalData
 	Keys() []string
+	HasKey(key string) bool
 	GetCachedJson() *store.EntryWithEtag
-	Refresh() error
+	Refresh(ctx context.Context) error
 	Close()
 	SdkKeys() (string, *string)
 	SetSecondarySdkKey(sdkKey string)
@@ -107,8 +108,8 @@ func NewClient(sdkCtx *Context, log log.Logger) Client {
 		}
 		clientConfig.Transport = sdkCtx.TelemetryReporter.InstrumentHttpClient(
 			status.InterceptSdk(sdkCtx.SdkId, sdkCtx.StatusReporter, clientConfig.Transport),
-			telemetry.NewKV("configcat.sdk.id", sdkCtx.SdkId),
-			telemetry.NewKV("configcat.source", "sdk"))
+			telemetry.SdkId.V(sdkCtx.SdkId),
+			telemetry.Source.V("sdk"))
 
 	}
 	if sdkCtx.EvalReporter != nil {
@@ -130,7 +131,7 @@ func NewClient(sdkCtx *Context, log log.Logger) Client {
 		clientConfig.DataGovernance = configcat.EUOnly
 	}
 	client.configCatClient = configcat.NewCustomClient(clientConfig)
-	_ = client.Refresh()
+	_ = client.Refresh(client.ctx)
 
 	if notifier, ok := storage.(store.NotifyingStore); ok {
 		go client.listen(notifier)
@@ -162,7 +163,9 @@ func (c *client) poll() {
 	for {
 		select {
 		case <-poller.C:
-			_ = c.Refresh()
+			spanCtx, span := c.sdkCtx.TelemetryReporter.StartSpan(c.ctx, c.sdkCtx.SdkId+" poll")
+			_ = c.Refresh(spanCtx)
+			span.End()
 		case <-c.ctx.Done():
 			return
 		}
@@ -177,7 +180,7 @@ func (c *client) signal() {
 	}
 	// force the SDK to reload local values in OFFLINE mode
 	if c.sdkCtx.SDKConf.Offline.Enabled {
-		_ = c.Refresh()
+		_ = c.Refresh(c.ctx)
 	}
 	c.Publish(struct{}{})
 }
@@ -204,15 +207,25 @@ func (c *client) Keys() []string {
 	return c.configCatClient.GetAllKeys()
 }
 
+func (c *client) HasKey(key string) bool {
+	keys := c.configCatClient.GetAllKeys()
+	for _, k := range keys {
+		if k == key {
+			return true
+		}
+	}
+	return false
+}
+
 func (c *client) GetCachedJson() *store.EntryWithEtag {
 	return c.cache.LoadEntry()
 }
 
-func (c *client) Refresh() error {
-	ctx, span := c.sdkCtx.TelemetryReporter.StartSpan(c.ctx, c.sdkCtx.SdkId+" refresh")
+func (c *client) Refresh(ctx context.Context) error {
+	spanCtx, span := c.sdkCtx.TelemetryReporter.StartSpan(ctx, c.sdkCtx.SdkId+" refresh")
 	defer span.End()
 
-	return c.configCatClient.RefreshWithContext(ctx)
+	return c.configCatClient.RefreshWithContext(spanCtx)
 }
 
 func (c *client) SdkKeys() (string, *string) {

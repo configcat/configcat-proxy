@@ -24,15 +24,18 @@ import (
 	"google.golang.org/grpc"
 )
 
+type K string
+type V string
+
 type KV struct {
-	Key   string
-	Value string
+	Key   K
+	Value V
 }
 
-func NewKV(k string, v string) KV {
+func (k K) V(val string) KV {
 	return KV{
 		Key:   k,
-		Value: v,
+		Value: V(val),
 	}
 }
 
@@ -44,7 +47,7 @@ type Reporter interface {
 	RecordConnections(count int64, sdkId string, streamType string, flag string)
 	AddSentMessageCount(count int, sdkId string, streamType string, flag string)
 
-	StartSpan(ctx context.Context, name string) (context.Context, trace.Span)
+	StartSpan(ctx context.Context, name string, attributes ...KV) (context.Context, trace.Span)
 	ForceFlush(ctx context.Context)
 
 	InstrumentHttp(operation string, method string, handler http.HandlerFunc) http.HandlerFunc
@@ -139,11 +142,11 @@ func (r *reporter) AddSentMessageCount(count int, sdkId string, streamType strin
 	r.metricsHandler.addSentMessageCount(count, sdkId, streamType, flag)
 }
 
-func (r *reporter) StartSpan(ctx context.Context, name string) (context.Context, trace.Span) {
+func (r *reporter) StartSpan(ctx context.Context, name string, attributes ...KV) (context.Context, trace.Span) {
 	if r.tracer == nil {
-		return noop.NewTracerProvider().Tracer("noop").Start(ctx, "noop")
+		return noop.NewTracerProvider().Tracer("noop").Start(ctx, "noop", trace.WithAttributes(toAttributeArray(attributes...)...))
 	}
-	return r.tracer.Start(ctx, name)
+	return r.tracer.Start(ctx, name, trace.WithAttributes(toAttributeArray(attributes...)...), trace.WithSpanKind(trace.SpanKindInternal))
 }
 
 func (r *reporter) InstrumentHttp(operation string, method string, handler http.HandlerFunc) http.HandlerFunc {
@@ -246,7 +249,7 @@ func buildResource(version string) *resource.Resource {
 func toAttributeArray(attributes ...KV) []attribute.KeyValue {
 	var result []attribute.KeyValue
 	for _, attr := range attributes {
-		result = append(result, attribute.String(attr.Key, attr.Value))
+		result = append(result, attribute.String(string(attr.Key), string(attr.Value)))
 	}
 	return result
 }

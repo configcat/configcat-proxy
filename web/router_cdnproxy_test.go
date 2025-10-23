@@ -39,7 +39,7 @@ func TestCDNProxy_Integration(t *testing.T) {
 		},
 	})
 
-	reg.RefreshAll()
+	reg.RefreshAll(t.Context())
 	router := NewRouter(reg, telemetry.NewEmptyReporter(), status.NewEmptyReporter(), &config.HttpConfig{CdnProxy: config.CdnProxyConfig{Enabled: true, CORS: config.CORSConfig{Enabled: true}, Headers: map[string]string{"h1": "v1"}}}, &config.ProfileConfig{}, log.NewNullLogger())
 	srv := httptest.NewServer(router)
 	defer srv.Close()

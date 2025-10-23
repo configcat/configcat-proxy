@@ -114,8 +114,8 @@ func (s *HttpRouter) setupWebhookRoutes(conf *config.WebhookConfig, autoSdkConfi
 	}
 	s.router.HandleFunc(addHttpMethod(path, http.MethodGet), s.telemetryReporter.InstrumentHttp(path, http.MethodGet, handler))
 	s.router.HandleFunc(addHttpMethod(path, http.MethodPost), s.telemetryReporter.InstrumentHttp(path, http.MethodPost, handler))
-	s.router.HandleFunc(addHttpMethod(testPath, http.MethodGet), s.telemetryReporter.InstrumentHttp(path, http.MethodGet, testHandler))
-	s.router.HandleFunc(addHttpMethod(testPath, http.MethodPost), s.telemetryReporter.InstrumentHttp(path, http.MethodPost, testHandler))
+	s.router.HandleFunc(addHttpMethod(testPath, http.MethodGet), s.telemetryReporter.InstrumentHttp(testPath, http.MethodGet, testHandler))
+	s.router.HandleFunc(addHttpMethod(testPath, http.MethodPost), s.telemetryReporter.InstrumentHttp(testPath, http.MethodPost, testHandler))
 	l.Reportf("webhook enabled, accepting requests on path: %s", path)
 }
 

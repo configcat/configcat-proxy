@@ -157,7 +157,7 @@ func (s *flagService) GetKeys(_ context.Context, req *proto.KeysRequest) (*proto
 	return &proto.KeysResponse{Keys: keys}, nil
 }
 
-func (s *flagService) Refresh(_ context.Context, req *proto.RefreshRequest) (*emptypb.Empty, error) {
+func (s *flagService) Refresh(ctx context.Context, req *proto.RefreshRequest) (*emptypb.Empty, error) {
 	sdkId := req.GetTarget().GetSdkId()
 	sdkKey := req.GetTarget().GetSdkKey()
 	if sdkId == "" && sdkKey == "" {
@@ -175,7 +175,7 @@ func (s *flagService) Refresh(_ context.Context, req *proto.RefreshRequest) (*em
 		return nil, status.Error(codes.InvalidArgument, "could not identify a configured SDK")
 	}
 
-	if err := sdkClient.Refresh(); err != nil {
+	if err := sdkClient.Refresh(ctx); err != nil {
 		return nil, err
 	}
 

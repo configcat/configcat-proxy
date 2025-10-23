@@ -49,7 +49,7 @@ func TestStreamServer_Load(t *testing.T) {
 		flags["flag"+strconv.Itoa(i)] = &configcattest.Flag{Default: true}
 	}
 	_ = h.SetFlags(key, flags)
-	_ = reg.GetSdkOrNil("test").Refresh()
+	_ = reg.GetSdkOrNil("test").Refresh(t.Context())
 	assert.Equal(t, connCount, len(strServer.GetStreamOrNil("test").(*stream).channels[AllFlagsDiscriminator][0].(*allFlagsChannel).connections))
 	t.Run("check refresh", func(t *testing.T) {
 		checkConnections(t, strServer)

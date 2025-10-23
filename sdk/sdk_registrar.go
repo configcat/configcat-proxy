@@ -1,6 +1,7 @@
 package sdk
 
 import (
+	"context"
 	"net/http"
 	"net/url"
 
@@ -14,7 +15,7 @@ import (
 type Registrar interface {
 	GetSdkOrNil(sdkId string) Client
 	GetSdkByKeyOrNil(sdkKey string) Client
-	RefreshAll()
+	RefreshAll(ctx context.Context)
 	GetAll() map[string]Client
 	Close()
 }
@@ -62,9 +63,9 @@ func (r *manualRegistrar) GetSdkByKeyOrNil(sdkKey string) Client {
 	return r.sdkClientsBySdkKey[sdkKey]
 }
 
-func (r *manualRegistrar) RefreshAll() {
+func (r *manualRegistrar) RefreshAll(ctx context.Context) {
 	for _, sdkClient := range r.sdkClients {
-		_ = sdkClient.Refresh()
+		_ = sdkClient.Refresh(ctx)
 	}
 }
 

@@ -43,7 +43,7 @@ func TestOFREP_Integration(t *testing.T) {
 		},
 	})
 
-	reg.RefreshAll()
+	reg.RefreshAll(t.Context())
 	router := NewRouter(reg, telemetry.NewEmptyReporter(), status.NewEmptyReporter(), &config.HttpConfig{OFREP: config.OFREPConfig{Enabled: true, AuthHeaders: map[string]string{"X-API-Key": "secret"}}}, &config.ProfileConfig{}, log.NewNullLogger())
 	srv := httptest.NewServer(router)
 	defer srv.Close()

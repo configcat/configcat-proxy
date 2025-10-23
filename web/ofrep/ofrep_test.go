@@ -68,7 +68,7 @@ func TestOFREP_Eval(t *testing.T) {
 				}},
 			},
 		})
-		_ = srv.sdkRegistrar.GetSdkOrNil("test").Refresh()
+		_ = srv.sdkRegistrar.GetSdkOrNil("test").Refresh(t.Context())
 		req.SetPathValue("key", "flag")
 		srv.Eval(res, req)
 
@@ -92,7 +92,7 @@ func TestOFREP_Eval(t *testing.T) {
 				}},
 			},
 		})
-		_ = srv.sdkRegistrar.GetSdkOrNil("test").Refresh()
+		_ = srv.sdkRegistrar.GetSdkOrNil("test").Refresh(t.Context())
 		req.SetPathValue("key", "flag")
 		srv.Eval(res, req)
 

@@ -75,7 +75,7 @@ func TestHandler_Metrics_Prometheus_Export(t *testing.T) {
 		srv := httptest.NewServer(h)
 		defer srv.Close()
 		client := http.Client{}
-		client.Transport = handler.InstrumentHttpClient(http.DefaultTransport, NewKV("sdk", "test"))
+		client.Transport = handler.InstrumentHttpClient(http.DefaultTransport, K("sdk").V("test"))
 		req, _ := http.NewRequest(http.MethodGet, srv.URL, http.NoBody)
 		_, _ = client.Do(req)
 
@@ -158,7 +158,7 @@ func TestHandler_Metrics_Otlp_Export(t *testing.T) {
 		srv := httptest.NewServer(h)
 		defer srv.Close()
 		client := http.Client{}
-		client.Transport = handler.InstrumentHttpClient(http.DefaultTransport, NewKV("sdk", "test"))
+		client.Transport = handler.InstrumentHttpClient(http.DefaultTransport, K("sdk").V("test"))
 		req, _ := http.NewRequest(http.MethodGet, srv.URL, http.NoBody)
 		_, _ = client.Do(req)
 

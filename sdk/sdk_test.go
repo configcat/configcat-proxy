@@ -121,7 +121,7 @@ func TestSdk_Signal_Refresh(t *testing.T) {
 			Default: false,
 		},
 	})
-	_ = client.Refresh()
+	_ = client.Refresh(t.Context())
 	testutils.WithTimeout(2*time.Second, func() {
 		<-sub
 	})

@@ -49,7 +49,7 @@ type autoRegistrar struct {
 func newAutoRegistrar(conf *config.Config, telemetryReporter telemetry.Reporter, statusReporter status.Reporter, cache store.Cache, log log.Logger) (*autoRegistrar, error) {
 	regLog := log.WithPrefix("profile-sdk-registrar").WithLevel(conf.Profile.Log.GetLevel())
 	transport := buildTransport(&conf.HttpProxy, regLog)
-	var profileTransport = telemetryReporter.InstrumentHttpClient(transport, telemetry.NewKV("configcat.source", "profile"))
+	var profileTransport = telemetryReporter.InstrumentHttpClient(transport, telemetry.Source.V("profile"))
 	registrar := &autoRegistrar{
 		refreshChan:        make(chan struct{}),
 		conf:               conf,
@@ -114,9 +114,9 @@ func (r *autoRegistrar) GetSdkByKeyOrNil(sdkKey string) Client {
 	return nil
 }
 
-func (r *autoRegistrar) RefreshAll() {
+func (r *autoRegistrar) RefreshAll(ctx context.Context) {
 	r.sdkClients.Range(func(key string, value Client) bool {
-		_ = value.Refresh()
+		_ = value.Refresh(ctx)
 		return true
 	})
 }
