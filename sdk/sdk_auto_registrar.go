@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/configcat/configcat-proxy/cache"
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/diag/status"
 	"github.com/configcat/configcat-proxy/diag/telemetry"
@@ -17,7 +18,6 @@ import (
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/model"
 	"github.com/configcat/configcat-proxy/pubsub"
-	"github.com/configcat/configcat-proxy/sdk/store"
 	"github.com/puzpuzpuz/xsync/v3"
 )
 
@@ -40,13 +40,13 @@ type autoRegistrar struct {
 	conf               *config.Config
 	telemetryReporter  telemetry.Reporter
 	statusReporter     status.Reporter
-	cache              store.Cache
+	cache              cache.ReaderWriter
 	log                log.Logger
 	sdkTransport       http.RoundTripper
 	pubsub.Publisher[string]
 }
 
-func newAutoRegistrar(conf *config.Config, telemetryReporter telemetry.Reporter, statusReporter status.Reporter, cache store.Cache, log log.Logger) (*autoRegistrar, error) {
+func newAutoRegistrar(conf *config.Config, telemetryReporter telemetry.Reporter, statusReporter status.Reporter, cache cache.ReaderWriter, log log.Logger) (*autoRegistrar, error) {
 	regLog := log.WithPrefix("profile-sdk-registrar").WithLevel(conf.Profile.Log.GetLevel())
 	transport := buildTransport(&conf.HttpProxy, regLog)
 	var profileTransport = telemetryReporter.InstrumentHttpClient(transport, telemetry.Source.V("profile"))

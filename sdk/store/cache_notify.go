@@ -1,4 +1,4 @@
-package cache
+package store
 
 import (
 	"context"
@@ -9,14 +9,13 @@ import (
 	"github.com/configcat/configcat-proxy/diag/status"
 	"github.com/configcat/configcat-proxy/diag/telemetry"
 	"github.com/configcat/configcat-proxy/log"
-	"github.com/configcat/configcat-proxy/sdk/store"
 	configcat "github.com/configcat/go-sdk/v9"
 	"github.com/configcat/go-sdk/v9/configcatcache"
 )
 
 type notifyingCacheStore struct {
-	store.CacheEntryStore
-	store.Notifier
+	CacheEntryStore
+	Notifier
 
 	log               log.Logger
 	statusReporter    status.Reporter
@@ -25,12 +24,12 @@ type notifyingCacheStore struct {
 	cacheKey          string
 }
 
-func NewNotifyingCacheStore(sdkId string, cacheKey string, cache store.CacheEntryStore, conf *config.OfflineConfig,
-	telemetryReporter telemetry.Reporter, statusReporter status.Reporter, log log.Logger) store.NotifyingStore {
+func NewNotifyingCacheStore(sdkId string, cacheKey string, cache CacheEntryStore, conf *config.OfflineConfig,
+	telemetryReporter telemetry.Reporter, statusReporter status.Reporter, log log.Logger) NotifyingStore {
 	nrLogger := log.WithPrefix("cache-poll")
 	n := &notifyingCacheStore{
 		CacheEntryStore:   cache,
-		Notifier:          store.NewNotifier(),
+		Notifier:          NewNotifier(),
 		cacheKey:          cacheKey,
 		statusReporter:    statusReporter,
 		telemetryReporter: telemetryReporter,

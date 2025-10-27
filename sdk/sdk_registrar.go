@@ -5,11 +5,11 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/configcat/configcat-proxy/cache"
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/diag/status"
 	"github.com/configcat/configcat-proxy/diag/telemetry"
 	"github.com/configcat/configcat-proxy/log"
-	"github.com/configcat/configcat-proxy/sdk/store"
 )
 
 type Registrar interface {
@@ -25,7 +25,7 @@ type manualRegistrar struct {
 	sdkClientsBySdkKey map[string]Client
 }
 
-func NewRegistrar(conf *config.Config, telemetryReporter telemetry.Reporter, statusReporter status.Reporter, externalCache store.Cache, log log.Logger) (Registrar, error) {
+func NewRegistrar(conf *config.Config, telemetryReporter telemetry.Reporter, statusReporter status.Reporter, externalCache cache.ReaderWriter, log log.Logger) (Registrar, error) {
 	if conf.Profile.IsSet() {
 		return newAutoRegistrar(conf, telemetryReporter, statusReporter, externalCache, log)
 	} else {
@@ -33,7 +33,7 @@ func NewRegistrar(conf *config.Config, telemetryReporter telemetry.Reporter, sta
 	}
 }
 
-func newManualRegistrar(conf *config.Config, telemetryReporter telemetry.Reporter, statusReporter status.Reporter, externalCache store.Cache, log log.Logger) (*manualRegistrar, error) {
+func newManualRegistrar(conf *config.Config, telemetryReporter telemetry.Reporter, statusReporter status.Reporter, externalCache cache.ReaderWriter, log log.Logger) (*manualRegistrar, error) {
 	regLog := log.WithPrefix("sdk-registrar").WithLevel(conf.Profile.Log.GetLevel())
 	transport := buildTransport(&conf.HttpProxy, regLog)
 	sdkClients := make(map[string]Client, len(conf.SDKs))

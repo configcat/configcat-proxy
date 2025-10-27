@@ -6,6 +6,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/configcat/configcat-proxy/cache"
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/diag/status"
 	"github.com/configcat/configcat-proxy/diag/telemetry"
@@ -14,7 +15,6 @@ import (
 	"github.com/configcat/configcat-proxy/pubsub"
 	"github.com/configcat/configcat-proxy/sdk/statistics"
 	"github.com/configcat/configcat-proxy/sdk/store"
-	"github.com/configcat/configcat-proxy/sdk/store/cache"
 	"github.com/configcat/configcat-proxy/sdk/store/file"
 	"github.com/configcat/go-sdk/v9"
 	"github.com/configcat/go-sdk/v9/configcatcache"
@@ -48,7 +48,7 @@ type Context struct {
 	TelemetryReporter  telemetry.Reporter
 	StatusReporter     status.Reporter
 	EvalReporter       statistics.Reporter
-	ExternalCache      store.Cache
+	ExternalCache      cache.ReaderWriter
 	Transport          http.RoundTripper
 }
 
@@ -69,16 +69,16 @@ func NewClient(sdkCtx *Context, log log.Logger) Client {
 
 	offline := sdkCtx.SDKConf.Offline.Enabled
 	key := sdkCtx.SDKConf.Key
-	var storage store.Cache
+	var storage configcat.ConfigCache
 	if offline && sdkCtx.SDKConf.Offline.Local.FilePath != "" {
 		key = validEmptySdkKey
 		storage = file.NewFileStore(sdkCtx.SdkId, &sdkCtx.SDKConf.Offline.Local, sdkCtx.StatusReporter, log.WithLevel(sdkCtx.SDKConf.Offline.Log.GetLevel()))
 	} else if offline && sdkCtx.SDKConf.Offline.UseCache && sdkCtx.ExternalCache != nil {
 		cacheKey := configcatcache.ProduceCacheKey(sdkCtx.SDKConf.Key, configcatcache.ConfigJSONName, configcatcache.ConfigJSONCacheVersion)
-		cacheStore := cache.NewCacheStore(sdkCtx.ExternalCache, sdkCtx.StatusReporter)
-		storage = cache.NewNotifyingCacheStore(sdkCtx.SdkId, cacheKey, cacheStore, &sdkCtx.SDKConf.Offline, sdkCtx.TelemetryReporter, sdkCtx.StatusReporter, log.WithLevel(sdkCtx.SDKConf.Offline.Log.GetLevel()))
+		cacheStore := store.NewCacheStore(sdkCtx.ExternalCache, sdkCtx.StatusReporter)
+		storage = store.NewNotifyingCacheStore(sdkCtx.SdkId, cacheKey, cacheStore, &sdkCtx.SDKConf.Offline, sdkCtx.TelemetryReporter, sdkCtx.StatusReporter, log.WithLevel(sdkCtx.SDKConf.Offline.Log.GetLevel()))
 	} else if !offline && sdkCtx.ExternalCache != nil {
-		storage = cache.NewCacheStore(sdkCtx.ExternalCache, sdkCtx.StatusReporter)
+		storage = store.NewCacheStore(sdkCtx.ExternalCache, sdkCtx.StatusReporter)
 	} else {
 		storage = store.NewInMemoryStorage()
 	}

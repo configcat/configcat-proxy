@@ -57,7 +57,7 @@ func TestRunDynamoDbSuite(t *testing.T) {
 }
 
 func (s *dynamoDbTestSuite) TestDynamoDbStore() {
-	assert.NoError(s.T(), createTableIfNotExist(s.T().Context(), s.addr))
+	assert.NoError(s.T(), createTableIfNotExist(s.T().Context(), tableName, s.addr))
 
 	s.Run("ok", func() {
 		store, err := newDynamoDb(s.T().Context(), &config.DynamoDbConfig{
@@ -114,7 +114,7 @@ func (s *dynamoDbTestSuite) TestDynamoDbStore() {
 	})
 }
 
-func createTableIfNotExist(ctx context.Context, addr string) error {
+func createTableIfNotExist(ctx context.Context, table string, addr string) error {
 	awsCtx, err := awsconfig.LoadDefaultConfig(ctx)
 	if err != nil {
 		return err
@@ -127,13 +127,13 @@ func createTableIfNotExist(ctx context.Context, addr string) error {
 	client := dynamodb.NewFromConfig(awsCtx, opts...)
 
 	_, err = client.DescribeTable(ctx, &dynamodb.DescribeTableInput{
-		TableName: aws.String(tableName),
+		TableName: aws.String(table),
 	})
 	if err == nil {
 		return nil
 	}
 	_, err = client.CreateTable(ctx, &dynamodb.CreateTableInput{
-		TableName: aws.String(tableName),
+		TableName: aws.String(table),
 		AttributeDefinitions: []types.AttributeDefinition{
 			{
 				AttributeName: aws.String(keyName),
@@ -164,7 +164,7 @@ func createTableIfNotExist(ctx context.Context, addr string) error {
 			return fmt.Errorf("table creation timed out")
 		case <-ticker.C:
 			res, err := client.DescribeTable(ctx, &dynamodb.DescribeTableInput{
-				TableName: aws.String(tableName),
+				TableName: aws.String(table),
 			})
 			if err == nil && res.Table.TableStatus == types.TableStatusActive {
 				return nil

@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/configcat/configcat-proxy/cache"
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/diag"
 	"github.com/configcat/configcat-proxy/diag/status"
@@ -16,7 +17,6 @@ import (
 	"github.com/configcat/configcat-proxy/grpc"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/sdk"
-	"github.com/configcat/configcat-proxy/sdk/store/cache"
 	"github.com/configcat/configcat-proxy/web"
 )
 

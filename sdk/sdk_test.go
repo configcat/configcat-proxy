@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
+	"github.com/configcat/configcat-proxy/cache"
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/diag/telemetry"
 	"github.com/configcat/configcat-proxy/internal/testutils"
@@ -16,8 +17,6 @@ import (
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/model"
 	"github.com/configcat/configcat-proxy/sdk/statistics"
-	"github.com/configcat/configcat-proxy/sdk/store"
-	"github.com/configcat/configcat-proxy/sdk/store/cache"
 	configcat "github.com/configcat/go-sdk/v9"
 	"github.com/configcat/go-sdk/v9/configcatcache"
 	"github.com/configcat/go-sdk/v9/configcattest"
@@ -494,7 +493,7 @@ func TestSdk_Cache_Rebuild(t *testing.T) {
 	assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true,"s":null,"i":null,"d":null},"t":0,"r":[],"p":null}},"s":null,"p":null}`, string(j))
 }
 
-func newRedisCache(ctx context.Context, addr string) store.Cache {
+func newRedisCache(ctx context.Context, addr string) cache.ReaderWriter {
 	c, _ := cache.SetupExternalCache(ctx, &config.CacheConfig{Redis: config.RedisConfig{Enabled: true, Addresses: []string{addr}}}, telemetry.NewEmptyReporter(), log.NewNullLogger())
 	return c
 }

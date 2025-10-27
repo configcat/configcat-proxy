@@ -9,22 +9,22 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/configcat/configcat-proxy/cache"
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/diag/status"
 	"github.com/configcat/configcat-proxy/diag/telemetry"
 	"github.com/configcat/configcat-proxy/internal/utils"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/model"
-	"github.com/configcat/configcat-proxy/sdk/store"
 	configcat "github.com/configcat/go-sdk/v9"
 	"github.com/configcat/go-sdk/v9/configcattest"
 )
 
-func NewTestRegistrar(conf *config.SDKConfig, cache store.Cache) Registrar {
+func NewTestRegistrar(conf *config.SDKConfig, cache cache.ReaderWriter) Registrar {
 	return NewTestRegistrarWithStatusReporter(conf, cache, status.NewEmptyReporter())
 }
 
-func NewTestRegistrarWithStatusReporter(conf *config.SDKConfig, cache store.Cache, reporter status.Reporter) Registrar {
+func NewTestRegistrarWithStatusReporter(conf *config.SDKConfig, cache cache.ReaderWriter, reporter status.Reporter) Registrar {
 	ctx := NewTestSdkContext(conf, cache)
 	reg, _ := NewRegistrar(&config.Config{
 		SDKs: map[string]*config.SDKConfig{"test": conf},
@@ -78,7 +78,7 @@ func NewTestSdkClient(t *testing.T) (map[string]Client, *configcattest.Handler, 
 	return reg.GetAll(), h, k
 }
 
-func NewTestSdkContext(conf *config.SDKConfig, cache store.Cache) *Context {
+func NewTestSdkContext(conf *config.SDKConfig, cache cache.ReaderWriter) *Context {
 	return &Context{
 		SDKConf:           conf,
 		Transport:         http.DefaultTransport,
@@ -93,7 +93,7 @@ func NewTestAutoRegistrarWithAutoConfig(t *testing.T, autoConf config.ProfileCon
 	return NewTestAutoRegistrar(t, config.Config{Profile: autoConf}, nil, logger)
 }
 
-func NewTestAutoRegistrarWithCache(t *testing.T, cachePoll int, cache store.Cache, logger log.Logger) AutoRegistrar {
+func NewTestAutoRegistrarWithCache(t *testing.T, cachePoll int, cache cache.ReaderWriter, logger log.Logger) AutoRegistrar {
 	conf := config.Config{Profile: config.ProfileConfig{Key: "test-reg", PollInterval: 60}, GlobalOfflineConfig: config.GlobalOfflineConfig{
 		CachePollInterval: cachePoll,
 		Enabled:           true,
@@ -103,7 +103,7 @@ func NewTestAutoRegistrarWithCache(t *testing.T, cachePoll int, cache store.Cach
 	return reg
 }
 
-func NewTestAutoRegistrar(t *testing.T, conf config.Config, cache store.Cache, logger log.Logger) (AutoRegistrar, *TestSdkRegistrarHandler, string) {
+func NewTestAutoRegistrar(t *testing.T, conf config.Config, cache cache.ReaderWriter, logger log.Logger) (AutoRegistrar, *TestSdkRegistrarHandler, string) {
 	sdkKey := configcattest.RandomSDKKey()
 	var sdkHandler configcattest.Handler
 	_ = sdkHandler.SetFlags(sdkKey, map[string]*configcattest.Flag{
