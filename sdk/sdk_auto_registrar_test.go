@@ -197,7 +197,7 @@ func TestAutoRegistrar_Config(t *testing.T) {
 
 func TestAutoRegistrar_Cache_Poll(t *testing.T) {
 	cache := miniredis.RunT(t)
-	extCache := newRedisCache(t.Context(), cache.Addr())
+	extCache := newRedisCache(cache.Addr())
 
 	sdkKey := configcattest.RandomSDKKey()
 	cacheKey := configcatcache.ProduceCacheKey(sdkKey, configcatcache.ConfigJSONName, configcatcache.ConfigJSONCacheVersion)
@@ -256,7 +256,7 @@ func TestAutoRegistrar_Cache_Poll(t *testing.T) {
 
 func TestAutoRegistrar_Cache_Refresh(t *testing.T) {
 	cache := miniredis.RunT(t)
-	extCache := newRedisCache(t.Context(), cache.Addr())
+	extCache := newRedisCache(cache.Addr())
 
 	sdkKey := configcattest.RandomSDKKey()
 	cacheKey := configcatcache.ProduceCacheKey(sdkKey, configcatcache.ConfigJSONName, configcatcache.ConfigJSONCacheVersion)
@@ -316,7 +316,7 @@ func TestAutoRegistrar_Cache_Refresh(t *testing.T) {
 
 func TestAutoRegistrar_Cache_When_Fail(t *testing.T) {
 	cache := miniredis.RunT(t)
-	extCache := newRedisCache(t.Context(), cache.Addr())
+	extCache := newRedisCache(cache.Addr())
 
 	sdkKey := configcattest.RandomSDKKey()
 	cacheKey := configcatcache.ProduceCacheKey(sdkKey, configcatcache.ConfigJSONName, configcatcache.ConfigJSONCacheVersion)
@@ -346,7 +346,7 @@ func TestAutoRegistrar_Cache_When_Fail(t *testing.T) {
 
 func TestAutoRegistrar_Saves_To_Cache(t *testing.T) {
 	cache := miniredis.RunT(t)
-	extCache := newRedisCache(t.Context(), cache.Addr())
+	extCache := newRedisCache(cache.Addr())
 
 	conf := config.Config{Profile: config.ProfileConfig{Key: "test-reg", PollInterval: 60}}
 	reg, _, _ := NewTestAutoRegistrar(t, conf, extCache, log.NewNullLogger())
@@ -362,7 +362,7 @@ func TestAutoRegistrar_Saves_To_Cache(t *testing.T) {
 
 func TestAutoRegistrar_Cache_Rebuild(t *testing.T) {
 	cache := miniredis.RunT(t)
-	extCache := newRedisCache(t.Context(), cache.Addr())
+	extCache := newRedisCache(cache.Addr())
 	cacheKey := "configcat-proxy-profile-test-reg"
 	conf := config.Config{Profile: config.ProfileConfig{Key: "test-reg", PollInterval: 1}}
 	_, _, _ = NewTestAutoRegistrar(t, conf, extCache, log.NewNullLogger())
@@ -382,7 +382,7 @@ func TestAutoRegistrar_Cache_Rebuild(t *testing.T) {
 
 func TestAutoRegistrar_GetBySdkKey(t *testing.T) {
 	cache := miniredis.RunT(t)
-	extCache := newRedisCache(t.Context(), cache.Addr())
+	extCache := newRedisCache(cache.Addr())
 
 	conf := config.Config{Profile: config.ProfileConfig{Key: "test-reg", PollInterval: 60}}
 	reg, _, sdkKey := NewTestAutoRegistrar(t, conf, extCache, log.NewNullLogger())

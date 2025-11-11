@@ -22,7 +22,7 @@ func TestRedisNotify(t *testing.T) {
 	cacheKey := configcatcache.ProduceCacheKey(sdkKey, configcatcache.ConfigJSONName, configcatcache.ConfigJSONCacheVersion)
 	s := miniredis.RunT(t)
 	conf := config.CacheConfig{Redis: config.RedisConfig{Enabled: true, Addresses: []string{s.Addr()}}}
-	red, err := cache.SetupExternalCache(t.Context(), &conf, telemetry.NewEmptyReporter(), log.NewNullLogger())
+	red, err := cache.SetupExternalCache(&conf, telemetry.NewEmptyReporter(), log.NewNullLogger())
 	assert.NoError(t, err)
 	r := NewCacheStore(red, status.NewEmptyReporter())
 	srv := NewNotifyingCacheStore("test", cacheKey, r, &config.OfflineConfig{CachePollInterval: 1}, telemetry.NewEmptyReporter(), status.NewEmptyReporter(), log.NewNullLogger()).(*notifyingCacheStore)
@@ -50,7 +50,7 @@ func TestRedisNotify_Initial(t *testing.T) {
 	err := s.Set(cacheKey, string(cacheEntry))
 	assert.NoError(t, err)
 	conf := config.CacheConfig{Redis: config.RedisConfig{Enabled: true, Addresses: []string{s.Addr()}}}
-	red, err := cache.SetupExternalCache(t.Context(), &conf, telemetry.NewEmptyReporter(), log.NewNullLogger())
+	red, err := cache.SetupExternalCache(&conf, telemetry.NewEmptyReporter(), log.NewNullLogger())
 	assert.NoError(t, err)
 	r := NewCacheStore(red, status.NewEmptyReporter())
 	srv := NewNotifyingCacheStore("test", cacheKey, r, &config.OfflineConfig{CachePollInterval: 1}, telemetry.NewEmptyReporter(), status.NewEmptyReporter(), log.NewNullLogger())
@@ -70,7 +70,7 @@ func TestRedisNotify_Notify(t *testing.T) {
 	err := s.Set(cacheKey, string(cacheEntry))
 	assert.NoError(t, err)
 	conf := config.CacheConfig{Redis: config.RedisConfig{Enabled: true, Addresses: []string{s.Addr()}}}
-	red, err := cache.SetupExternalCache(t.Context(), &conf, telemetry.NewEmptyReporter(), log.NewNullLogger())
+	red, err := cache.SetupExternalCache(&conf, telemetry.NewEmptyReporter(), log.NewNullLogger())
 	assert.NoError(t, err)
 	r := NewCacheStore(red, status.NewEmptyReporter())
 	srv := NewNotifyingCacheStore("test", cacheKey, r, &config.OfflineConfig{CachePollInterval: 1}, telemetry.NewEmptyReporter(), status.NewEmptyReporter(), log.NewNullLogger()).(*notifyingCacheStore)
@@ -100,7 +100,7 @@ func TestRedisNotify_BadJson(t *testing.T) {
 	err := s.Set(cacheKey, `{"f":{"flag":{"v":{"b":false}}},"p":null}`)
 	assert.NoError(t, err)
 	conf := config.CacheConfig{Redis: config.RedisConfig{Enabled: true, Addresses: []string{s.Addr()}}}
-	red, err := cache.SetupExternalCache(t.Context(), &conf, telemetry.NewEmptyReporter(), log.NewNullLogger())
+	red, err := cache.SetupExternalCache(&conf, telemetry.NewEmptyReporter(), log.NewNullLogger())
 	assert.NoError(t, err)
 	r := NewCacheStore(red, status.NewEmptyReporter())
 	srv := NewNotifyingCacheStore("test", cacheKey, r, &config.OfflineConfig{CachePollInterval: 1}, telemetry.NewEmptyReporter(), status.NewEmptyReporter(), log.NewNullLogger())
@@ -118,7 +118,7 @@ func TestRedisNotify_MalformedCacheEntry(t *testing.T) {
 	err := s.Set(cacheKey, `{"k":{"flag`)
 	assert.NoError(t, err)
 	conf := config.CacheConfig{Redis: config.RedisConfig{Enabled: true, Addresses: []string{s.Addr()}}}
-	red, err := cache.SetupExternalCache(t.Context(), &conf, telemetry.NewEmptyReporter(), log.NewNullLogger())
+	red, err := cache.SetupExternalCache(&conf, telemetry.NewEmptyReporter(), log.NewNullLogger())
 	assert.NoError(t, err)
 	r := NewCacheStore(red, status.NewEmptyReporter())
 	srv := NewNotifyingCacheStore("test", cacheKey, r, &config.OfflineConfig{CachePollInterval: 1}, telemetry.NewEmptyReporter(), status.NewEmptyReporter(), log.NewNullLogger())
@@ -137,7 +137,7 @@ func TestRedisNotify_MalformedJson(t *testing.T) {
 	err := s.Set(cacheKey, string(cacheEntry))
 	assert.NoError(t, err)
 	conf := config.CacheConfig{Redis: config.RedisConfig{Enabled: true, Addresses: []string{s.Addr()}}}
-	red, err := cache.SetupExternalCache(t.Context(), &conf, telemetry.NewEmptyReporter(), log.NewNullLogger())
+	red, err := cache.SetupExternalCache(&conf, telemetry.NewEmptyReporter(), log.NewNullLogger())
 	assert.NoError(t, err)
 	r := NewCacheStore(red, status.NewEmptyReporter())
 	srv := NewNotifyingCacheStore("test", cacheKey, r, &config.OfflineConfig{CachePollInterval: 1}, telemetry.NewEmptyReporter(), status.NewEmptyReporter(), log.NewNullLogger())
@@ -157,7 +157,7 @@ func TestRedisNotify_Reporter(t *testing.T) {
 	assert.NoError(t, err)
 	reporter := &testReporter{}
 	conf := config.CacheConfig{Redis: config.RedisConfig{Enabled: true, Addresses: []string{s.Addr()}}}
-	red, err := cache.SetupExternalCache(t.Context(), &conf, telemetry.NewEmptyReporter(), log.NewNullLogger())
+	red, err := cache.SetupExternalCache(&conf, telemetry.NewEmptyReporter(), log.NewNullLogger())
 	assert.NoError(t, err)
 	r := NewCacheStore(red, reporter)
 	srv := NewNotifyingCacheStore(sdkKey, cacheKey, r, &config.OfflineConfig{CachePollInterval: 1}, telemetry.NewEmptyReporter(), reporter, log.NewNullLogger()).(*notifyingCacheStore)
@@ -184,7 +184,7 @@ func TestRedisNotify_Reporter(t *testing.T) {
 
 func TestRedisNotify_Unavailable(t *testing.T) {
 	conf := config.CacheConfig{Redis: config.RedisConfig{Enabled: true, Addresses: []string{"nonexisting"}}}
-	red, err := cache.SetupExternalCache(t.Context(), &conf, telemetry.NewEmptyReporter(), log.NewNullLogger())
+	red, err := cache.SetupExternalCache(&conf, telemetry.NewEmptyReporter(), log.NewNullLogger())
 	assert.NoError(t, err)
 	r := NewCacheStore(red, status.NewEmptyReporter())
 	srv := NewNotifyingCacheStore("test", "", r, &config.OfflineConfig{CachePollInterval: 1}, telemetry.NewEmptyReporter(), status.NewEmptyReporter(), log.NewNullLogger())
@@ -198,7 +198,7 @@ func TestRedisNotify_Unavailable(t *testing.T) {
 func TestRedisNotify_Close(t *testing.T) {
 	s := miniredis.RunT(t)
 	conf := config.CacheConfig{Redis: config.RedisConfig{Enabled: true, Addresses: []string{s.Addr()}}}
-	red, err := cache.SetupExternalCache(t.Context(), &conf, telemetry.NewEmptyReporter(), log.NewNullLogger())
+	red, err := cache.SetupExternalCache(&conf, telemetry.NewEmptyReporter(), log.NewNullLogger())
 	assert.NoError(t, err)
 	r := NewCacheStore(red, status.NewEmptyReporter())
 	srv := NewNotifyingCacheStore("test", "", r, &config.OfflineConfig{CachePollInterval: 1}, telemetry.NewEmptyReporter(), status.NewEmptyReporter(), log.NewNullLogger()).(*notifyingCacheStore)

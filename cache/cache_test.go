@@ -12,7 +12,7 @@ import (
 
 func TestSetupExternalCache_OnlyOneSelected(t *testing.T) {
 	s := miniredis.RunT(t)
-	store, err := SetupExternalCache(t.Context(), &config.CacheConfig{
+	store, err := SetupExternalCache(&config.CacheConfig{
 		Redis: config.RedisConfig{Addresses: []string{s.Addr()}, Enabled: true},
 		MongoDb: config.MongoDbConfig{
 			Enabled:    true,
@@ -27,7 +27,7 @@ func TestSetupExternalCache_OnlyOneSelected(t *testing.T) {
 }
 
 func (s *mongoTestSuite) TestSetupExternalCache() {
-	store, err := SetupExternalCache(s.T().Context(), &config.CacheConfig{MongoDb: config.MongoDbConfig{
+	store, err := SetupExternalCache(&config.CacheConfig{MongoDb: config.MongoDbConfig{
 		Enabled:    true,
 		Url:        s.addr,
 		Database:   "test_db",
@@ -39,21 +39,21 @@ func (s *mongoTestSuite) TestSetupExternalCache() {
 }
 
 func (s *redisTestSuite) TestSetupExternalCache() {
-	store, err := SetupExternalCache(s.T().Context(), &config.CacheConfig{Redis: config.RedisConfig{Addresses: []string{"localhost:" + s.dbPort}, Enabled: true}}, telemetry.NewEmptyReporter(), log.NewNullLogger())
+	store, err := SetupExternalCache(&config.CacheConfig{Redis: config.RedisConfig{Addresses: []string{"localhost:" + s.dbPort}, Enabled: true}}, telemetry.NewEmptyReporter(), log.NewNullLogger())
 	assert.NoError(s.T(), err)
 	defer store.Shutdown()
 	assert.IsType(s.T(), &redisStore{}, store)
 }
 
 func (s *valkeyTestSuite) TestSetupExternalCache() {
-	store, err := SetupExternalCache(s.T().Context(), &config.CacheConfig{Redis: config.RedisConfig{Addresses: []string{"localhost:" + s.dbPort}, Enabled: true}}, telemetry.NewEmptyReporter(), log.NewNullLogger())
+	store, err := SetupExternalCache(&config.CacheConfig{Redis: config.RedisConfig{Addresses: []string{"localhost:" + s.dbPort}, Enabled: true}}, telemetry.NewEmptyReporter(), log.NewNullLogger())
 	assert.NoError(s.T(), err)
 	defer store.Shutdown()
 	assert.IsType(s.T(), &redisStore{}, store)
 }
 
 func (s *dynamoDbTestSuite) TestSetupExternalCache() {
-	store, err := SetupExternalCache(s.T().Context(), &config.CacheConfig{DynamoDb: config.DynamoDbConfig{
+	store, err := SetupExternalCache(&config.CacheConfig{DynamoDb: config.DynamoDbConfig{
 		Enabled: true,
 		Table:   tableName,
 		Url:     s.addr,

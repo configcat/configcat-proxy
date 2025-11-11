@@ -70,7 +70,7 @@ func TestClient_Close(t *testing.T) {
 
 func TestNewRegistrar(t *testing.T) {
 	cache := miniredis.RunT(t)
-	extCache := newRedisCache(t.Context(), cache.Addr())
+	extCache := newRedisCache(cache.Addr())
 	autConfigCacheJson, _ := json.Marshal(model.ProxyConfigModel{
 		SDKs: map[string]*model.SdkConfigModel{"test": {Key1: configcattest.RandomSDKKey()}},
 	})

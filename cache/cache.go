@@ -2,6 +2,7 @@ package cache
 
 import (
 	"context"
+	"time"
 
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/diag/telemetry"
@@ -21,8 +22,12 @@ type External interface {
 	Shutdown()
 }
 
-func SetupExternalCache(ctx context.Context, conf *config.CacheConfig, telemetryReporter telemetry.Reporter, log log.Logger) (External, error) {
+func SetupExternalCache(conf *config.CacheConfig, telemetryReporter telemetry.Reporter, log log.Logger) (External, error) {
 	cacheLog := log.WithPrefix("cache")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second) // give 15 sec to spin up the cache connection
+	defer cancel()
+
 	if conf.Redis.Enabled {
 		redis, err := newRedis(&conf.Redis, telemetryReporter, cacheLog)
 		if err != nil {

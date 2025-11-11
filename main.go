@@ -1,14 +1,7 @@
 package main
 
 import (
-	"context"
 	"flag"
-	"os"
-	"os/signal"
-	"sync"
-	"syscall"
-	"time"
-
 	"github.com/configcat/configcat-proxy/cache"
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/diag"
@@ -18,6 +11,10 @@ import (
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/sdk"
 	"github.com/configcat/configcat-proxy/web"
+	"os"
+	"os/signal"
+	"sync"
+	"syscall"
 )
 
 const (
@@ -71,10 +68,7 @@ func run(closeSignal chan os.Signal) int {
 
 	var externalCache cache.External
 	if conf.Cache.IsSet() {
-		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second) // give 15 sec to spin up the cache connection
-		defer cancel()
-
-		externalCache, err = cache.SetupExternalCache(ctx, &conf.Cache, telemetryReporter, logger)
+		externalCache, err = cache.SetupExternalCache(&conf.Cache, telemetryReporter, logger)
 		if err != nil {
 			return exitFailure
 		}
