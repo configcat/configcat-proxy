@@ -133,8 +133,7 @@ func (s *flagService) EvalAllFlags(_ context.Context, req *proto.EvalRequest) (*
 }
 
 func (s *flagService) GetKeys(_ context.Context, req *proto.KeysRequest) (*proto.KeysResponse, error) {
-	sdkId := req.GetTarget().GetSdkId()
-	sdkKey := req.GetTarget().GetSdkKey()
+	sdkId, sdkKey := identifyTarget(req.GetTarget(), req.GetSdkId())
 	if sdkId == "" && sdkKey == "" {
 		return nil, status.Error(codes.InvalidArgument, "either the sdk id or the sdk key parameter must be set")
 	}
@@ -158,8 +157,7 @@ func (s *flagService) GetKeys(_ context.Context, req *proto.KeysRequest) (*proto
 }
 
 func (s *flagService) Refresh(ctx context.Context, req *proto.RefreshRequest) (*emptypb.Empty, error) {
-	sdkId := req.GetTarget().GetSdkId()
-	sdkKey := req.GetTarget().GetSdkKey()
+	sdkId, sdkKey := identifyTarget(req.GetTarget(), req.GetSdkId())
 	if sdkId == "" && sdkKey == "" {
 		return nil, status.Error(codes.InvalidArgument, "either the sdk id or the sdk key parameter must be set")
 	}
@@ -204,8 +202,7 @@ func (s *flagService) Close() {
 }
 
 func (s *flagService) parseEvalStreamRequest(req *proto.EvalRequest, user *model.UserAttrs, checkKey bool) (stream.Stream, error) {
-	sdkId := req.GetTarget().GetSdkId()
-	sdkKey := req.GetTarget().GetSdkKey()
+	sdkId, sdkKey := identifyTarget(req.GetTarget(), req.GetSdkId())
 	if sdkId == "" && sdkKey == "" {
 		return nil, status.Error(codes.InvalidArgument, "either the sdk id or the sdk key parameter must be set")
 	}
@@ -236,8 +233,7 @@ func (s *flagService) parseEvalStreamRequest(req *proto.EvalRequest, user *model
 }
 
 func (s *flagService) parseEvalRequest(req *proto.EvalRequest, user *model.UserAttrs, checkKey bool) (sdk.Client, error) {
-	sdkId := req.GetTarget().GetSdkId()
-	sdkKey := req.GetTarget().GetSdkKey()
+	sdkId, sdkKey := identifyTarget(req.GetTarget(), req.GetSdkId())
 	if sdkId == "" && sdkKey == "" {
 		return nil, status.Error(codes.InvalidArgument, "either the sdk id or the sdk key parameter must be set")
 	}
@@ -262,6 +258,13 @@ func (s *flagService) parseEvalRequest(req *proto.EvalRequest, user *model.UserA
 		return nil, status.Error(codes.Internal, "requested SDK is in an invalid state; please check the logs for more details")
 	}
 	return sdkClient, nil
+}
+
+func identifyTarget(target *proto.Target, sdkId string) (string, string) {
+	if target == nil {
+		return sdkId, ""
+	}
+	return target.GetSdkId(), target.GetSdkKey()
 }
 
 func getUserAttrs(attrs map[string]*proto.UserValue) model.UserAttrs {

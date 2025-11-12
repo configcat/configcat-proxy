@@ -237,6 +237,41 @@ func TestGrpc_EvalFlag(t *testing.T) {
 	assert.Equal(t, "test2", resp.GetStringValue())
 }
 
+func TestGrpc_EvalFlag_Old(t *testing.T) {
+	h, key, url := newFlagServer(t, map[string]*configcattest.Flag{
+		"flag": {
+			Default: "test1",
+		},
+	})
+	conn := createFlagServiceConnWithManualRegistrar(t, url, key)
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	client := proto.NewFlagServiceClient(conn)
+	resp, err := client.EvalFlag(t.Context(), &proto.EvalRequest{Key: "flag", SdkId: "test", User: map[string]*proto.UserValue{"id": {Value: &proto.UserValue_StringValue{StringValue: "u1"}}}})
+	assert.NoError(t, err)
+
+	assert.Equal(t, "test1", resp.GetStringValue())
+
+	_, err = client.EvalFlag(t.Context(), &proto.EvalRequest{Key: "non-existing", SdkId: "test", User: map[string]*proto.UserValue{"id": {Value: &proto.UserValue_StringValue{StringValue: "u1"}}}})
+	assert.Error(t, err)
+
+	_ = h.SetFlags(key, map[string]*configcattest.Flag{
+		"flag": {
+			Default: "test2",
+		},
+	})
+
+	_, err = client.Refresh(t.Context(), &proto.RefreshRequest{SdkId: "test"})
+	assert.NoError(t, err)
+
+	resp, err = client.EvalFlag(t.Context(), &proto.EvalRequest{Key: "flag", SdkId: "test", User: map[string]*proto.UserValue{"id": {Value: &proto.UserValue_StringValue{StringValue: "u1"}}}})
+	assert.NoError(t, err)
+
+	assert.Equal(t, "test2", resp.GetStringValue())
+}
+
 func TestGrpc_EvalFlag_With_Sdk_Key(t *testing.T) {
 	h, key, url := newFlagServer(t, map[string]*configcattest.Flag{
 		"flag": {
@@ -486,6 +521,52 @@ func TestGrpc_GetKeys(t *testing.T) {
 	assert.NoError(t, err)
 
 	resp, err = client.GetKeys(t.Context(), &proto.KeysRequest{Target: &proto.Target{Identifier: &proto.Target_SdkId{SdkId: "test"}}})
+	assert.NoError(t, err)
+
+	assert.Equal(t, 3, len(resp.GetKeys()))
+	assert.Equal(t, "flag1", resp.GetKeys()[0])
+	assert.Equal(t, "flag2", resp.GetKeys()[1])
+	assert.Equal(t, "flag3", resp.GetKeys()[2])
+}
+
+func TestGrpc_GetKeys_Old(t *testing.T) {
+	h, key, url := newFlagServer(t, map[string]*configcattest.Flag{
+		"flag1": {
+			Default: "test1",
+		},
+		"flag2": {
+			Default: "test2",
+		},
+	})
+	conn := createFlagServiceConnWithManualRegistrar(t, url, key)
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	client := proto.NewFlagServiceClient(conn)
+	resp, err := client.GetKeys(t.Context(), &proto.KeysRequest{SdkId: "test"})
+	assert.NoError(t, err)
+
+	assert.Equal(t, 2, len(resp.GetKeys()))
+	assert.Equal(t, "flag1", resp.GetKeys()[0])
+	assert.Equal(t, "flag2", resp.GetKeys()[1])
+
+	_ = h.SetFlags(key, map[string]*configcattest.Flag{
+		"flag1": {
+			Default: "test1",
+		},
+		"flag2": {
+			Default: "test2",
+		},
+		"flag3": {
+			Default: "test3",
+		},
+	})
+
+	_, err = client.Refresh(t.Context(), &proto.RefreshRequest{SdkId: "test"})
+	assert.NoError(t, err)
+
+	resp, err = client.GetKeys(t.Context(), &proto.KeysRequest{SdkId: "test"})
 	assert.NoError(t, err)
 
 	assert.Equal(t, 3, len(resp.GetKeys()))
