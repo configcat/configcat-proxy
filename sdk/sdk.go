@@ -3,6 +3,7 @@ package sdk
 import (
 	"context"
 	"net/http"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -38,6 +39,7 @@ type Client interface {
 	WebhookSigningKey() string
 	WebhookSignatureValidFor() int
 	IsInValidState() bool
+	Ready() <-chan struct{}
 }
 
 type Context struct {
@@ -59,8 +61,11 @@ type client struct {
 	cache           store.EntryStore
 	sdkCtx          *Context
 	initialized     atomic.Bool
+	ready           chan struct{}
+	readyOnce       sync.Once
 	ctx             context.Context
 	ctxCancel       func()
+	mu              sync.Mutex
 	pubsub.Publisher[struct{}]
 }
 
@@ -87,6 +92,7 @@ func NewClient(sdkCtx *Context, log log.Logger) Client {
 		log:          sdkLog,
 		cache:        storage.(store.EntryStore),
 		sdkCtx:       sdkCtx,
+		ready:        make(chan struct{}),
 		defaultAttrs: model.MergeUserAttrs(sdkCtx.GlobalDefaultAttrs, sdkCtx.SDKConf.DefaultAttrs),
 	}
 	client.ctx, client.ctxCancel = context.WithCancel(context.Background())
@@ -131,7 +137,12 @@ func NewClient(sdkCtx *Context, log log.Logger) Client {
 		clientConfig.DataGovernance = configcat.EUOnly
 	}
 	client.configCatClient = configcat.NewCustomClient(clientConfig)
-	_ = client.Refresh(client.ctx)
+	go func() {
+		client.mu.Lock()
+		defer client.mu.Unlock()
+		_ = client.Refresh(client.ctx)
+		close(client.ready)
+	}()
 
 	if notifier, ok := storage.(store.NotifyingStore); ok {
 		go client.listen(notifier)
@@ -185,7 +196,17 @@ func (c *client) signal() {
 	c.Publish(struct{}{})
 }
 
+func (c *client) ensureReady() {
+	c.readyOnce.Do(func() {
+		select {
+		case <-c.ready:
+		case <-c.ctx.Done():
+		}
+	})
+}
+
 func (c *client) Eval(key string, user model.UserAttrs) model.EvalData {
+	c.ensureReady()
 	mergedUser := model.MergeUserAttrs(c.defaultAttrs, user)
 	details := c.configCatClient.Snapshot(mergedUser).GetValueDetails(key)
 	return model.EvalData{Value: details.Value, VariationId: details.Data.VariationID, User: details.Data.User, Error: details.Data.Error,
@@ -193,6 +214,7 @@ func (c *client) Eval(key string, user model.UserAttrs) model.EvalData {
 }
 
 func (c *client) EvalAll(user model.UserAttrs) map[string]model.EvalData {
+	c.ensureReady()
 	mergedUser := model.MergeUserAttrs(c.defaultAttrs, user)
 	allDetails := c.configCatClient.Snapshot(mergedUser).GetAllValueDetails()
 	result := make(map[string]model.EvalData, len(allDetails))
@@ -204,10 +226,12 @@ func (c *client) EvalAll(user model.UserAttrs) map[string]model.EvalData {
 }
 
 func (c *client) Keys() []string {
+	c.ensureReady()
 	return c.configCatClient.GetAllKeys()
 }
 
 func (c *client) HasKey(key string) bool {
+	c.ensureReady()
 	keys := c.configCatClient.GetAllKeys()
 	for _, k := range keys {
 		if k == key {
@@ -218,6 +242,7 @@ func (c *client) HasKey(key string) bool {
 }
 
 func (c *client) GetCachedJson() *store.EntryWithEtag {
+	c.ensureReady()
 	return c.cache.LoadEntry()
 }
 
@@ -250,7 +275,13 @@ func (c *client) IsInValidState() bool {
 	return !c.GetCachedJson().Empty
 }
 
+func (c *client) Ready() <-chan struct{} {
+	return c.ready
+}
+
 func (c *client) Close() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	if notifier, ok := c.cache.(store.Notifier); ok {
 		notifier.Close()
 	}

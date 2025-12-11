@@ -28,9 +28,8 @@ type manualRegistrar struct {
 func NewRegistrar(conf *config.Config, telemetryReporter telemetry.Reporter, statusReporter status.Reporter, externalCache cache.ReaderWriter, log log.Logger) (Registrar, error) {
 	if conf.Profile.IsSet() {
 		return newAutoRegistrar(conf, telemetryReporter, statusReporter, externalCache, log)
-	} else {
-		return newManualRegistrar(conf, telemetryReporter, statusReporter, externalCache, log)
 	}
+	return newManualRegistrar(conf, telemetryReporter, statusReporter, externalCache, log)
 }
 
 func newManualRegistrar(conf *config.Config, telemetryReporter telemetry.Reporter, statusReporter status.Reporter, externalCache cache.ReaderWriter, log log.Logger) (*manualRegistrar, error) {
