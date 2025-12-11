@@ -20,6 +20,9 @@ func TestWebhook_BasicAuth(t *testing.T) {
 
 	t.Run("missing auth", func(t *testing.T) {
 		resp, _ := http.Get(fmt.Sprintf("%s/hook/test", srv.URL))
+		defer func() {
+			_ = resp.Body.Close()
+		}()
 		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 	})
 	t.Run("wrong auth", func(t *testing.T) {
@@ -48,6 +51,9 @@ func TestWebhook_HeaderAuth(t *testing.T) {
 
 	t.Run("missing auth", func(t *testing.T) {
 		resp, _ := http.Get(fmt.Sprintf("%s/hook/test", srv.URL))
+		defer func() {
+			_ = resp.Body.Close()
+		}()
 		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 	})
 	t.Run("wrong auth", func(t *testing.T) {
