@@ -280,13 +280,13 @@ func (c *client) Ready() <-chan struct{} {
 }
 
 func (c *client) Close() {
-	c.mu.Lock()
-	defer c.mu.Unlock()
 	if notifier, ok := c.cache.(store.Notifier); ok {
 		notifier.Close()
 	}
 	c.Publisher.Close()
 	c.ctxCancel()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	c.configCatClient.Close()
 	c.log.Reportf("shutdown complete")
 }
