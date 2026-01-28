@@ -1,6 +1,8 @@
 name: Proxy Docker Dev Release
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - support-sdk-keys-otel
 
 jobs:
   release-docker-dev:
