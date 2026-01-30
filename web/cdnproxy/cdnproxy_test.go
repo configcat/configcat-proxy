@@ -133,7 +133,7 @@ func TestProxy_Get(t *testing.T) {
 				Default: false,
 			},
 		})
-		_ = srv.sdkRegistrar.GetSdkOrNil("test").Refresh()
+		_ = srv.sdkRegistrar.GetSdkOrNil("test").Refresh(t.Context())
 
 		res = httptest.NewRecorder()
 		req = &http.Request{Method: http.MethodGet, Header: map[string][]string{}}

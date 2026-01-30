@@ -27,6 +27,10 @@ func TestConfig_Defaults(t *testing.T) {
 	assert.True(t, conf.Diag.Enabled)
 	assert.True(t, conf.Diag.Status.Enabled)
 	assert.True(t, conf.Diag.Metrics.Enabled)
+	assert.True(t, conf.Diag.Metrics.Prometheus.Enabled)
+	assert.Equal(t, "http", conf.Diag.Metrics.Otlp.Protocol)
+	assert.False(t, conf.Diag.Traces.Enabled)
+	assert.Equal(t, "http", conf.Diag.Traces.Otlp.Protocol)
 
 	assert.True(t, conf.Http.Sse.Enabled)
 	assert.True(t, conf.Http.Sse.CORS.Enabled)
@@ -36,6 +40,9 @@ func TestConfig_Defaults(t *testing.T) {
 
 	assert.True(t, conf.Http.Api.Enabled)
 	assert.True(t, conf.Http.Api.CORS.Enabled)
+
+	assert.True(t, conf.Http.OFREP.Enabled)
+	assert.True(t, conf.Http.OFREP.CORS.Enabled)
 
 	assert.True(t, conf.Http.Webhook.Enabled)
 
@@ -487,6 +494,19 @@ diag:
     enabled: false
   metrics:
     enabled: false
+    prometheus: 
+      enabled: false
+    otlp:
+      enabled: true
+      endpoint: "http://localhost:4317"
+      protocol: "grpc"
+  traces:
+    enabled: false
+    otlp:
+      enabled: true
+      endpoint: "http://localhost:4317"
+      protocol: "grpc"
+    
 `, func(file string) {
 		conf, err := LoadConfigFromFileAndEnvironment(file)
 		require.NoError(t, err)
@@ -495,6 +515,14 @@ diag:
 		assert.Equal(t, 8091, conf.Diag.Port)
 		assert.False(t, conf.Diag.Status.Enabled)
 		assert.False(t, conf.Diag.Metrics.Enabled)
+		assert.False(t, conf.Diag.Metrics.Prometheus.Enabled)
+		assert.True(t, conf.Diag.Metrics.Otlp.Enabled)
+		assert.Equal(t, "grpc", conf.Diag.Metrics.Otlp.Protocol)
+		assert.Equal(t, "http://localhost:4317", conf.Diag.Metrics.Otlp.Endpoint)
+		assert.False(t, conf.Diag.Traces.Enabled)
+		assert.True(t, conf.Diag.Traces.Otlp.Enabled)
+		assert.Equal(t, "grpc", conf.Diag.Traces.Otlp.Protocol)
+		assert.Equal(t, "http://localhost:4317", conf.Diag.Traces.Otlp.Endpoint)
 	})
 }
 
@@ -837,4 +865,37 @@ MK4Li/LGWcksyoF+hbPNXMFCIA==
 		assert.ErrorContains(t, err, "failed to load certificate and key files")
 		assert.Nil(t, tlsConf)
 	})
+}
+
+func TestDiagConfig(t *testing.T) {
+	tests := []struct {
+		conf *DiagConfig
+		expM bool
+		expP bool
+		expD bool
+		expS bool
+	}{
+		{
+			conf: &DiagConfig{Enabled: true}, expM: false, expP: false, expD: false, expS: false,
+		},
+		{
+			conf: &DiagConfig{Enabled: true, Status: StatusConfig{Enabled: true}}, expM: false, expP: false, expD: true, expS: true,
+		},
+		{
+			conf: &DiagConfig{Enabled: true, Metrics: MetricsConfig{Prometheus: PrometheusExporterConfig{Enabled: true}}}, expM: false, expP: false, expD: false, expS: false,
+		},
+		{
+			conf: &DiagConfig{Enabled: true, Metrics: MetricsConfig{Enabled: true, Prometheus: PrometheusExporterConfig{Enabled: true}}}, expM: true, expP: true, expD: true, expS: false,
+		},
+		{
+			conf: &DiagConfig{Enabled: true, Metrics: MetricsConfig{Enabled: true}}, expM: true, expP: false, expD: false, expS: false,
+		},
+	}
+
+	for _, test := range tests {
+		assert.Equal(t, test.expM, test.conf.IsMetricsEnabled())
+		assert.Equal(t, test.expP, test.conf.IsPrometheusExporterEnabled())
+		assert.Equal(t, test.expD, test.conf.ShouldRunDiagServer())
+		assert.Equal(t, test.expS, test.conf.IsStatusEnabled())
+	}
 }

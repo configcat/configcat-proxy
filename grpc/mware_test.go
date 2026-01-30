@@ -18,7 +18,7 @@ func TestDebug_UnaryInterceptor(t *testing.T) {
 	l := log.NewLogger(&errBuf, &out, log.Debug)
 
 	addr := net.IPNet{IP: net.IPv4(127, 0, 0, 1), Mask: net.IPv4Mask(255, 255, 255, 255)}
-	ctx := peer.NewContext(context.Background(), &peer.Peer{Addr: &addr})
+	ctx := peer.NewContext(t.Context(), &peer.Peer{Addr: &addr})
 	md := metadata.Pairs("user-agent", "test-agent")
 	ctx = metadata.NewIncomingContext(ctx, md)
 
@@ -41,7 +41,7 @@ func TestDebug_StreamInterceptor(t *testing.T) {
 	l := log.NewLogger(&errBuf, &out, log.Debug)
 
 	addr := net.IPNet{IP: net.IPv4(127, 0, 0, 1), Mask: net.IPv4Mask(255, 255, 255, 255)}
-	ctx := peer.NewContext(context.Background(), &peer.Peer{Addr: &addr})
+	ctx := peer.NewContext(t.Context(), &peer.Peer{Addr: &addr})
 	md := metadata.Pairs("user-agent", "test-agent")
 	ctx = metadata.NewIncomingContext(ctx, md)
 

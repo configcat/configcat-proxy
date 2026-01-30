@@ -66,7 +66,7 @@ func (s *Server) ServeWebhookSdkId(w http.ResponseWriter, r *http.Request) {
 
 	// Everything OK, refresh
 	s.logger.Infof("webhook request received, refreshing")
-	_ = sdkClient.Refresh()
+	_ = sdkClient.Refresh(r.Context())
 }
 
 func (s *Server) validateSignature(signingKey string, validFor int, r *http.Request) bool {

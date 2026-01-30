@@ -10,6 +10,7 @@ import (
 
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/diag/status"
+	"github.com/configcat/configcat-proxy/diag/telemetry"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/sdk"
 	configcat "github.com/configcat/go-sdk/v9"
@@ -38,8 +39,8 @@ func TestCDNProxy_Integration(t *testing.T) {
 		},
 	})
 
-	reg.RefreshAll()
-	router := NewRouter(reg, nil, status.NewEmptyReporter(), &config.HttpConfig{CdnProxy: config.CdnProxyConfig{Enabled: true, CORS: config.CORSConfig{Enabled: true}, Headers: map[string]string{"h1": "v1"}}}, &config.ProfileConfig{}, log.NewNullLogger())
+	reg.RefreshAll(t.Context())
+	router := NewRouter(reg, telemetry.NewEmptyReporter(), status.NewEmptyReporter(), &config.HttpConfig{CdnProxy: config.CdnProxyConfig{Enabled: true, CORS: config.CORSConfig{Enabled: true}, Headers: map[string]string{"h1": "v1"}}}, &config.ProfileConfig{}, log.NewNullLogger())
 	srv := httptest.NewServer(router)
 	defer srv.Close()
 
@@ -241,10 +242,10 @@ func TestCDNProxy_Get_Body_GZip(t *testing.T) {
 
 func newCDNProxyRouter(t *testing.T, conf config.CdnProxyConfig) *HttpRouter {
 	reg, _, _ := sdk.NewTestRegistrarT(t)
-	return NewRouter(reg, nil, status.NewEmptyReporter(), &config.HttpConfig{CdnProxy: conf}, &config.ProfileConfig{}, log.NewNullLogger())
+	return NewRouter(reg, telemetry.NewEmptyReporter(), status.NewEmptyReporter(), &config.HttpConfig{CdnProxy: conf}, &config.ProfileConfig{}, log.NewNullLogger())
 }
 
 func newCDNProxyRouterWithSdkKey(t *testing.T, conf config.CdnProxyConfig) (*HttpRouter, string) {
 	reg, _, sdkKey := sdk.NewTestRegistrarT(t)
-	return NewRouter(reg, nil, status.NewEmptyReporter(), &config.HttpConfig{CdnProxy: conf}, &config.ProfileConfig{}, log.NewNullLogger()), sdkKey
+	return NewRouter(reg, telemetry.NewEmptyReporter(), status.NewEmptyReporter(), &config.HttpConfig{CdnProxy: conf}, &config.ProfileConfig{}, log.NewNullLogger()), sdkKey
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/alicebob/miniredis/v2"
 	"github.com/configcat/configcat-proxy/config"
 	"github.com/configcat/configcat-proxy/diag/status"
+	"github.com/configcat/configcat-proxy/diag/telemetry"
 	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/internal/utils"
 	"github.com/configcat/configcat-proxy/log"
@@ -331,7 +332,7 @@ func TestAutoRegistrar_Cache_When_Fail(t *testing.T) {
 	_ = cache.Set("configcat-proxy-profile-test-reg", string(autoConfigCacheEntry))
 
 	conf := config.Config{Profile: config.ProfileConfig{Key: "test-reg", PollInterval: 60}}
-	reg, _ := newAutoRegistrar(&conf, nil, status.NewEmptyReporter(), extCache, log.NewNullLogger())
+	reg, _ := newAutoRegistrar(&conf, telemetry.NewEmptyReporter(), status.NewEmptyReporter(), extCache, log.NewNullLogger())
 	defer reg.Close()
 
 	sdkClient := reg.GetSdkOrNil("test").(*client)

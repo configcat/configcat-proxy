@@ -1,72 +1,70 @@
 package sdk
 
 import (
+	"context"
 	"net/http"
 	"net/url"
 
+	"github.com/configcat/configcat-proxy/cache"
 	"github.com/configcat/configcat-proxy/config"
-	"github.com/configcat/configcat-proxy/diag/metrics"
 	"github.com/configcat/configcat-proxy/diag/status"
+	"github.com/configcat/configcat-proxy/diag/telemetry"
 	"github.com/configcat/configcat-proxy/log"
-	"github.com/configcat/configcat-proxy/sdk/store"
 )
 
 type Registrar interface {
 	GetSdkOrNil(sdkId string) Client
 	GetSdkByKeyOrNil(sdkKey string) Client
-	RefreshAll()
+	RefreshAll(ctx context.Context)
 	GetAll() map[string]Client
 	Close()
 }
 
 type manualRegistrar struct {
-	sdkClients map[string]Client
+	sdkClients         map[string]Client
+	sdkClientsBySdkKey map[string]Client
 }
 
-func NewRegistrar(conf *config.Config, metricsReporter metrics.Reporter, statusReporter status.Reporter, externalCache store.Cache, log log.Logger) (Registrar, error) {
+func NewRegistrar(conf *config.Config, telemetryReporter telemetry.Reporter, statusReporter status.Reporter, externalCache cache.ReaderWriter, log log.Logger) (Registrar, error) {
 	if conf.Profile.IsSet() {
-		return newAutoRegistrar(conf, metricsReporter, statusReporter, externalCache, log)
-	} else {
-		return newManualRegistrar(conf, metricsReporter, statusReporter, externalCache, log)
+		return newAutoRegistrar(conf, telemetryReporter, statusReporter, externalCache, log)
 	}
+	return newManualRegistrar(conf, telemetryReporter, statusReporter, externalCache, log)
 }
 
-func newManualRegistrar(conf *config.Config, metricsReporter metrics.Reporter, statusReporter status.Reporter, externalCache store.Cache, log log.Logger) (*manualRegistrar, error) {
+func newManualRegistrar(conf *config.Config, telemetryReporter telemetry.Reporter, statusReporter status.Reporter, externalCache cache.ReaderWriter, log log.Logger) (*manualRegistrar, error) {
 	regLog := log.WithPrefix("sdk-registrar").WithLevel(conf.Profile.Log.GetLevel())
 	transport := buildTransport(&conf.HttpProxy, regLog)
 	sdkClients := make(map[string]Client, len(conf.SDKs))
+	sdkClientsBySdkKey := make(map[string]Client, len(conf.SDKs))
 	for key, sdkConf := range conf.SDKs {
 		statusReporter.RegisterSdk(key, sdkConf)
-		sdkClients[key] = NewClient(&Context{
+		sdkClient := NewClient(&Context{
 			SDKConf:            sdkConf,
-			MetricsReporter:    metricsReporter,
+			TelemetryReporter:  telemetryReporter,
 			StatusReporter:     statusReporter,
 			GlobalDefaultAttrs: conf.DefaultAttrs,
 			SdkId:              key,
 			ExternalCache:      externalCache,
 			Transport:          transport,
 		}, regLog)
+		sdkClients[key] = sdkClient
+		sdkClientsBySdkKey[sdkConf.Key] = sdkClient
 	}
-	return &manualRegistrar{sdkClients: sdkClients}, nil
+	return &manualRegistrar{sdkClients: sdkClients, sdkClientsBySdkKey: sdkClientsBySdkKey}, nil
 }
 
-func (r *manualRegistrar) GetSdkOrNil(sdkId string) Client {
-	return r.sdkClients[sdkId]
+func (r *manualRegistrar) GetSdkOrNil(id string) Client {
+	return r.sdkClients[id]
 }
 
 func (r *manualRegistrar) GetSdkByKeyOrNil(sdkKey string) Client {
-	for _, sdkClient := range r.sdkClients {
-		key1, key2 := sdkClient.SdkKeys()
-		if key1 == sdkKey || (key2 != nil && len(*key2) > 0 && *key2 == sdkKey) {
-			return sdkClient
-		}
-	}
-	return nil
+	return r.sdkClientsBySdkKey[sdkKey]
 }
 
-func (r *manualRegistrar) RefreshAll() {
+func (r *manualRegistrar) RefreshAll(ctx context.Context) {
 	for _, sdkClient := range r.sdkClients {
-		_ = sdkClient.Refresh()
+		_ = sdkClient.Refresh(ctx)
 	}
 }
 

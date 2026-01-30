@@ -26,12 +26,14 @@ service FlagService {
 
 // Feature flag evaluation request message.
 message EvalRequest {
-  // The SDK identifier.
-  string sdk_id = 1;
+  // The SDK identifier. Deprecated, the field `target` should be used instead for SDK identification.
+  string sdk_id = 1 [ deprecated = true ];
   // The feature flag's key to evaluate.
   string key = 2;
   // The user object.
   map<string, UserValue> user = 3;
+  // The evaluation request's target.
+  Target target = 4;
 }
 
 // Feature flag evaluation response message.
@@ -55,8 +57,10 @@ message EvalAllResponse {
 
 // Request message for getting each available feature flag's key.
 message KeysRequest {
-  // The SDK identifier.
-  string sdk_id = 1;
+  // The SDK identifier. Deprecated, the field `target` should be used instead for SDK identification.
+  string sdk_id = 1 [ deprecated = true ];
+  // The request's target.
+  Target target = 2;
 }
 
 // Response message that contains each available feature flag's key.
@@ -67,8 +71,10 @@ message KeysResponse {
 
 // Request message for the given SDK to refresh its evaluation data.
 message RefreshRequest {
-  // The SDK identifier.
-  string sdk_id = 1;
+  // The SDK identifier. Deprecated, the field `target` should be used instead for SDK identification.
+  string sdk_id = 1 [ deprecated = true ];
+  // The request's target.
+  Target target = 2;
 }
 
 // Defines the possible values that can be set in the `user` map.
@@ -78,6 +84,16 @@ message UserValue {
     string string_value = 2;
     google.protobuf.Timestamp time_value = 3;
     StringList string_list_value = 4;
+  }
+}
+
+// Identifies the target of evaluation requests by either an SDK Id or an SDK Key.
+message Target {
+  oneof identifier {
+    // The SDK Id.
+    string sdk_id = 1;
+    // The SDK key.
+    string sdk_key = 2;
   }
 }
 

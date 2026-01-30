@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/configcat/configcat-proxy/config"
-	"github.com/configcat/configcat-proxy/diag/metrics"
 	"github.com/configcat/configcat-proxy/diag/status"
+	"github.com/configcat/configcat-proxy/diag/telemetry"
 	"github.com/configcat/configcat-proxy/grpc/proto"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/sdk"
@@ -33,7 +33,7 @@ type Server struct {
 	errorChannel      chan error
 }
 
-func NewServer(sdkRegistrar sdk.Registrar, metricsReporter metrics.Reporter, statusReporter status.Reporter, conf *config.Config, logger log.Logger, errorChan chan error) (*Server, error) {
+func NewServer(sdkRegistrar sdk.Registrar, telemetryReporter telemetry.Reporter, statusReporter status.Reporter, conf *config.Config, logger log.Logger, errorChan chan error) (*Server, error) {
 	grpcLog := logger.WithLevel(conf.Grpc.Log.GetLevel()).WithPrefix("grpc")
 	opts := make([]grpc.ServerOption, 0)
 	if conf.Tls.Enabled {
@@ -48,9 +48,6 @@ func NewServer(sdkRegistrar sdk.Registrar, metricsReporter metrics.Reporter, sta
 
 	unaryInterceptors := make([]grpc.UnaryServerInterceptor, 0)
 	streamInterceptors := make([]grpc.StreamServerInterceptor, 0)
-	if metricsReporter != nil {
-		unaryInterceptors = append(unaryInterceptors, metrics.GrpcUnaryInterceptor(metricsReporter))
-	}
 	if grpcLog.Level() == log.Debug {
 		unaryInterceptors = append(unaryInterceptors, DebugLogUnaryInterceptor(grpcLog))
 		streamInterceptors = append(streamInterceptors, DebugLogStreamInterceptor(grpcLog))
@@ -65,8 +62,9 @@ func NewServer(sdkRegistrar sdk.Registrar, metricsReporter metrics.Reporter, sta
 		opts = append(opts, grpc.KeepaliveParams(params))
 	}
 
-	flagService := newFlagService(sdkRegistrar, metricsReporter, grpcLog)
+	flagService := newFlagService(sdkRegistrar, telemetryReporter, grpcLog)
 
+	opts = telemetryReporter.InstrumentGrpc(opts)
 	grpcServer := grpc.NewServer(opts...)
 	proto.RegisterFlagServiceServer(grpcServer, flagService)
 	var healthServer *health.Server

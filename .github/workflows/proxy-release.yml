@@ -6,21 +6,9 @@ on:
     
   workflow_dispatch:
 
-permissions:
-  contents: write
-
 jobs:
   test:
     runs-on: ubuntu-latest
-    services:
-      mongodb:
-        image: mongodb/mongodb-community-server
-        ports:
-          - 27017:27017
-      dynamodb:
-        image: amazon/dynamodb-local
-        ports:
-          - 8000:8000
     steps:
     - uses: actions/checkout@v6
     - name: Setup Go
@@ -38,6 +26,8 @@ jobs:
       run: go test -tags testing -race ./...
 
   release-goreleaser:
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     needs: [ test ]
 

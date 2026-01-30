@@ -5,10 +5,11 @@ import (
 	"time"
 
 	"github.com/configcat/configcat-proxy/config"
+	"github.com/configcat/configcat-proxy/diag/telemetry"
 	"github.com/configcat/configcat-proxy/log"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 type mongoDbStore struct {
@@ -22,8 +23,9 @@ type entry struct {
 	Payload []byte
 }
 
-func newMongoDb(ctx context.Context, conf *config.MongoDbConfig, log log.Logger) (External, error) {
+func newMongoDb(ctx context.Context, conf *config.MongoDbConfig, telemetryReporter telemetry.Reporter, log log.Logger) (External, error) {
 	opts := options.Client().ApplyURI(conf.Url)
+	telemetryReporter.InstrumentMongoDb(opts)
 	if conf.Tls.Enabled {
 		t, err := conf.Tls.LoadTlsOptions()
 		if err != nil {
@@ -32,7 +34,7 @@ func newMongoDb(ctx context.Context, conf *config.MongoDbConfig, log log.Logger)
 		}
 		opts.SetTLSConfig(t)
 	}
-	client, err := mongo.Connect(ctx, opts)
+	client, err := mongo.Connect(opts)
 	if err != nil {
 		log.Errorf("couldn't connect to MongoDB: %s", err)
 		return nil, err

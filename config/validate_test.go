@@ -159,4 +159,14 @@ func TestConfig_Validate(t *testing.T) {
 		conf.setDefaults()
 		require.ErrorContains(t, conf.Validate(), "cors: the 'if no watch' field is required when allowed origins regex is set")
 	})
+	t.Run("otlp", func(t *testing.T) {
+		t.Run("metrics protocol", func(t *testing.T) {
+			conf := Config{SDKs: map[string]*SDKConfig{"env1": {Key: "Key"}}, Diag: DiagConfig{Port: 80, Enabled: true, Metrics: MetricsConfig{Enabled: true, Otlp: OtlpExporterConfig{Enabled: true, Protocol: "test"}}}, Http: HttpConfig{Port: 80}}
+			require.ErrorContains(t, conf.Validate(), "diag: invalid otlp protocol test (only 'http', 'https', or 'grpc' allowed)")
+		})
+		t.Run("traces protocol", func(t *testing.T) {
+			conf := Config{SDKs: map[string]*SDKConfig{"env1": {Key: "Key"}}, Diag: DiagConfig{Port: 80, Enabled: true, Traces: TraceConfig{Enabled: true, Otlp: OtlpExporterConfig{Enabled: true, Protocol: "test"}}}, Http: HttpConfig{Port: 80}}
+			require.ErrorContains(t, conf.Validate(), "diag: invalid otlp protocol test (only 'http', 'https', or 'grpc' allowed)")
+		})
+	})
 }

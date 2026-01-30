@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/configcat/configcat-proxy/diag/metrics"
+	"github.com/configcat/configcat-proxy/diag/telemetry"
 	"github.com/configcat/configcat-proxy/grpc/proto"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/model"
@@ -24,9 +24,9 @@ type flagService struct {
 	closed       chan struct{}
 }
 
-func newFlagService(sdkRegistrar sdk.Registrar, metrics metrics.Reporter, log log.Logger) *flagService {
+func newFlagService(sdkRegistrar sdk.Registrar, telemetryReporter telemetry.Reporter, log log.Logger) *flagService {
 	return &flagService{
-		streamServer: stream.NewServer(sdkRegistrar, metrics, log, "grpc"),
+		streamServer: stream.NewServer(sdkRegistrar, telemetryReporter, log, "grpc"),
 		log:          log,
 		sdkRegistrar: sdkRegistrar,
 		closed:       make(chan struct{}),
@@ -133,33 +133,47 @@ func (s *flagService) EvalAllFlags(_ context.Context, req *proto.EvalRequest) (*
 }
 
 func (s *flagService) GetKeys(_ context.Context, req *proto.KeysRequest) (*proto.KeysResponse, error) {
-	if req.GetSdkId() == "" {
-		return nil, status.Error(codes.InvalidArgument, "sdk id parameter missing")
+	sdkId, sdkKey := identifyTarget(req.GetTarget(), req.GetSdkId())
+	if sdkId == "" && sdkKey == "" {
+		return nil, status.Error(codes.InvalidArgument, "either the sdk id or the sdk key parameter must be set")
 	}
 
-	sdkClient := s.sdkRegistrar.GetSdkOrNil(req.GetSdkId())
+	var sdkClient sdk.Client
+	if sdkId != "" {
+		sdkClient = s.sdkRegistrar.GetSdkOrNil(sdkId)
+	} else {
+		sdkClient = s.sdkRegistrar.GetSdkByKeyOrNil(sdkKey)
+	}
+
 	if sdkClient == nil {
-		return nil, status.Error(codes.InvalidArgument, "sdk not found for identifier: '"+req.GetSdkId()+"'")
+		return nil, status.Error(codes.InvalidArgument, "could not identify a configured SDK")
 	}
 	if !sdkClient.IsInValidState() {
-		return nil, status.Error(codes.Internal, "sdk with identifier '"+req.GetSdkId()+"' is in an invalid state; please check the logs for more details")
+		return nil, status.Error(codes.Internal, "requested SDK is in an invalid state; please check the logs for more details")
 	}
 
 	keys := sdkClient.Keys()
 	return &proto.KeysResponse{Keys: keys}, nil
 }
 
-func (s *flagService) Refresh(_ context.Context, req *proto.RefreshRequest) (*emptypb.Empty, error) {
-	if req.GetSdkId() == "" {
-		return nil, status.Error(codes.InvalidArgument, "sdk id parameter missing")
+func (s *flagService) Refresh(ctx context.Context, req *proto.RefreshRequest) (*emptypb.Empty, error) {
+	sdkId, sdkKey := identifyTarget(req.GetTarget(), req.GetSdkId())
+	if sdkId == "" && sdkKey == "" {
+		return nil, status.Error(codes.InvalidArgument, "either the sdk id or the sdk key parameter must be set")
 	}
 
-	sdkClient := s.sdkRegistrar.GetSdkOrNil(req.GetSdkId())
+	var sdkClient sdk.Client
+	if sdkId != "" {
+		sdkClient = s.sdkRegistrar.GetSdkOrNil(sdkId)
+	} else {
+		sdkClient = s.sdkRegistrar.GetSdkByKeyOrNil(sdkKey)
+	}
+
 	if sdkClient == nil {
-		return nil, status.Error(codes.InvalidArgument, "sdk not found for identifier: '"+req.GetSdkId()+"'")
+		return nil, status.Error(codes.InvalidArgument, "could not identify a configured SDK")
 	}
 
-	if err := sdkClient.Refresh(); err != nil {
+	if err := sdkClient.Refresh(ctx); err != nil {
 		return nil, err
 	}
 
@@ -188,23 +202,29 @@ func (s *flagService) Close() {
 }
 
 func (s *flagService) parseEvalStreamRequest(req *proto.EvalRequest, user *model.UserAttrs, checkKey bool) (stream.Stream, error) {
-	if req.GetSdkId() == "" {
-		return nil, status.Error(codes.InvalidArgument, "sdk id parameter missing")
+	sdkId, sdkKey := identifyTarget(req.GetTarget(), req.GetSdkId())
+	if sdkId == "" && sdkKey == "" {
+		return nil, status.Error(codes.InvalidArgument, "either the sdk id or the sdk key parameter must be set")
 	}
 	if checkKey && req.GetKey() == "" {
 		return nil, status.Error(codes.InvalidArgument, "key request parameter missing")
 	}
-
 	if req.GetUser() != nil {
 		*user = getUserAttrs(req.GetUser())
 	}
 
-	str := s.streamServer.GetStreamOrNil(req.GetSdkId())
+	var str stream.Stream
+	if sdkId != "" {
+		str = s.streamServer.GetStreamOrNil(sdkId)
+	} else {
+		str = s.streamServer.GetStreamBySdkKeyOrNil(sdkKey)
+	}
+
 	if str == nil {
-		return nil, status.Error(codes.InvalidArgument, "sdk not found for identifier: '"+req.GetSdkId()+"'")
+		return nil, status.Error(codes.InvalidArgument, "could not identify a configured SDK")
 	}
 	if !str.IsInValidState() {
-		return nil, status.Error(codes.Internal, "sdk with identifier '"+req.GetSdkId()+"' is in an invalid state; please check the logs for more details")
+		return nil, status.Error(codes.Internal, "requested SDK is in an invalid state; please check the logs for more details")
 	}
 	if checkKey && !str.CanEval(req.GetKey()) {
 		return nil, status.Error(codes.InvalidArgument, "feature flag or setting with key '"+req.GetKey()+"' not found")
@@ -213,25 +233,38 @@ func (s *flagService) parseEvalStreamRequest(req *proto.EvalRequest, user *model
 }
 
 func (s *flagService) parseEvalRequest(req *proto.EvalRequest, user *model.UserAttrs, checkKey bool) (sdk.Client, error) {
-	if req.GetSdkId() == "" {
-		return nil, status.Error(codes.InvalidArgument, "sdk id parameter missing")
+	sdkId, sdkKey := identifyTarget(req.GetTarget(), req.GetSdkId())
+	if sdkId == "" && sdkKey == "" {
+		return nil, status.Error(codes.InvalidArgument, "either the sdk id or the sdk key parameter must be set")
 	}
 	if checkKey && req.GetKey() == "" {
 		return nil, status.Error(codes.InvalidArgument, "key request parameter missing")
 	}
-
 	if req.GetUser() != nil {
 		*user = getUserAttrs(req.GetUser())
 	}
 
-	sdkClient := s.sdkRegistrar.GetSdkOrNil(req.GetSdkId())
+	var sdkClient sdk.Client
+	if sdkId != "" {
+		sdkClient = s.sdkRegistrar.GetSdkOrNil(sdkId)
+	} else {
+		sdkClient = s.sdkRegistrar.GetSdkByKeyOrNil(sdkKey)
+	}
+
 	if sdkClient == nil {
-		return nil, status.Error(codes.InvalidArgument, "sdk not found for identifier: '"+req.GetSdkId()+"'")
+		return nil, status.Error(codes.InvalidArgument, "could not identify a configured SDK")
 	}
 	if !sdkClient.IsInValidState() {
-		return nil, status.Error(codes.Internal, "sdk with identifier '"+req.GetSdkId()+"' is in an invalid state; please check the logs for more details")
+		return nil, status.Error(codes.Internal, "requested SDK is in an invalid state; please check the logs for more details")
 	}
 	return sdkClient, nil
+}
+
+func identifyTarget(target *proto.Target, sdkId string) (string, string) {
+	if target == nil {
+		return sdkId, ""
+	}
+	return target.GetSdkId(), target.GetSdkKey()
 }
 
 func getUserAttrs(attrs map[string]*proto.UserValue) model.UserAttrs {

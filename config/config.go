@@ -24,9 +24,9 @@ const (
 
 	DefaultWebhookSignatureValidFor = 300
 
-	defaultSdkPollInterval     = 60
-	defaultCachePollInterval   = 5
-	defaultAutoSdkPollInterval = 300
+	DefaultSdkPollInterval     = 60
+	DefaultCachePollInterval   = 5
+	DefaultAutoSdkPollInterval = 300
 )
 
 var allowedLogLevels = map[string]log.Level{
@@ -239,11 +239,29 @@ type DiagConfig struct {
 	Port    int           `yaml:"port"`
 	Enabled bool          `yaml:"enabled"`
 	Metrics MetricsConfig `yaml:"metrics"`
+	Traces  TraceConfig   `yaml:"traces"`
 	Status  StatusConfig  `yaml:"status"`
 }
 
 type MetricsConfig struct {
+	Enabled    bool                     `yaml:"enabled"`
+	Prometheus PrometheusExporterConfig `yaml:"prometheus"`
+	Otlp       OtlpExporterConfig       `yaml:"otlp"`
+}
+
+type TraceConfig struct {
+	Enabled bool               `yaml:"enabled"`
+	Otlp    OtlpExporterConfig `yaml:"otlp"`
+}
+
+type PrometheusExporterConfig struct {
 	Enabled bool `yaml:"enabled"`
+}
+
+type OtlpExporterConfig struct {
+	Enabled  bool `yaml:"enabled"`
+	Protocol string
+	Endpoint string
 }
 
 type StatusConfig struct {
@@ -322,9 +340,12 @@ func (c *Config) setDefaults() {
 	c.Grpc.ServerReflectionEnabled = false
 
 	c.Diag.Enabled = true
+	c.Diag.Port = 8051
 	c.Diag.Status.Enabled = true
 	c.Diag.Metrics.Enabled = true
-	c.Diag.Port = 8051
+	c.Diag.Metrics.Prometheus.Enabled = true
+	c.Diag.Metrics.Otlp.Protocol = "http"
+	c.Diag.Traces.Otlp.Protocol = "http"
 
 	c.Http.Sse.Enabled = true
 	c.Http.Sse.CORS.Enabled = true
@@ -335,7 +356,7 @@ func (c *Config) setDefaults() {
 	c.Http.Api.Enabled = true
 	c.Http.Api.CORS.Enabled = true
 
-	c.Http.OFREP.Enabled = false
+	c.Http.OFREP.Enabled = true
 	c.Http.OFREP.CORS.Enabled = true
 
 	c.Http.Webhook.Enabled = true
@@ -362,20 +383,20 @@ func (c *Config) fixupDefaults() {
 			sdk.WebhookSignatureValidFor = DefaultWebhookSignatureValidFor
 		}
 		if sdk.PollInterval == 0 {
-			sdk.PollInterval = defaultSdkPollInterval
+			sdk.PollInterval = DefaultSdkPollInterval
 		}
 		if sdk.Offline.Local.PollInterval == 0 {
-			sdk.Offline.Local.PollInterval = defaultCachePollInterval
+			sdk.Offline.Local.PollInterval = DefaultCachePollInterval
 		}
 		if sdk.Offline.CachePollInterval == 0 {
-			sdk.Offline.CachePollInterval = defaultCachePollInterval
+			sdk.Offline.CachePollInterval = DefaultCachePollInterval
 		}
 	}
 	if c.GlobalOfflineConfig.CachePollInterval == 0 {
-		c.GlobalOfflineConfig.CachePollInterval = defaultCachePollInterval
+		c.GlobalOfflineConfig.CachePollInterval = DefaultCachePollInterval
 	}
 	if c.Profile.PollInterval == 0 {
-		c.Profile.PollInterval = defaultAutoSdkPollInterval
+		c.Profile.PollInterval = DefaultAutoSdkPollInterval
 	}
 	if c.Profile.WebhookSignatureValidFor == 0 {
 		c.Profile.WebhookSignatureValidFor = DefaultWebhookSignatureValidFor
@@ -502,6 +523,26 @@ func (c *CacheConfig) IsSet() bool {
 
 func (a *ProfileConfig) IsSet() bool {
 	return a.Key != ""
+}
+
+func (d *DiagConfig) IsMetricsEnabled() bool {
+	return d.Enabled && d.Metrics.Enabled
+}
+
+func (d *DiagConfig) IsTracesEnabled() bool {
+	return d.Enabled && d.Traces.Enabled
+}
+
+func (d *DiagConfig) IsStatusEnabled() bool {
+	return d.Enabled && d.Status.Enabled
+}
+
+func (d *DiagConfig) IsPrometheusExporterEnabled() bool {
+	return d.IsMetricsEnabled() && d.Metrics.Prometheus.Enabled
+}
+
+func (d *DiagConfig) ShouldRunDiagServer() bool {
+	return d.Enabled && (d.IsPrometheusExporterEnabled() || d.Status.Enabled)
 }
 
 func (t *TlsConfig) LoadTlsOptions() (*tls.Config, error) {

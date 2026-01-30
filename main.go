@@ -1,23 +1,20 @@
 package main
 
 import (
-	"context"
 	"flag"
+	"github.com/configcat/configcat-proxy/cache"
+	"github.com/configcat/configcat-proxy/config"
+	"github.com/configcat/configcat-proxy/diag"
+	"github.com/configcat/configcat-proxy/diag/status"
+	"github.com/configcat/configcat-proxy/diag/telemetry"
+	"github.com/configcat/configcat-proxy/grpc"
+	"github.com/configcat/configcat-proxy/log"
+	"github.com/configcat/configcat-proxy/sdk"
+	"github.com/configcat/configcat-proxy/web"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
-	"time"
-
-	"github.com/configcat/configcat-proxy/config"
-	"github.com/configcat/configcat-proxy/diag"
-	"github.com/configcat/configcat-proxy/diag/metrics"
-	"github.com/configcat/configcat-proxy/diag/status"
-	"github.com/configcat/configcat-proxy/grpc"
-	"github.com/configcat/configcat-proxy/log"
-	"github.com/configcat/configcat-proxy/sdk"
-	"github.com/configcat/configcat-proxy/sdk/store/cache"
-	"github.com/configcat/configcat-proxy/web"
 )
 
 const (
@@ -53,35 +50,32 @@ func run(closeSignal chan os.Signal) int {
 	logger = logger.WithLevel(conf.Log.GetLevel())
 
 	errorChan := make(chan error)
+	shutdownFuncs := make([]func(), 0)
 
 	// in the future we might implement an evaluation statistics reporter
 	// var evalReporter statistics.Reporter
 
 	statusReporter := status.NewReporter(&conf.Cache)
-
-	var metricsReporter metrics.Reporter
-	if conf.Diag.Metrics.Enabled {
-		metricsReporter = metrics.NewReporter()
-	}
+	telemetryReporter := telemetry.NewReporter(&conf.Diag, sdk.Version(), logger)
+	shutdownFuncs = append(shutdownFuncs, func() { telemetryReporter.Shutdown() })
 
 	var diagServer *diag.Server
-	if conf.Diag.Enabled && (conf.Diag.Metrics.Enabled || conf.Diag.Status.Enabled) {
-		diagServer = diag.NewServer(&conf.Diag, statusReporter, metricsReporter, logger, errorChan)
+	if conf.Diag.ShouldRunDiagServer() {
+		diagServer = diag.NewServer(&conf.Diag, telemetryReporter, statusReporter, logger, errorChan)
 		diagServer.Listen()
+		shutdownFuncs = append(shutdownFuncs, func() { diagServer.Shutdown() })
 	}
 
 	var externalCache cache.External
 	if conf.Cache.IsSet() {
-		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second) // give 15 sec to spin up the cache connection
-		defer cancel()
-
-		externalCache, err = cache.SetupExternalCache(ctx, &conf.Cache, logger)
+		externalCache, err = cache.SetupExternalCache(&conf.Cache, telemetryReporter, logger)
 		if err != nil {
 			return exitFailure
 		}
+		shutdownFuncs = append(shutdownFuncs, func() { externalCache.Shutdown() })
 	}
 
-	sdkRegistrar, err := sdk.NewRegistrar(&conf, metricsReporter, statusReporter, externalCache, logger)
+	sdkRegistrar, err := sdk.NewRegistrar(&conf, telemetryReporter, statusReporter, externalCache, logger)
 	if err != nil {
 		return exitFailure
 	}
@@ -89,21 +83,23 @@ func run(closeSignal chan os.Signal) int {
 	var httpServer *web.Server
 	var router *web.HttpRouter
 	if conf.Http.Enabled {
-		router = web.NewRouter(sdkRegistrar, metricsReporter, statusReporter, &conf.Http, &conf.Profile, logger)
+		router = web.NewRouter(sdkRegistrar, telemetryReporter, statusReporter, &conf.Http, &conf.Profile, logger)
 		httpServer, err = web.NewServer(router, logger, &conf, errorChan)
 		if err != nil {
 			return exitFailure
 		}
 		httpServer.Listen()
+		shutdownFuncs = append(shutdownFuncs, func() { httpServer.Shutdown() })
 	}
 
 	var grpcServer *grpc.Server
 	if conf.Grpc.Enabled {
-		grpcServer, err = grpc.NewServer(sdkRegistrar, metricsReporter, statusReporter, &conf, logger, errorChan)
+		grpcServer, err = grpc.NewServer(sdkRegistrar, telemetryReporter, statusReporter, &conf, logger, errorChan)
 		if err != nil {
 			return exitFailure
 		}
 		grpcServer.Listen()
+		shutdownFuncs = append(shutdownFuncs, func() { grpcServer.Shutdown() })
 	}
 
 	for {
@@ -116,44 +112,13 @@ func run(closeSignal chan os.Signal) int {
 				router.Close()
 			}
 
-			shutDownCount := 0
-			if externalCache != nil {
-				shutDownCount++
-			}
-			if httpServer != nil {
-				shutDownCount++
-			}
-			if grpcServer != nil {
-				shutDownCount++
-			}
-			if diagServer != nil {
-				shutDownCount++
-			}
 			wg := sync.WaitGroup{}
-			wg.Add(shutDownCount)
-			if externalCache != nil {
-				go func() {
-					externalCache.Shutdown()
+			wg.Add(len(shutdownFuncs))
+			for _, fn := range shutdownFuncs {
+				go func(f func()) {
+					f()
 					wg.Done()
-				}()
-			}
-			if httpServer != nil {
-				go func() {
-					httpServer.Shutdown()
-					wg.Done()
-				}()
-			}
-			if diagServer != nil {
-				go func() {
-					diagServer.Shutdown()
-					wg.Done()
-				}()
-			}
-			if grpcServer != nil {
-				go func() {
-					grpcServer.Shutdown()
-					wg.Done()
-				}()
+				}(fn)
 			}
 			wg.Wait()
 			return exitOk

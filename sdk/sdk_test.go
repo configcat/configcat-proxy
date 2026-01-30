@@ -1,7 +1,6 @@
 package sdk
 
 import (
-	"context"
 	"crypto/sha1"
 	"fmt"
 	"net/http/httptest"
@@ -9,14 +8,14 @@ import (
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
+	"github.com/configcat/configcat-proxy/cache"
 	"github.com/configcat/configcat-proxy/config"
+	"github.com/configcat/configcat-proxy/diag/telemetry"
 	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/internal/utils"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/model"
 	"github.com/configcat/configcat-proxy/sdk/statistics"
-	"github.com/configcat/configcat-proxy/sdk/store"
-	"github.com/configcat/configcat-proxy/sdk/store/cache"
 	configcat "github.com/configcat/go-sdk/v9"
 	"github.com/configcat/go-sdk/v9/configcatcache"
 	"github.com/configcat/go-sdk/v9/configcattest"
@@ -76,9 +75,6 @@ func TestSdk_Ready_Online(t *testing.T) {
 	ctx := NewTestSdkContext(&config.SDKConfig{BaseUrl: srv.URL, Key: key}, nil)
 	client := NewClient(ctx, log.NewNullLogger())
 	defer client.Close()
-	testutils.WithTimeout(2*time.Second, func() {
-		<-client.Ready()
-	})
 	j := client.GetCachedJson()
 	assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true,"s":null,"i":null,"d":null},"t":0,"r":[],"p":null}},"s":null,"p":null}`, string(j.ConfigJson))
 	assert.Equal(t, fmt.Sprintf("%x", sha1.Sum(j.ConfigJson)), j.ETag)
@@ -89,9 +85,6 @@ func TestSdk_Ready_Offline(t *testing.T) {
 		ctx := NewTestSdkContext(&config.SDKConfig{Key: "key", Offline: config.OfflineConfig{Enabled: true, Local: config.LocalConfig{FilePath: path}}}, nil)
 		client := NewClient(ctx, log.NewNullLogger())
 		defer client.Close()
-		testutils.WithTimeout(2*time.Second, func() {
-			<-client.Ready()
-		})
 		j := client.GetCachedJson()
 		assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true,"s":null,"i":null,"d":null},"t":0,"r":null,"p":null}},"s":null,"p":null}`, string(j.ConfigJson))
 		assert.Equal(t, utils.GenerateEtag(j.ConfigJson), j.ETag)
@@ -126,7 +119,7 @@ func TestSdk_Signal_Refresh(t *testing.T) {
 			Default: false,
 		},
 	})
-	_ = client.Refresh()
+	_ = client.Refresh(t.Context())
 	testutils.WithTimeout(2*time.Second, func() {
 		<-sub
 	})
@@ -499,8 +492,8 @@ func TestSdk_Cache_Rebuild(t *testing.T) {
 	assert.Equal(t, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":true,"s":null,"i":null,"d":null},"t":0,"r":[],"p":null}},"s":null,"p":null}`, string(j))
 }
 
-func newRedisCache(addr string) store.Cache {
-	c, _ := cache.SetupExternalCache(context.Background(), &config.CacheConfig{Redis: config.RedisConfig{Enabled: true, Addresses: []string{addr}}}, log.NewNullLogger())
+func newRedisCache(addr string) cache.ReaderWriter {
+	c, _ := cache.SetupExternalCache(&config.CacheConfig{Redis: config.RedisConfig{Enabled: true, Addresses: []string{addr}}}, telemetry.NewEmptyReporter(), log.NewNullLogger())
 	return c
 }
 

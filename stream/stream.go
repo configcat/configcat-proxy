@@ -4,7 +4,7 @@ import (
 	"hash/maphash"
 	"sync/atomic"
 
-	"github.com/configcat/configcat-proxy/diag/metrics"
+	"github.com/configcat/configcat-proxy/diag/telemetry"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/model"
 	"github.com/configcat/configcat-proxy/sdk"
@@ -16,6 +16,7 @@ type Stream interface {
 	CreateConnection(key string, user model.UserAttrs) *Connection
 	CloseConnection(conn *Connection, key string)
 	ResetSdk(client sdk.Client)
+	SdkKeys() (string, *string)
 	Close()
 	Closed() <-chan struct{}
 }
@@ -32,33 +33,33 @@ type connClosed struct {
 }
 
 type stream struct {
-	sdkClient        atomic.Value
-	sdkConfigChanged chan struct{}
-	stop             chan struct{}
-	log              log.Logger
-	serverType       string
-	sdkId            string
-	metrics          metrics.Reporter
-	channels         map[string]map[uint64]channel
-	connEstablished  chan *connEstablished
-	connClosed       chan *connClosed
-	connCount        int64
-	seed             maphash.Seed
+	sdkClient         atomic.Value
+	sdkConfigChanged  chan struct{}
+	stop              chan struct{}
+	log               log.Logger
+	serverType        string
+	sdkId             string
+	telemetryReporter telemetry.Reporter
+	channels          map[string]map[uint64]channel
+	connEstablished   chan *connEstablished
+	connClosed        chan *connClosed
+	connCount         int64
+	seed              maphash.Seed
 }
 
-func NewStream(sdkId string, sdkClient sdk.Client, metrics metrics.Reporter, log log.Logger, serverType string) Stream {
+func NewStream(sdkId string, sdkClient sdk.Client, telemetryReporter telemetry.Reporter, log log.Logger, serverType string) Stream {
 	s := &stream{
-		channels:         make(map[string]map[uint64]channel),
-		connEstablished:  make(chan *connEstablished),
-		connClosed:       make(chan *connClosed),
-		stop:             make(chan struct{}),
-		sdkConfigChanged: make(chan struct{}, 1),
-		sdkClient:        atomic.Value{},
-		log:              log.WithPrefix("stream-" + sdkId),
-		serverType:       serverType,
-		sdkId:            sdkId,
-		metrics:          metrics,
-		seed:             maphash.MakeSeed(),
+		channels:          make(map[string]map[uint64]channel),
+		connEstablished:   make(chan *connEstablished),
+		connClosed:        make(chan *connClosed),
+		stop:              make(chan struct{}),
+		sdkConfigChanged:  make(chan struct{}, 1),
+		sdkClient:         atomic.Value{},
+		log:               log.WithPrefix("stream-" + sdkId),
+		serverType:        serverType,
+		sdkId:             sdkId,
+		telemetryReporter: telemetryReporter,
+		seed:              maphash.MakeSeed(),
 	}
 	s.sdkClient.Store(sdkClient)
 	sdkClient.Subscribe(s.sdkConfigChanged)
@@ -73,17 +74,13 @@ func (s *stream) run() {
 			s.addConnection(established)
 			s.connCount++
 			s.log.Debugf("#%s: connection established, all connections: %d", established.key, s.connCount)
-			if s.metrics != nil {
-				s.metrics.IncrementConnection(s.sdkId, s.serverType, established.key)
-			}
+			s.telemetryReporter.RecordConnections(s.connCount, s.sdkId, s.serverType, established.key)
 
 		case closed := <-s.connClosed:
 			s.removeConnection(closed)
 			s.connCount--
 			s.log.Debugf("#%s: connection closed, all connections: %d", closed.key, s.connCount)
-			if s.metrics != nil {
-				s.metrics.DecrementConnection(s.sdkId, s.serverType, closed.key)
-			}
+			s.telemetryReporter.RecordConnections(s.connCount, s.sdkId, s.serverType, closed.key)
 
 		case <-s.sdkConfigChanged:
 			s.notifyConnections()
@@ -95,13 +92,11 @@ func (s *stream) run() {
 }
 
 func (s *stream) CanEval(key string) bool {
-	keys := s.sdkClient.Load().(sdk.Client).Keys()
-	for _, k := range keys {
-		if k == key {
-			return true
-		}
-	}
-	return false
+	return s.sdkClient.Load().(sdk.Client).HasKey(key)
+}
+
+func (s *stream) SdkKeys() (string, *string) {
+	return s.sdkClient.Load().(sdk.Client).SdkKeys()
 }
 
 func (s *stream) IsInValidState() bool {
@@ -167,9 +162,7 @@ func (s *stream) addConnection(established *connEstablished) {
 	}
 	ch.AddConnection(established.conn)
 	established.conn.receive <- ch.LastPayload()
-	if s.metrics != nil {
-		s.metrics.AddSentMessageCount(1, s.sdkId, s.serverType, established.key)
-	}
+	s.telemetryReporter.AddSentMessageCount(1, s.sdkId, s.serverType, established.key)
 }
 
 func (s *stream) removeConnection(closed *connClosed) {
@@ -192,13 +185,12 @@ func (s *stream) removeConnection(closed *connClosed) {
 
 func (s *stream) notifyConnections() {
 	sent := 0
+	sdkClient := s.sdkClient.Load().(sdk.Client)
 	for key, bucket := range s.channels {
 		for _, ch := range bucket {
-			count := ch.Notify(s.sdkClient.Load().(sdk.Client), key)
+			count := ch.Notify(sdkClient, key)
 			sent += count
-			if s.metrics != nil {
-				s.metrics.AddSentMessageCount(count, s.sdkId, s.serverType, key)
-			}
+			s.telemetryReporter.AddSentMessageCount(count, s.sdkId, s.serverType, key)
 		}
 	}
 	if sent > 0 {

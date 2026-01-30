@@ -61,6 +61,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -75,7 +76,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": 0
               },
               {
                 "color": "red",
@@ -107,7 +109,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.0.2",
+      "pluginVersion": "12.2.0",
       "targets": [
         {
           "datasource": {
@@ -158,6 +160,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -172,7 +175,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": 0
               },
               {
                 "color": "red",
@@ -203,7 +207,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.0.2",
+      "pluginVersion": "12.2.0",
       "targets": [
         {
           "datasource": {
@@ -255,6 +259,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -270,7 +275,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": 0
               },
               {
                 "color": "red",
@@ -302,7 +308,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.0.2",
+      "pluginVersion": "12.2.0",
       "targets": [
         {
           "datasource": {
@@ -334,7 +340,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": 0
               }
             ]
           },
@@ -366,7 +373,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "12.0.2",
+      "pluginVersion": "12.2.0",
       "targets": [
         {
           "datasource": {
@@ -417,6 +424,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -432,7 +440,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": 0
               },
               {
                 "color": "red",
@@ -464,7 +473,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.0.2",
+      "pluginVersion": "12.2.0",
       "targets": [
         {
           "datasource": {
@@ -516,6 +525,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -531,7 +541,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": 0
               },
               {
                 "color": "red",
@@ -563,7 +574,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.0.2",
+      "pluginVersion": "12.2.0",
       "targets": [
         {
           "datasource": {
@@ -615,6 +626,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -630,7 +642,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": 0
               },
               {
                 "color": "red",
@@ -662,7 +675,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.0.2",
+      "pluginVersion": "12.2.0",
       "targets": [
         {
           "datasource": {
@@ -714,6 +727,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -729,7 +743,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": 0
               },
               {
                 "color": "red",
@@ -739,7 +754,32 @@
           },
           "unit": "none"
         },
-        "overrides": []
+        "overrides": [
+          {
+            "__systemRef": "hideSeriesFrom",
+            "matcher": {
+              "id": "byNames",
+              "options": {
+                "mode": "exclude",
+                "names": [
+                  "/api/sdk-342/keys - GET - 200"
+                ],
+                "prefix": "All except:",
+                "readOnly": true
+              }
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": false,
+                  "tooltip": true,
+                  "viz": true
+                }
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 6,
@@ -762,16 +802,16 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.0.2",
+      "pluginVersion": "12.2.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "editorMode": "code",
-          "expr": "sum(increase(configcat_http_request_duration_seconds_count{instance=\"configcat_proxy:8051\"}[$__rate_interval])) by (route, method, status) > 0",
-          "legendFormat": "{{route}} - {{method}} - {{status}}",
+          "editorMode": "builder",
+          "expr": "sum by(http_route, http_request_method, http_response_status_code) (increase(configcat_http_server_request_duration_seconds_count{instance=\"configcat_proxy:8051\"}[$__rate_interval])) > 0",
+          "legendFormat": "{{http_route}} - {{http_request_method}} - {{http_response_status_code}}",
           "range": true,
           "refId": "A"
         }
@@ -813,6 +853,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -827,7 +868,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": 0
               },
               {
                 "color": "red",
@@ -859,15 +901,15 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.0.2",
+      "pluginVersion": "12.2.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "editorMode": "code",
-          "expr": "histogram_quantile(0.99, sum by(le, route) (rate(configcat_http_request_duration_seconds_bucket{instance=\"configcat_proxy:8051\"}[$__rate_interval]))) > 0",
+          "editorMode": "builder",
+          "expr": "histogram_quantile(0.99, sum by(le, http_route) (rate(configcat_http_server_request_duration_seconds_bucket{instance=\"configcat_proxy:8051\"}[$__rate_interval]))) > 0",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -910,6 +952,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -925,7 +968,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": 0
               },
               {
                 "color": "red",
@@ -958,16 +1002,16 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.0.2",
+      "pluginVersion": "12.2.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "editorMode": "code",
-          "expr": "sum(increase(configcat_grpc_rpc_duration_seconds_count{instance=\"configcat_proxy:8051\"}[$__rate_interval])) by (method, code) > 0",
-          "legendFormat": "{{method}} - {{code}}",
+          "editorMode": "builder",
+          "expr": "sum by(rpc_method, rpc_grpc_status_code) (increase(configcat_rpc_server_duration_milliseconds_count{instance=\"configcat_proxy:8051\"}[$__rate_interval])) > 0",
+          "legendFormat": "{{rpc_method}} - {{rpc_grpc_status_code}}",
           "range": true,
           "refId": "A"
         }
@@ -1009,6 +1053,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -1023,7 +1068,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": 0
               },
               {
                 "color": "red",
@@ -1031,7 +1077,7 @@
               }
             ]
           },
-          "unit": "s"
+          "unit": "ms"
         },
         "overrides": []
       },
@@ -1055,15 +1101,15 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.0.2",
+      "pluginVersion": "12.2.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "editorMode": "code",
-          "expr": "histogram_quantile(0.99, sum by(le, method) (rate(configcat_grpc_rpc_duration_seconds_bucket{instance=\"configcat_proxy:8051\"}[$__rate_interval]))) > 0",
+          "editorMode": "builder",
+          "expr": "histogram_quantile(0.99, sum by(le, rpc_method) (rate(configcat_rpc_server_duration_milliseconds_bucket{instance=\"configcat_proxy:8051\"}[$__rate_interval]))) > 0",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -1106,6 +1152,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -1121,7 +1168,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": 0
               },
               {
                 "color": "red",
@@ -1154,17 +1202,17 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.0.2",
+      "pluginVersion": "12.2.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "editorMode": "code",
-          "expr": "sum(increase(configcat_sdk_http_request_duration_seconds_count{instance=\"configcat_proxy:8051\"}[$__rate_interval])) by (sdk, status)",
+          "editorMode": "builder",
+          "expr": "sum by(configcat_sdk_id, http_response_status_code) (increase(configcat_http_client_request_duration_seconds_count{instance=\"configcat_proxy:8051\", configcat_source=\"sdk\"}[$__rate_interval]))",
           "interval": "",
-          "legendFormat": "{{sdk}} - {{status}}",
+          "legendFormat": "{{configcat_sdk_id}} - {{http_response_status_code}}",
           "range": true,
           "refId": "A"
         }
@@ -1206,6 +1254,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -1220,7 +1269,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": 0
               },
               {
                 "color": "red",
@@ -1253,15 +1303,15 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.0.2",
+      "pluginVersion": "12.2.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "editorMode": "code",
-          "expr": "histogram_quantile(0.99, sum by(le, sdk) (rate(configcat_sdk_http_request_duration_seconds_bucket{instance=\"configcat_proxy:8051\"}[$__rate_interval])))",
+          "editorMode": "builder",
+          "expr": "histogram_quantile(0.99, sum by(le, configcat_sdk_id) (rate(configcat_http_client_request_duration_seconds_bucket{instance=\"configcat_proxy:8051\", configcat_source=\"sdk\"}[$__rate_interval])))",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -1304,6 +1354,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -1319,7 +1370,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": 0
               },
               {
                 "color": "red",
@@ -1352,17 +1404,17 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.0.2",
+      "pluginVersion": "12.2.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "editorMode": "code",
-          "expr": "sum(increase(configcat_profile_http_request_duration_seconds_count{instance=\"configcat_proxy:8051\"}[$__rate_interval])) by (key, status)",
+          "editorMode": "builder",
+          "expr": "sum by(http_route, http_response_status_code) (increase(configcat_http_client_request_duration_seconds_count{instance=\"configcat_proxy:8051\", configcat_source=\"profile\"}[$__rate_interval]))",
           "interval": "",
-          "legendFormat": "{{key}} - {{status}}",
+          "legendFormat": "{{http_route}} - {{http_response_status_code}}",
           "range": true,
           "refId": "A"
         }
@@ -1404,6 +1456,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -1418,7 +1471,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": 0
               },
               {
                 "color": "red",
@@ -1451,16 +1505,16 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.0.2",
+      "pluginVersion": "12.2.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "editorMode": "code",
-          "expr": "histogram_quantile(0.99, sum by(le, key) (rate(configcat_profile_http_request_duration_seconds_bucket{instance=\"configcat_proxy:8051\"}[$__rate_interval])))",
-          "legendFormat": "__auto",
+          "editorMode": "builder",
+          "expr": "histogram_quantile(0.99, sum by(le, http_route, http_response_status_code) (rate(configcat_http_client_request_duration_seconds_bucket{instance=\"configcat_proxy:8051\", configcat_source=\"profile\"}[$__rate_interval])))",
+          "legendFormat": "{{http_route}} - {{http_response_status_code}}",
           "range": true,
           "refId": "A"
         }
@@ -1502,6 +1556,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -1516,7 +1571,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": 0
               },
               {
                 "color": "red",
@@ -1548,7 +1604,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.0.2",
+      "pluginVersion": "12.2.0",
       "targets": [
         {
           "datasource": {
@@ -1599,6 +1655,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -1613,7 +1670,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": 0
               },
               {
                 "color": "red",
@@ -1646,7 +1704,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.0.2",
+      "pluginVersion": "12.2.0",
       "targets": [
         {
           "datasource": {
@@ -1697,6 +1755,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -1711,7 +1770,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": 0
               },
               {
                 "color": "red",
@@ -1743,7 +1803,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.0.2",
+      "pluginVersion": "12.2.0",
       "targets": [
         {
           "datasource": {
@@ -1763,7 +1823,7 @@
   ],
   "preload": false,
   "refresh": "5s",
-  "schemaVersion": 41,
+  "schemaVersion": 42,
   "tags": [],
   "templating": {
     "list": []
@@ -1776,5 +1836,5 @@
   "timezone": "",
   "title": "Proxy",
   "uid": "s3Vj4B14k",
-  "version": 2
+  "version": 1
 }

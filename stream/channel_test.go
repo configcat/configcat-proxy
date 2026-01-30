@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/configcat/configcat-proxy/diag/telemetry"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/model"
 	"github.com/configcat/configcat-proxy/sdk"
@@ -17,7 +18,7 @@ import (
 func TestStream_Connections(t *testing.T) {
 	clients, _, _ := sdk.NewTestSdkClient(t)
 
-	str := NewStream("test", clients["test"], nil, log.NewNullLogger(), "test").(*stream)
+	str := NewStream("test", clients["test"], telemetry.NewEmptyReporter(), log.NewNullLogger(), "test").(*stream)
 	defer str.Close()
 
 	user1 := model.UserAttrs{"id": "u1"}
@@ -70,7 +71,7 @@ func TestStream_Connections(t *testing.T) {
 func TestStream_Close(t *testing.T) {
 	clients, _, _ := sdk.NewTestSdkClient(t)
 
-	str := NewStream("test", clients["test"], nil, log.NewNullLogger(), "test").(*stream)
+	str := NewStream("test", clients["test"], telemetry.NewEmptyReporter(), log.NewNullLogger(), "test").(*stream)
 
 	user1 := model.UserAttrs{"id": "u1"}
 	user2 := model.UserAttrs{"id": "u2"}
@@ -95,7 +96,7 @@ func TestStream_Close(t *testing.T) {
 func TestStream_Collision(t *testing.T) {
 	clients, _, _ := sdk.NewTestSdkClient(t)
 
-	str := NewStream("test", clients["test"], nil, log.NewNullLogger(), "test").(*stream)
+	str := NewStream("test", clients["test"], telemetry.NewEmptyReporter(), log.NewNullLogger(), "test").(*stream)
 
 	iter := 500000
 	wg := &sync.WaitGroup{}

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/configcat/configcat-proxy/config"
+	"github.com/configcat/configcat-proxy/diag/telemetry"
 	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/model"
@@ -31,7 +32,7 @@ func TestStreamServer_Load(t *testing.T) {
 	reg := sdk.NewTestRegistrar(&config.SDKConfig{BaseUrl: srv.URL, Key: key}, nil)
 	defer reg.Close()
 
-	strServer := NewServer(reg, nil, log.NewNullLogger(), "test").(*server)
+	strServer := NewServer(reg, telemetry.NewEmptyReporter(), log.NewNullLogger(), "test").(*server)
 	defer strServer.Close()
 
 	t.Run("init", func(t *testing.T) {
@@ -48,7 +49,7 @@ func TestStreamServer_Load(t *testing.T) {
 		flags["flag"+strconv.Itoa(i)] = &configcattest.Flag{Default: true}
 	}
 	_ = h.SetFlags(key, flags)
-	_ = reg.GetSdkOrNil("test").Refresh()
+	_ = reg.GetSdkOrNil("test").Refresh(t.Context())
 	assert.Equal(t, connCount, len(strServer.GetStreamOrNil("test").(*stream).channels[AllFlagsDiscriminator][0].(*allFlagsChannel).connections))
 	t.Run("check refresh", func(t *testing.T) {
 		checkConnections(t, strServer)

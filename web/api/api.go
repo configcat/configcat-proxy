@@ -14,6 +14,9 @@ import (
 	configcat "github.com/configcat/go-sdk/v9"
 )
 
+const SdkKeyHeader = "X-ConfigCat-SdkKey"
+const SdkIdPathVariable = "sdkId"
+
 type keysResponse struct {
 	Keys []string `json:"keys"`
 }
@@ -103,7 +106,7 @@ func (s *Server) Refresh(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), code)
 		return
 	}
-	err = sdkClient.Refresh()
+	err = sdkClient.Refresh(r.Context())
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -131,16 +134,22 @@ func (s *Server) parseRequest(r *http.Request, evalReq *model.EvalRequest) (sdk.
 }
 
 func (s *Server) getSDKClient(r *http.Request) (sdk.Client, error, int) {
+	var sdkClient sdk.Client
 	sdkId := r.PathValue("sdkId")
 	if sdkId == "" {
-		return nil, fmt.Errorf("'sdkId' path parameter must be set"), http.StatusNotFound
+		sdkKey := r.Header.Get(SdkKeyHeader)
+		if sdkKey == "" {
+			return nil, fmt.Errorf("either the '%s' path variable or '%s' header must be set", SdkIdPathVariable, SdkKeyHeader), http.StatusBadRequest
+		}
+		sdkClient = s.sdkRegistrar.GetSdkByKeyOrNil(sdkKey)
+	} else {
+		sdkClient = s.sdkRegistrar.GetSdkOrNil(sdkId)
 	}
-	sdkClient := s.sdkRegistrar.GetSdkOrNil(sdkId)
 	if sdkClient == nil {
-		return nil, fmt.Errorf("invalid SDK identifier: '%s'", sdkId), http.StatusNotFound
+		return nil, fmt.Errorf("could not identify a configured SDK"), http.StatusNotFound
 	}
 	if !sdkClient.IsInValidState() {
-		return nil, fmt.Errorf("SDK with identifier '%s' is in an invalid state; please check the logs for more details", sdkId), http.StatusInternalServerError
+		return nil, fmt.Errorf("requested SDK is in an invalid state; please check the logs for more details"), http.StatusInternalServerError
 	}
 	return sdkClient, nil, http.StatusOK
 }

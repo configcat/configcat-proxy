@@ -7,15 +7,15 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/configcat/configcat-proxy/cache"
 	"github.com/configcat/configcat-proxy/config"
-	"github.com/configcat/configcat-proxy/diag/metrics"
 	"github.com/configcat/configcat-proxy/diag/status"
+	"github.com/configcat/configcat-proxy/diag/telemetry"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/model"
 	"github.com/configcat/configcat-proxy/pubsub"
 	"github.com/configcat/configcat-proxy/sdk/statistics"
 	"github.com/configcat/configcat-proxy/sdk/store"
-	"github.com/configcat/configcat-proxy/sdk/store/cache"
 	"github.com/configcat/configcat-proxy/sdk/store/file"
 	"github.com/configcat/go-sdk/v9"
 	"github.com/configcat/go-sdk/v9/configcatcache"
@@ -30,15 +30,16 @@ type Client interface {
 	Eval(key string, user model.UserAttrs) model.EvalData
 	EvalAll(user model.UserAttrs) map[string]model.EvalData
 	Keys() []string
+	HasKey(key string) bool
 	GetCachedJson() *store.EntryWithEtag
-	Ready() <-chan struct{}
-	Refresh() error
+	Refresh(ctx context.Context) error
 	Close()
 	SdkKeys() (string, *string)
 	SetSecondarySdkKey(sdkKey string)
 	WebhookSigningKey() string
 	WebhookSignatureValidFor() int
 	IsInValidState() bool
+	Ready() <-chan struct{}
 }
 
 type Context struct {
@@ -46,23 +47,25 @@ type Context struct {
 	SecondarySdkKey    atomic.Pointer[string]
 	SDKConf            *config.SDKConfig
 	GlobalDefaultAttrs model.UserAttrs
-	MetricsReporter    metrics.Reporter
+	TelemetryReporter  telemetry.Reporter
 	StatusReporter     status.Reporter
 	EvalReporter       statistics.Reporter
-	ExternalCache      store.Cache
+	ExternalCache      cache.ReaderWriter
 	Transport          http.RoundTripper
 }
 
 type client struct {
 	configCatClient *configcat.Client
 	defaultAttrs    model.UserAttrs
-	readyOnce       sync.Once
 	log             log.Logger
 	cache           store.EntryStore
 	sdkCtx          *Context
 	initialized     atomic.Bool
+	ready           chan struct{}
+	readyOnce       sync.Once
 	ctx             context.Context
 	ctxCancel       func()
+	mu              sync.Mutex
 	pubsub.Publisher[struct{}]
 }
 
@@ -71,16 +74,16 @@ func NewClient(sdkCtx *Context, log log.Logger) Client {
 
 	offline := sdkCtx.SDKConf.Offline.Enabled
 	key := sdkCtx.SDKConf.Key
-	var storage store.Cache
+	var storage configcat.ConfigCache
 	if offline && sdkCtx.SDKConf.Offline.Local.FilePath != "" {
 		key = validEmptySdkKey
 		storage = file.NewFileStore(sdkCtx.SdkId, &sdkCtx.SDKConf.Offline.Local, sdkCtx.StatusReporter, log.WithLevel(sdkCtx.SDKConf.Offline.Log.GetLevel()))
 	} else if offline && sdkCtx.SDKConf.Offline.UseCache && sdkCtx.ExternalCache != nil {
 		cacheKey := configcatcache.ProduceCacheKey(sdkCtx.SDKConf.Key, configcatcache.ConfigJSONName, configcatcache.ConfigJSONCacheVersion)
-		cacheStore := cache.NewCacheStore(sdkCtx.ExternalCache, sdkCtx.StatusReporter)
-		storage = cache.NewNotifyingCacheStore(sdkCtx.SdkId, cacheKey, cacheStore, &sdkCtx.SDKConf.Offline, sdkCtx.StatusReporter, log.WithLevel(sdkCtx.SDKConf.Offline.Log.GetLevel()))
+		cacheStore := store.NewCacheStore(sdkCtx.ExternalCache, sdkCtx.StatusReporter)
+		storage = store.NewNotifyingCacheStore(sdkCtx.SdkId, cacheKey, cacheStore, &sdkCtx.SDKConf.Offline, sdkCtx.TelemetryReporter, sdkCtx.StatusReporter, log.WithLevel(sdkCtx.SDKConf.Offline.Log.GetLevel()))
 	} else if !offline && sdkCtx.ExternalCache != nil {
-		storage = cache.NewCacheStore(sdkCtx.ExternalCache, sdkCtx.StatusReporter)
+		storage = store.NewCacheStore(sdkCtx.ExternalCache, sdkCtx.StatusReporter)
 	} else {
 		storage = store.NewInMemoryStorage()
 	}
@@ -89,12 +92,12 @@ func NewClient(sdkCtx *Context, log log.Logger) Client {
 		log:          sdkLog,
 		cache:        storage.(store.EntryStore),
 		sdkCtx:       sdkCtx,
+		ready:        make(chan struct{}),
 		defaultAttrs: model.MergeUserAttrs(sdkCtx.GlobalDefaultAttrs, sdkCtx.SDKConf.DefaultAttrs),
 	}
 	client.ctx, client.ctxCancel = context.WithCancel(context.Background())
 	clientConfig := configcat.Config{
-		PollingMode:    configcat.AutoPoll,
-		PollInterval:   time.Duration(sdkCtx.SDKConf.PollInterval) * time.Second,
+		PollingMode:    configcat.Manual,
 		Offline:        offline,
 		BaseURL:        sdkCtx.SDKConf.BaseUrl,
 		Cache:          storage,
@@ -105,16 +108,15 @@ func NewClient(sdkCtx *Context, log log.Logger) Client {
 		Transport:      sdkCtx.Transport,
 		Hooks:          &configcat.Hooks{},
 	}
-	if !sdkCtx.SDKConf.Offline.Enabled {
+	if !offline {
 		clientConfig.Hooks.OnConfigChanged = func() {
 			client.signal()
 		}
-		if sdkCtx.MetricsReporter != nil {
-			clientConfig.Transport = metrics.InterceptSdk(sdkCtx.SdkId, sdkCtx.MetricsReporter, clientConfig.Transport)
-		}
-		clientConfig.Transport = status.InterceptSdk(sdkCtx.SdkId, sdkCtx.StatusReporter, clientConfig.Transport)
-	} else {
-		clientConfig.PollingMode = configcat.Manual
+		clientConfig.Transport = sdkCtx.TelemetryReporter.InstrumentHttpClient(
+			status.InterceptSdk(sdkCtx.SdkId, sdkCtx.StatusReporter, clientConfig.Transport),
+			telemetry.SdkId.V(sdkCtx.SdkId),
+			telemetry.Source.V("sdk"))
+
 	}
 	if sdkCtx.EvalReporter != nil {
 		clientConfig.Hooks.OnFlagEvaluated = func(details *configcat.EvaluationDetails) {
@@ -135,14 +137,17 @@ func NewClient(sdkCtx *Context, log log.Logger) Client {
 		clientConfig.DataGovernance = configcat.EUOnly
 	}
 	client.configCatClient = configcat.NewCustomClient(clientConfig)
-
-	// sync up values to the SDK from the OFFLINE store
-	if sdkCtx.SDKConf.Offline.Enabled {
-		_ = client.Refresh()
-	}
+	go func() {
+		client.mu.Lock()
+		defer client.mu.Unlock()
+		_ = client.Refresh(client.ctx)
+		close(client.ready)
+	}()
 
 	if notifier, ok := storage.(store.NotifyingStore); ok {
 		go client.listen(notifier)
+	} else {
+		go client.poll()
 	}
 	sdkLog.Reportf("started")
 	return client
@@ -159,6 +164,25 @@ func (c *client) listen(notifier store.NotifyingStore) {
 	}
 }
 
+func (c *client) poll() {
+	interval := c.sdkCtx.SDKConf.PollInterval
+	if interval < 1 {
+		interval = config.DefaultSdkPollInterval
+	}
+	poller := time.NewTicker(time.Duration(interval) * time.Second)
+	defer poller.Stop()
+	for {
+		select {
+		case <-poller.C:
+			spanCtx, span := c.sdkCtx.TelemetryReporter.StartSpan(c.ctx, c.sdkCtx.SdkId+" poll")
+			_ = c.Refresh(spanCtx)
+			span.End()
+		case <-c.ctx.Done():
+			return
+		}
+	}
+}
+
 func (c *client) signal() {
 	// we don't want to notify subscribers in ONLINE mode
 	// about the first change upon SDK initialization
@@ -167,12 +191,22 @@ func (c *client) signal() {
 	}
 	// force the SDK to reload local values in OFFLINE mode
 	if c.sdkCtx.SDKConf.Offline.Enabled {
-		_ = c.Refresh()
+		_ = c.Refresh(c.ctx)
 	}
 	c.Publish(struct{}{})
 }
 
+func (c *client) ensureReady() {
+	c.readyOnce.Do(func() {
+		select {
+		case <-c.ready:
+		case <-c.ctx.Done():
+		}
+	})
+}
+
 func (c *client) Eval(key string, user model.UserAttrs) model.EvalData {
+	c.ensureReady()
 	mergedUser := model.MergeUserAttrs(c.defaultAttrs, user)
 	details := c.configCatClient.Snapshot(mergedUser).GetValueDetails(key)
 	return model.EvalData{Value: details.Value, VariationId: details.Data.VariationID, User: details.Data.User, Error: details.Data.Error,
@@ -180,6 +214,7 @@ func (c *client) Eval(key string, user model.UserAttrs) model.EvalData {
 }
 
 func (c *client) EvalAll(user model.UserAttrs) map[string]model.EvalData {
+	c.ensureReady()
 	mergedUser := model.MergeUserAttrs(c.defaultAttrs, user)
 	allDetails := c.configCatClient.Snapshot(mergedUser).GetAllValueDetails()
 	result := make(map[string]model.EvalData, len(allDetails))
@@ -191,25 +226,31 @@ func (c *client) EvalAll(user model.UserAttrs) map[string]model.EvalData {
 }
 
 func (c *client) Keys() []string {
+	c.ensureReady()
 	return c.configCatClient.GetAllKeys()
 }
 
-func (c *client) GetCachedJson() *store.EntryWithEtag {
-	c.readyOnce.Do(func() {
-		select {
-		case <-c.configCatClient.Ready():
-		case <-c.ctx.Done():
+func (c *client) HasKey(key string) bool {
+	c.ensureReady()
+	keys := c.configCatClient.GetAllKeys()
+	for _, k := range keys {
+		if k == key {
+			return true
 		}
-	})
+	}
+	return false
+}
+
+func (c *client) GetCachedJson() *store.EntryWithEtag {
+	c.ensureReady()
 	return c.cache.LoadEntry()
 }
 
-func (c *client) Refresh() error {
-	return c.configCatClient.Refresh(c.ctx)
-}
+func (c *client) Refresh(ctx context.Context) error {
+	spanCtx, span := c.sdkCtx.TelemetryReporter.StartSpan(ctx, c.sdkCtx.SdkId+" refresh")
+	defer span.End()
 
-func (c *client) Ready() <-chan struct{} {
-	return c.configCatClient.Ready()
+	return c.configCatClient.RefreshWithContext(spanCtx)
 }
 
 func (c *client) SdkKeys() (string, *string) {
@@ -234,12 +275,18 @@ func (c *client) IsInValidState() bool {
 	return !c.GetCachedJson().Empty
 }
 
+func (c *client) Ready() <-chan struct{} {
+	return c.ready
+}
+
 func (c *client) Close() {
 	if notifier, ok := c.cache.(store.Notifier); ok {
 		notifier.Close()
 	}
 	c.Publisher.Close()
 	c.ctxCancel()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	c.configCatClient.Close()
 	c.log.Reportf("shutdown complete")
 }

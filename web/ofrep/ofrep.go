@@ -13,6 +13,7 @@ import (
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/model"
 	"github.com/configcat/configcat-proxy/sdk"
+	"github.com/configcat/configcat-proxy/web/api"
 	configcat "github.com/configcat/go-sdk/v9"
 )
 
@@ -182,16 +183,22 @@ func (s *Server) parseRequest(r *http.Request, evalReq *evaluationRequest) (sdk.
 }
 
 func (s *Server) getSDKClient(r *http.Request) (sdk.Client, error, errorCode, int) {
+	var sdkClient sdk.Client
 	sdkId := r.Header.Get(SdkIdHeader)
 	if sdkId == "" {
-		return nil, fmt.Errorf("'%s' header must be set", SdkIdHeader), generalErrorCode, http.StatusBadRequest
+		sdkKey := r.Header.Get(api.SdkKeyHeader)
+		if sdkKey == "" {
+			return nil, fmt.Errorf("either the '%s' or '%s' header must be set", SdkIdHeader, api.SdkKeyHeader), generalErrorCode, http.StatusBadRequest
+		}
+		sdkClient = s.sdkRegistrar.GetSdkByKeyOrNil(sdkKey)
+	} else {
+		sdkClient = s.sdkRegistrar.GetSdkOrNil(sdkId)
 	}
-	sdkClient := s.sdkRegistrar.GetSdkOrNil(sdkId)
 	if sdkClient == nil {
-		return nil, fmt.Errorf("invalid SDK identifier: '%s'", sdkId), generalErrorCode, http.StatusBadRequest
+		return nil, fmt.Errorf("could not identify a configured SDK"), generalErrorCode, http.StatusBadRequest
 	}
 	if !sdkClient.IsInValidState() {
-		return nil, fmt.Errorf("SDK with identifier '%s' is in an invalid state; please check the logs for more details", sdkId), generalErrorCode, http.StatusInternalServerError
+		return nil, fmt.Errorf("requested SDK is in an invalid state; please check the logs for more details"), generalErrorCode, http.StatusInternalServerError
 	}
 	return sdkClient, nil, "", http.StatusOK
 }

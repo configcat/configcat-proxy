@@ -10,6 +10,7 @@ import (
 	"github.com/configcat/configcat-proxy/internal/testutils"
 	"github.com/configcat/configcat-proxy/log"
 	"github.com/configcat/configcat-proxy/sdk"
+	"github.com/configcat/configcat-proxy/web/api"
 	configcat "github.com/configcat/go-sdk/v9"
 	"github.com/configcat/go-sdk/v9/configcattest"
 	"github.com/stretchr/testify/assert"
@@ -28,6 +29,29 @@ func TestOFREP_Eval(t *testing.T) {
 		assert.Equal(t, 200, res.Code)
 		assert.Equal(t, `{"key":"flag","reason":"DEFAULT","variant":"v_flag","value":true}`, res.Body.String())
 	})
+	t.Run("online with sdk key", func(t *testing.T) {
+		res := httptest.NewRecorder()
+		req, _ := http.NewRequest(http.MethodPost, "/", http.NoBody)
+		srv, _, sdkKey := newServerWithHandler(t, config.OFREPConfig{Enabled: true})
+		req.Header.Set(api.SdkKeyHeader, sdkKey)
+		req.SetPathValue("key", "flag")
+		srv.Eval(res, req)
+
+		assert.Equal(t, "application/json", res.Header().Get("Content-Type"))
+		assert.Equal(t, 200, res.Code)
+		assert.Equal(t, `{"key":"flag","reason":"DEFAULT","variant":"v_flag","value":true}`, res.Body.String())
+	})
+	t.Run("without identification", func(t *testing.T) {
+		res := httptest.NewRecorder()
+		req, _ := http.NewRequest(http.MethodPost, "/", http.NoBody)
+		srv := newServer(t, config.OFREPConfig{Enabled: true})
+		req.SetPathValue("key", "flag")
+		srv.Eval(res, req)
+
+		assert.Equal(t, "application/json", res.Header().Get("Content-Type"))
+		assert.Equal(t, 400, res.Code)
+		assert.Equal(t, `{"key":"flag","errorCode":"GENERAL","errorDetails":"either the 'X-ConfigCat-SdkId' or 'X-ConfigCat-SdkKey' header must be set"}`, res.Body.String())
+	})
 	t.Run("online targeting", func(t *testing.T) {
 		res := httptest.NewRecorder()
 		req, _ := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"context": { "targetingKey":"id" }}`))
@@ -44,7 +68,31 @@ func TestOFREP_Eval(t *testing.T) {
 				}},
 			},
 		})
-		_ = srv.sdkRegistrar.GetSdkOrNil("test").Refresh()
+		_ = srv.sdkRegistrar.GetSdkOrNil("test").Refresh(t.Context())
+		req.SetPathValue("key", "flag")
+		srv.Eval(res, req)
+
+		assert.Equal(t, "application/json", res.Header().Get("Content-Type"))
+		assert.Equal(t, 200, res.Code)
+		assert.Equal(t, `{"key":"flag","reason":"TARGETING_MATCH","variant":"v0_flag","value":true}`, res.Body.String())
+	})
+	t.Run("online targeting with sdk key", func(t *testing.T) {
+		res := httptest.NewRecorder()
+		req, _ := http.NewRequest(http.MethodPost, "/", strings.NewReader(`{"context": { "targetingKey":"id" }}`))
+		srv, h, k := newServerWithHandler(t, config.OFREPConfig{Enabled: true})
+		req.Header.Set(api.SdkKeyHeader, k)
+		_ = h.SetFlags(k, map[string]*configcattest.Flag{
+			"flag": {
+				Default: false,
+				Rules: []configcattest.Rule{{
+					ComparisonAttribute: "Identifier",
+					Comparator:          configcat.OpEq,
+					ComparisonValue:     "id",
+					Value:               true,
+				}},
+			},
+		})
+		_ = srv.sdkRegistrar.GetSdkOrNil("test").Refresh(t.Context())
 		req.SetPathValue("key", "flag")
 		srv.Eval(res, req)
 
@@ -74,7 +122,7 @@ func TestOFREP_Eval(t *testing.T) {
 
 		assert.Equal(t, "application/json", res.Header().Get("Content-Type"))
 		assert.Equal(t, http.StatusInternalServerError, res.Code)
-		assert.Equal(t, `{"errorDetails":"SDK with identifier 'test' is in an invalid state; please check the logs for more details"}`, res.Body.String())
+		assert.Equal(t, `{"errorDetails":"requested SDK is in an invalid state; please check the logs for more details"}`, res.Body.String())
 	})
 	t.Run("online user invalid", func(t *testing.T) {
 		res := httptest.NewRecorder()
@@ -113,7 +161,7 @@ func TestOFREP_Eval(t *testing.T) {
 
 			assert.Equal(t, "application/json", res.Header().Get("Content-Type"))
 			assert.Equal(t, http.StatusInternalServerError, res.Code)
-			assert.Equal(t, `{"errorDetails":"SDK with identifier 'test' is in an invalid state; please check the logs for more details"}`, res.Body.String())
+			assert.Equal(t, `{"errorDetails":"requested SDK is in an invalid state; please check the logs for more details"}`, res.Body.String())
 		})
 	})
 }
@@ -140,7 +188,7 @@ func TestOFREP_EvalAll(t *testing.T) {
 
 		assert.Equal(t, "application/json", res.Header().Get("Content-Type"))
 		assert.Equal(t, http.StatusInternalServerError, res.Code)
-		assert.Equal(t, `{"errorDetails":"SDK with identifier 'test' is in an invalid state; please check the logs for more details"}`, res.Body.String())
+		assert.Equal(t, `{"errorDetails":"requested SDK is in an invalid state; please check the logs for more details"}`, res.Body.String())
 	})
 	t.Run("online user", func(t *testing.T) {
 		res := httptest.NewRecorder()
@@ -188,7 +236,7 @@ func TestOFREP_EvalAll(t *testing.T) {
 
 			assert.Equal(t, "application/json", res.Header().Get("Content-Type"))
 			assert.Equal(t, http.StatusInternalServerError, res.Code)
-			assert.Equal(t, `{"errorDetails":"SDK with identifier 'test' is in an invalid state; please check the logs for more details"}`, res.Body.String())
+			assert.Equal(t, `{"errorDetails":"requested SDK is in an invalid state; please check the logs for more details"}`, res.Body.String())
 		})
 	})
 	t.Run("etag", func(t *testing.T) {
@@ -266,7 +314,7 @@ func TestOFREP_WrongSdkId(t *testing.T) {
 
 		assert.Equal(t, "application/json", res.Header().Get("Content-Type"))
 		assert.Equal(t, 400, res.Code)
-		assert.Equal(t, `{"key":"flag","errorCode":"GENERAL","errorDetails":"invalid SDK identifier: 'non-existing'"}`, res.Body.String())
+		assert.Equal(t, `{"key":"flag","errorCode":"GENERAL","errorDetails":"could not identify a configured SDK"}`, res.Body.String())
 	})
 	t.Run("EvalAll", func(t *testing.T) {
 		res := httptest.NewRecorder()
@@ -277,7 +325,7 @@ func TestOFREP_WrongSdkId(t *testing.T) {
 
 		assert.Equal(t, "application/json", res.Header().Get("Content-Type"))
 		assert.Equal(t, 400, res.Code)
-		assert.Equal(t, `{"errorCode":"GENERAL","errorDetails":"invalid SDK identifier: 'non-existing'"}`, res.Body.String())
+		assert.Equal(t, `{"errorCode":"GENERAL","errorDetails":"could not identify a configured SDK"}`, res.Body.String())
 	})
 }
 
@@ -295,7 +343,7 @@ func TestOFREP_WrongSDKState(t *testing.T) {
 
 		assert.Equal(t, "application/json", res.Header().Get("Content-Type"))
 		assert.Equal(t, http.StatusInternalServerError, res.Code)
-		assert.Equal(t, `{"errorDetails":"SDK with identifier 'test' is in an invalid state; please check the logs for more details"}`, res.Body.String())
+		assert.Equal(t, `{"errorDetails":"requested SDK is in an invalid state; please check the logs for more details"}`, res.Body.String())
 	})
 	t.Run("EvalAll", func(t *testing.T) {
 		res := httptest.NewRecorder()
@@ -306,7 +354,7 @@ func TestOFREP_WrongSDKState(t *testing.T) {
 
 		assert.Equal(t, "application/json", res.Header().Get("Content-Type"))
 		assert.Equal(t, http.StatusInternalServerError, res.Code)
-		assert.Equal(t, `{"errorDetails":"SDK with identifier 'test' is in an invalid state; please check the logs for more details"}`, res.Body.String())
+		assert.Equal(t, `{"errorDetails":"requested SDK is in an invalid state; please check the logs for more details"}`, res.Body.String())
 	})
 }
 
