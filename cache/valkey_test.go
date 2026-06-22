@@ -34,7 +34,7 @@ func (s *valkeyTestSuite) SetupSuite() {
 	}
 	s.db = valkeyContainer
 	p, _ := nat.NewPort("tcp", "6379")
-	dbPort, _ := s.db.MappedPort(s.T().Context(), p)
+	dbPort, _ := s.db.MappedPort(s.T().Context(), p.Port())
 	s.dbPort = dbPort.Port()
 }
 
@@ -92,7 +92,7 @@ func TestValkeyStorage_TLS(t *testing.T) {
 	}
 
 	p, _ := nat.NewPort("tcp", "6379")
-	dbPort, _ := valkeyContainer.MappedPort(t.Context(), p)
+	dbPort, _ := valkeyContainer.MappedPort(t.Context(), p.Port())
 
 	tls := valkeyContainer.TLSConfig()
 

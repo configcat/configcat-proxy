@@ -218,7 +218,7 @@ func TestHandler_Traces_Otlp_Export(t *testing.T) {
 
 		handler.ForceFlush(t.Context())
 
-		assert.True(t, collector.hasTrace("HTTP GET test"))
+		assert.True(t, collector.hasTrace("GET"))
 	})
 	t.Run("http client", func(t *testing.T) {
 		h := http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
