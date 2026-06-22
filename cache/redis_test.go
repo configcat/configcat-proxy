@@ -33,7 +33,7 @@ func (s *redisTestSuite) SetupSuite() {
 	}
 	s.db = redisContainer
 	p, _ := nat.NewPort("tcp", "6379")
-	dbPort, _ := s.db.MappedPort(s.T().Context(), p)
+	dbPort, _ := s.db.MappedPort(s.T().Context(), p.Port())
 	s.dbPort = dbPort.Port()
 }
 
@@ -91,7 +91,7 @@ func TestRedisStorage_TLS(t *testing.T) {
 	}
 
 	p, _ := nat.NewPort("tcp", "6379")
-	dbPort, _ := redisContainer.MappedPort(t.Context(), p)
+	dbPort, _ := redisContainer.MappedPort(t.Context(), p.Port())
 
 	tls := redisContainer.TLSConfig()
 

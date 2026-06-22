@@ -152,9 +152,7 @@ func (r *reporter) StartSpan(ctx context.Context, name string, attributes ...KV)
 func (r *reporter) InstrumentHttp(operation string, method string, handler http.HandlerFunc) http.HandlerFunc {
 	var otelOpts []otelhttp.Option
 	if r.metricsHandler != nil {
-		otelOpts = append(otelOpts, otelhttp.WithMeterProvider(r.metricsHandler.provider), otelhttp.WithMetricAttributesFn(func(r *http.Request) []attribute.KeyValue {
-			return []attribute.KeyValue{semconv.HTTPRoute(r.URL.Path)}
-		}))
+		otelOpts = append(otelOpts, otelhttp.WithMeterProvider(r.metricsHandler.provider))
 	}
 	if r.traceHandler != nil {
 		otelOpts = append(otelOpts, otelhttp.WithTracerProvider(r.traceHandler.provider))
@@ -170,10 +168,7 @@ func (r *reporter) InstrumentHttpClient(handler http.RoundTripper, attributes ..
 	if r.metricsHandler != nil {
 		otelOpts = append(otelOpts, otelhttp.WithMeterProvider(r.metricsHandler.provider))
 		if len(attributes) > 0 {
-			arr := toAttributeArray(attributes...)
-			otelOpts = append(otelOpts, otelhttp.WithMetricAttributesFn(func(r *http.Request) []attribute.KeyValue {
-				return append(arr, semconv.HTTPRoute(r.URL.Path))
-			}))
+			handler = newClientMetricsLabelerInterceptor(toAttributeArray(attributes...), handler)
 		}
 	}
 	if r.traceHandler != nil {
@@ -252,4 +247,25 @@ func toAttributeArray(attributes ...KV) []attribute.KeyValue {
 		result = append(result, attribute.String(string(attr.Key), string(attr.Value)))
 	}
 	return result
+}
+
+type httpClientMetricsLabelerInterceptor struct {
+	http.RoundTripper
+	attr []attribute.KeyValue
+}
+
+func newClientMetricsLabelerInterceptor(attr []attribute.KeyValue, base http.RoundTripper) *httpClientMetricsLabelerInterceptor {
+	return &httpClientMetricsLabelerInterceptor{
+		RoundTripper: base,
+		attr:         attr,
+	}
+}
+
+func (i *httpClientMetricsLabelerInterceptor) RoundTrip(r *http.Request) (*http.Response, error) {
+	labeler, ok := otelhttp.LabelerFromContext(r.Context())
+	if ok {
+		labeler.Add(i.attr...)
+		labeler.Add(semconv.HTTPRoute(r.URL.Path))
+	}
+	return i.RoundTripper.RoundTrip(r)
 }
