@@ -50,7 +50,7 @@ func TestHandler_Metrics_Prometheus_Export(t *testing.T) {
 		body, _ := io.ReadAll(resp.Body)
 		_ = resp.Body.Close()
 
-		assert.Contains(t, string(body), "configcat_http_server_request_duration_seconds_bucket{http_request_method=\"GET\",http_response_status_code=\"200\",http_route=\"/\",network_protocol_name=\"http\",network_protocol_version=\"1.1\"")
+		assert.Contains(t, string(body), "configcat_http_server_request_duration_seconds_bucket{http_request_method=\"GET\",http_response_status_code=\"200\",network_protocol_name=\"http\",network_protocol_version=\"1.1\"")
 	})
 	t.Run("http bad", func(t *testing.T) {
 		h := handler.InstrumentHttp("t", http.MethodGet, func(writer http.ResponseWriter, request *http.Request) {
@@ -66,7 +66,7 @@ func TestHandler_Metrics_Prometheus_Export(t *testing.T) {
 		body, _ := io.ReadAll(resp.Body)
 		_ = resp.Body.Close()
 
-		assert.Contains(t, string(body), "configcat_http_server_request_duration_seconds_bucket{http_request_method=\"GET\",http_response_status_code=\"400\",http_route=\"/\",network_protocol_name=\"http\",network_protocol_version=\"1.1\"")
+		assert.Contains(t, string(body), "configcat_http_server_request_duration_seconds_bucket{http_request_method=\"GET\",http_response_status_code=\"400\",network_protocol_name=\"http\",network_protocol_version=\"1.1\"")
 	})
 	t.Run("http client", func(t *testing.T) {
 		h := http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
