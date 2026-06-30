@@ -236,11 +236,12 @@ type TlsConfig struct {
 }
 
 type DiagConfig struct {
-	Port    int           `yaml:"port"`
-	Enabled bool          `yaml:"enabled"`
-	Metrics MetricsConfig `yaml:"metrics"`
-	Traces  TraceConfig   `yaml:"traces"`
-	Status  StatusConfig  `yaml:"status"`
+	Port        int           `yaml:"port"`
+	Enabled     bool          `yaml:"enabled"`
+	ServiceName string        `yaml:"service_name"`
+	Metrics     MetricsConfig `yaml:"metrics"`
+	Traces      TraceConfig   `yaml:"traces"`
+	Status      StatusConfig  `yaml:"status"`
 }
 
 type MetricsConfig struct {

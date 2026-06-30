@@ -127,7 +127,7 @@ func TestOtlpMetricsExporterGrpc(t *testing.T) {
 	assert.NoError(t, err)
 	defer collector.Shutdown()
 
-	handler := newMetricsHandler(t.Context(), buildResource("0.1.0"),
+	handler := newMetricsHandler(t.Context(), buildResource("", "0.1.0"),
 		&config.MetricsConfig{Enabled: true, Otlp: config.OtlpExporterConfig{Enabled: true, Protocol: "grpc", Endpoint: collector.Addr()}}, log.NewNullLogger())
 	assert.NotNil(t, handler)
 
@@ -141,7 +141,7 @@ func TestOtlpMetricsExporterHttp(t *testing.T) {
 	collector := newInMemoryMetricHttpCollector()
 	defer collector.Shutdown()
 
-	handler := newMetricsHandler(t.Context(), buildResource("0.1.0"),
+	handler := newMetricsHandler(t.Context(), buildResource("", "0.1.0"),
 		&config.MetricsConfig{Enabled: true, Otlp: config.OtlpExporterConfig{Enabled: true, Protocol: "http", Endpoint: collector.Addr()}}, log.NewNullLogger())
 	assert.NotNil(t, handler)
 

@@ -28,7 +28,7 @@ func TestOtlpTracesExporterGrpc(t *testing.T) {
 	assert.NoError(t, err)
 	defer collector.Shutdown()
 
-	handler := newTraceHandler(t.Context(), buildResource("0.1.0"),
+	handler := newTraceHandler(t.Context(), buildResource("", "0.1.0"),
 		&config.TraceConfig{Enabled: true, Otlp: config.OtlpExporterConfig{Enabled: true, Protocol: "grpc", Endpoint: collector.Addr()}}, log.NewNullLogger())
 	assert.NotNil(t, handler)
 	defer handler.Shutdown()
@@ -45,7 +45,7 @@ func TestOtlpTracesExporterHttp(t *testing.T) {
 	collector := newInMemoryTraceHttpCollector()
 	defer collector.Shutdown()
 
-	handler := newTraceHandler(t.Context(), buildResource("0.1.0"),
+	handler := newTraceHandler(t.Context(), buildResource("", "0.1.0"),
 		&config.TraceConfig{Enabled: true, Otlp: config.OtlpExporterConfig{Enabled: true, Protocol: "http", Endpoint: collector.Addr()}}, log.NewNullLogger())
 	assert.NotNil(t, handler)
 	defer handler.Shutdown()
