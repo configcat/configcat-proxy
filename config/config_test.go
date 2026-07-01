@@ -490,6 +490,7 @@ func TestDiagConfig_YAML(t *testing.T) {
 diag:
   enabled: false
   port: 8091
+  service_name: "custom-proxy"
   status:
     enabled: false
   metrics:
@@ -513,6 +514,7 @@ diag:
 
 		assert.False(t, conf.Diag.Enabled)
 		assert.Equal(t, 8091, conf.Diag.Port)
+		assert.Equal(t, "custom-proxy", conf.Diag.ServiceName)
 		assert.False(t, conf.Diag.Status.Enabled)
 		assert.False(t, conf.Diag.Metrics.Enabled)
 		assert.False(t, conf.Diag.Metrics.Prometheus.Enabled)

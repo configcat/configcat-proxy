@@ -75,7 +75,7 @@ type reporter struct {
 
 func NewReporter(conf *config.DiagConfig, version string, log log.Logger) Reporter {
 	logger := log.WithPrefix("telemetry")
-	res := buildResource(version)
+	res := buildResource(conf.ServiceName, version)
 
 	var mh *metricsHandler
 	var th *traceHandler
@@ -230,12 +230,15 @@ func (r *reporter) Shutdown() {
 	}
 }
 
-func buildResource(version string) *resource.Resource {
+func buildResource(serviceName, version string) *resource.Resource {
+	if serviceName == "" {
+		serviceName = "configcat-proxy"
+	}
 	res, _ := resource.Merge(
 		resource.Default(),
 		resource.NewWithAttributes(
 			semconv.SchemaURL,
-			semconv.ServiceName("configcat-proxy"),
+			semconv.ServiceName(serviceName),
 			semconv.ServiceVersion(version),
 		))
 	return res

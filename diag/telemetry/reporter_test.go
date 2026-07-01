@@ -19,6 +19,7 @@ import (
 	"github.com/testcontainers/testcontainers-go/modules/mongodb"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
 	"go.opentelemetry.io/otel/trace/noop"
 	"google.golang.org/grpc"
 )
@@ -328,4 +329,19 @@ func Test_Empty_Instrument(t *testing.T) {
 	assert.Empty(t, conf.APIOptions)
 
 	handler.Shutdown()
+}
+
+func TestBuildResource_ServiceName(t *testing.T) {
+	t.Run("defaults when empty", func(t *testing.T) {
+		res := buildResource("", "0.1.0")
+		name, ok := res.Set().Value(semconv.ServiceNameKey)
+		assert.True(t, ok)
+		assert.Equal(t, "configcat-proxy", name.AsString())
+	})
+	t.Run("overrides when set", func(t *testing.T) {
+		res := buildResource("custom-proxy", "0.1.0")
+		name, ok := res.Set().Value(semconv.ServiceNameKey)
+		assert.True(t, ok)
+		assert.Equal(t, "custom-proxy", name.AsString())
+	})
 }

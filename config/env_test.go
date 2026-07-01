@@ -214,12 +214,14 @@ func TestDiagConfig_ENV(t *testing.T) {
 	t.Setenv("CONFIGCAT_DIAG_TRACES_OTLP_ENABLED", "true")
 	t.Setenv("CONFIGCAT_DIAG_TRACES_OTLP_PROTOCOL", "grpc")
 	t.Setenv("CONFIGCAT_DIAG_TRACES_OTLP_ENDPOINT", "http://localhost:4317")
+	t.Setenv("CONFIGCAT_DIAG_SERVICE_NAME", "custom-proxy")
 
 	conf, err := LoadConfigFromFileAndEnvironment("")
 	require.NoError(t, err)
 
 	assert.False(t, conf.Diag.Enabled)
 	assert.Equal(t, 8091, conf.Diag.Port)
+	assert.Equal(t, "custom-proxy", conf.Diag.ServiceName)
 	assert.False(t, conf.Diag.Status.Enabled)
 	assert.False(t, conf.Diag.Metrics.Enabled)
 	assert.False(t, conf.Diag.Metrics.Prometheus.Enabled)

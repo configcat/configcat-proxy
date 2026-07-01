@@ -418,6 +418,7 @@ func (d *DiagConfig) loadEnv(prefix string) error {
 	if err := readEnv(prefix, "PORT", &d.Port, toInt); err != nil {
 		return err
 	}
+	readEnvString(prefix, "SERVICE_NAME", &d.ServiceName)
 	if err := d.Status.loadEnv(prefix); err != nil {
 		return err
 	}
