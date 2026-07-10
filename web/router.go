@@ -147,9 +147,10 @@ func (s *HttpRouter) setupStatusRoutes(reporter status.Reporter, l log.Logger) {
 }
 
 type endpoint struct {
-	handler http.HandlerFunc
-	method  string
-	path    string
+	handler           http.HandlerFunc
+	method            string
+	path              string
+	sdkKeyHeaderBased bool
 }
 
 func (s *HttpRouter) setupAPIRoutes(conf *config.ApiConfig, sdkRegistrar sdk.Registrar, l log.Logger) {
@@ -159,10 +160,10 @@ func (s *HttpRouter) setupAPIRoutes(conf *config.ApiConfig, sdkRegistrar sdk.Reg
 		{path: "/api/{sdkId}/eval-all", handler: mware.GZip(s.apiServer.EvalAll), method: http.MethodPost},
 		{path: "/api/{sdkId}/keys", handler: mware.GZip(s.apiServer.Keys), method: http.MethodGet},
 		{path: "/api/{sdkId}/refresh", handler: http.HandlerFunc(s.apiServer.Refresh), method: http.MethodPost},
-		{path: "/api/eval", handler: mware.GZip(s.apiServer.Eval), method: http.MethodPost},
-		{path: "/api/eval-all", handler: mware.GZip(s.apiServer.EvalAll), method: http.MethodPost},
-		{path: "/api/keys", handler: mware.GZip(s.apiServer.Keys), method: http.MethodGet},
-		{path: "/api/refresh", handler: http.HandlerFunc(s.apiServer.Refresh), method: http.MethodPost},
+		{path: "/api/eval", handler: mware.GZip(s.apiServer.Eval), method: http.MethodPost, sdkKeyHeaderBased: true},
+		{path: "/api/eval-all", handler: mware.GZip(s.apiServer.EvalAll), method: http.MethodPost, sdkKeyHeaderBased: true},
+		{path: "/api/keys", handler: mware.GZip(s.apiServer.Keys), method: http.MethodGet, sdkKeyHeaderBased: true},
+		{path: "/api/refresh", handler: http.HandlerFunc(s.apiServer.Refresh), method: http.MethodPost, sdkKeyHeaderBased: true},
 		{path: "/api/icanhascoffee", handler: http.HandlerFunc(s.apiServer.ICanHasCoffee), method: http.MethodGet},
 	}
 	for _, endpoint := range endpoints {
@@ -174,8 +175,12 @@ func (s *HttpRouter) setupAPIRoutes(conf *config.ApiConfig, sdkRegistrar sdk.Reg
 			endpoint.handler = mware.ExtraHeaders(conf.Headers, endpoint.handler)
 		}
 		if conf.CORS.Enabled {
+			allowedHeaders := utils.KeysOfMap(conf.AuthHeaders)
+			if endpoint.sdkKeyHeaderBased {
+				allowedHeaders = append(allowedHeaders, api.SdkKeyHeader)
+			}
 			endpoint.handler = mware.CORS([]string{endpoint.method, http.MethodOptions}, conf.CORS.AllowedOrigins,
-				utils.KeysOfMap(conf.Headers), utils.KeysOfMap(conf.AuthHeaders), &conf.CORS.AllowedOriginsRegex, endpoint.handler)
+				utils.KeysOfMap(conf.Headers), allowedHeaders, &conf.CORS.AllowedOriginsRegex, endpoint.handler)
 		}
 		if l.Level() == log.Debug {
 			endpoint.handler = mware.DebugLog(l, endpoint.handler)
@@ -201,7 +206,7 @@ func (s *HttpRouter) setupOFREPRoutes(conf *config.OFREPConfig, sdkRegistrar sdk
 			endpoint.handler = mware.ExtraHeaders(conf.Headers, endpoint.handler)
 		}
 		if conf.CORS.Enabled {
-			allowedHeaders := append(utils.KeysOfMap(conf.AuthHeaders), ofrep.SdkIdHeader)
+			allowedHeaders := append(utils.KeysOfMap(conf.AuthHeaders), ofrep.SdkIdHeader, api.SdkKeyHeader)
 			endpoint.handler = mware.CORS([]string{endpoint.method, http.MethodOptions}, conf.CORS.AllowedOrigins,
 				utils.KeysOfMap(conf.Headers), allowedHeaders, &conf.CORS.AllowedOriginsRegex, endpoint.handler)
 		}

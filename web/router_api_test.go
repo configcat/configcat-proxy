@@ -84,6 +84,19 @@ func TestAPI_Eval(t *testing.T) {
 		assert.Equal(t, "Content-Length,ETag,Date,Content-Encoding,h1", resp.Header.Get("Access-Control-Expose-Headers"))
 		assert.Equal(t, "v1", resp.Header.Get("h1"))
 	})
+	t.Run("options cors sdk key", func(t *testing.T) {
+		req, _ := http.NewRequest(http.MethodOptions, fmt.Sprintf("%s/api/eval", srv.URL), http.NoBody)
+		resp, _ := http.DefaultClient.Do(req)
+		assert.Equal(t, http.StatusNoContent, resp.StatusCode)
+
+		assert.Equal(t, "POST,OPTIONS", resp.Header.Get("Access-Control-Allow-Methods"))
+		assert.Equal(t, "false", resp.Header.Get("Access-Control-Allow-Credentials"))
+		assert.Equal(t, "Cache-Control,Content-Type,Content-Length,Accept-Encoding,If-None-Match,X-AUTH,X-ConfigCat-SdkKey", resp.Header.Get("Access-Control-Allow-Headers"))
+		assert.Equal(t, "600", resp.Header.Get("Access-Control-Max-Age"))
+		assert.Equal(t, "*", resp.Header.Get("Access-Control-Allow-Origin"))
+		assert.Equal(t, "Content-Length,ETag,Date,Content-Encoding,h1", resp.Header.Get("Access-Control-Expose-Headers"))
+		assert.Equal(t, "v1", resp.Header.Get("h1"))
+	})
 	t.Run("get not allowed", func(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodGet, path, http.NoBody)
 		resp, _ := http.DefaultClient.Do(req)
