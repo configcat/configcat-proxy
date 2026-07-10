@@ -127,7 +127,7 @@ func TestOFREP_Eval(t *testing.T) {
 
 		assert.Equal(t, "POST,OPTIONS", resp.Header.Get("Access-Control-Allow-Methods"))
 		assert.Equal(t, "false", resp.Header.Get("Access-Control-Allow-Credentials"))
-		assert.Equal(t, "Cache-Control,Content-Type,Content-Length,Accept-Encoding,If-None-Match,X-AUTH,"+ofrep.SdkIdHeader, resp.Header.Get("Access-Control-Allow-Headers"))
+		assert.Equal(t, "Cache-Control,Content-Type,Content-Length,Accept-Encoding,If-None-Match,X-AUTH,"+ofrep.SdkIdHeader+","+api.SdkKeyHeader, resp.Header.Get("Access-Control-Allow-Headers"))
 		assert.Equal(t, "600", resp.Header.Get("Access-Control-Max-Age"))
 		assert.Equal(t, "*", resp.Header.Get("Access-Control-Allow-Origin"))
 		assert.Equal(t, "Content-Length,ETag,Date,Content-Encoding,h1", resp.Header.Get("Access-Control-Expose-Headers"))
@@ -252,7 +252,7 @@ func TestOFREP_EvalAll(t *testing.T) {
 
 		assert.Equal(t, "POST,OPTIONS", resp.Header.Get("Access-Control-Allow-Methods"))
 		assert.Equal(t, "false", resp.Header.Get("Access-Control-Allow-Credentials"))
-		assert.Equal(t, "Cache-Control,Content-Type,Content-Length,Accept-Encoding,If-None-Match,X-AUTH,"+ofrep.SdkIdHeader, resp.Header.Get("Access-Control-Allow-Headers"))
+		assert.Equal(t, "Cache-Control,Content-Type,Content-Length,Accept-Encoding,If-None-Match,X-AUTH,"+ofrep.SdkIdHeader+","+api.SdkKeyHeader, resp.Header.Get("Access-Control-Allow-Headers"))
 		assert.Equal(t, "600", resp.Header.Get("Access-Control-Max-Age"))
 		assert.Equal(t, "*", resp.Header.Get("Access-Control-Allow-Origin"))
 		assert.Equal(t, "Content-Length,ETag,Date,Content-Encoding,h1", resp.Header.Get("Access-Control-Expose-Headers"))
