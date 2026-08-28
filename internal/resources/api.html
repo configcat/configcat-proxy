@@ -6,11 +6,12 @@
     <meta charset="utf-8">
 
     <script type="text/javascript">
-        const url = "http://test-proxy.featureflagfalcon.com:8050/ofrep/v1/evaluate/flags";
+        const url = "https://localhost:8050/api/sdk-342/eval";
 
         const data = {
-            context: {
-                targetingKey: "09c63c8ad682"
+            key: "test1",
+            user: {
+                Identifier: "09c63c8ad682"
             }
         };
 
@@ -18,7 +19,6 @@
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-ConfigCat-SdkKey': '8anZCJ-X7EiBaM_N8tIEJw/lbZyY8lmBUKV3BcM8HM5jA'
             },
             body: JSON.stringify(data),
         };
