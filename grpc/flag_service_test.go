@@ -429,6 +429,12 @@ func TestGrpc_SDK_InvalidState(t *testing.T) {
 		assert.ErrorContains(t, err, "requested SDK is in an invalid state; please check the logs for more details")
 	})
 
+	cl2, err := client.NotifyStream(t.Context(), &proto.Target{Identifier: &proto.Target_SdkId{SdkId: "test"}})
+	testutils.WithTimeout(2*time.Second, func() {
+		_, err = cl2.Recv()
+		assert.ErrorContains(t, err, "requested SDK is in an invalid state; please check the logs for more details")
+	})
+
 	_, err = client.GetKeys(t.Context(), &proto.KeysRequest{Target: &proto.Target{Identifier: &proto.Target_SdkId{SdkId: "test"}}})
 	assert.ErrorContains(t, err, "requested SDK is in an invalid state; please check the logs for more details")
 }
@@ -461,6 +467,12 @@ func TestGrpc_Invalid_SdkKey(t *testing.T) {
 	cl1, err := client.EvalAllFlagsStream(t.Context(), &proto.EvalRequest{Key: "flag", Target: &proto.Target{Identifier: &proto.Target_SdkId{SdkId: "non-existing"}}})
 	testutils.WithTimeout(2*time.Second, func() {
 		_, err = cl1.Recv()
+		assert.ErrorContains(t, err, "could not identify a configured SDK")
+	})
+
+	cl2, err := client.NotifyStream(t.Context(), &proto.Target{Identifier: &proto.Target_SdkId{SdkId: "non-existing"}})
+	testutils.WithTimeout(2*time.Second, func() {
+		_, err = cl2.Recv()
 		assert.ErrorContains(t, err, "could not identify a configured SDK")
 	})
 
@@ -499,6 +511,12 @@ func TestGrpc_Invalid_Target(t *testing.T) {
 	cl1, err := client.EvalAllFlagsStream(t.Context(), &proto.EvalRequest{Key: "flag", Target: &proto.Target{}})
 	testutils.WithTimeout(2*time.Second, func() {
 		_, err = cl1.Recv()
+		assert.ErrorContains(t, err, "either the sdk id or the sdk key parameter must be set")
+	})
+
+	cl2, err := client.NotifyStream(t.Context(), &proto.Target{})
+	testutils.WithTimeout(2*time.Second, func() {
+		_, err = cl2.Recv()
 		assert.ErrorContains(t, err, "either the sdk id or the sdk key parameter must be set")
 	})
 

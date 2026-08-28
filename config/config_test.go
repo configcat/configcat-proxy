@@ -681,9 +681,13 @@ http:
 }
 
 func TestCORSConfigInvalidRegex_YAML(t *testing.T) {
-	testutils.UseTempFile(`
+	testData := []string{"sse", "ofrep", "api", "cdn_proxy"}
+
+	for _, d := range testData {
+		t.Run("cors origin regex invalid pattern "+d, func(t *testing.T) {
+			testutils.UseTempFile(`
 http:
-  sse:
+  `+d+`:
     cors: 
       enabled: true
       allowed_origins_regex:
@@ -691,9 +695,11 @@ http:
           - "*"
         if_no_match: https://example1.com
 `, func(file string) {
-		_, err := LoadConfigFromFileAndEnvironment(file)
-		require.ErrorContains(t, err, "error parsing regexp: missing argument to repetition operator: `*`")
-	})
+				_, err := LoadConfigFromFileAndEnvironment(file)
+				require.ErrorContains(t, err, "error parsing regexp: missing argument to repetition operator: `*`")
+			})
+		})
+	}
 }
 
 func TestGrpcConfig_YAML(t *testing.T) {
