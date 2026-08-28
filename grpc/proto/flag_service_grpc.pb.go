@@ -22,6 +22,7 @@ const _ = grpc.SupportPackageIsVersion7
 const (
 	FlagService_EvalFlagStream_FullMethodName     = "/configcat.FlagService/EvalFlagStream"
 	FlagService_EvalAllFlagsStream_FullMethodName = "/configcat.FlagService/EvalAllFlagsStream"
+	FlagService_NotifyStream_FullMethodName       = "/configcat.FlagService/NotifyStream"
 	FlagService_EvalFlag_FullMethodName           = "/configcat.FlagService/EvalFlag"
 	FlagService_EvalAllFlags_FullMethodName       = "/configcat.FlagService/EvalAllFlags"
 	FlagService_GetKeys_FullMethodName            = "/configcat.FlagService/GetKeys"
@@ -36,6 +37,8 @@ type FlagServiceClient interface {
 	EvalFlagStream(ctx context.Context, in *EvalRequest, opts ...grpc.CallOption) (FlagService_EvalFlagStreamClient, error)
 	// Stream for getting notified when any feature flag's value changes.
 	EvalAllFlagsStream(ctx context.Context, in *EvalRequest, opts ...grpc.CallOption) (FlagService_EvalAllFlagsStreamClient, error)
+	// Signal for getting notified upon feature flag data changes.
+	NotifyStream(ctx context.Context, in *Target, opts ...grpc.CallOption) (FlagService_NotifyStreamClient, error)
 	// Evaluates a feature flag.
 	EvalFlag(ctx context.Context, in *EvalRequest, opts ...grpc.CallOption) (*EvalResponse, error)
 	// Evaluates each feature flag.
@@ -118,6 +121,38 @@ func (x *flagServiceEvalAllFlagsStreamClient) Recv() (*EvalAllResponse, error) {
 	return m, nil
 }
 
+func (c *flagServiceClient) NotifyStream(ctx context.Context, in *Target, opts ...grpc.CallOption) (FlagService_NotifyStreamClient, error) {
+	stream, err := c.cc.NewStream(ctx, &FlagService_ServiceDesc.Streams[2], FlagService_NotifyStream_FullMethodName, opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &flagServiceNotifyStreamClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type FlagService_NotifyStreamClient interface {
+	Recv() (*emptypb.Empty, error)
+	grpc.ClientStream
+}
+
+type flagServiceNotifyStreamClient struct {
+	grpc.ClientStream
+}
+
+func (x *flagServiceNotifyStreamClient) Recv() (*emptypb.Empty, error) {
+	m := new(emptypb.Empty)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 func (c *flagServiceClient) EvalFlag(ctx context.Context, in *EvalRequest, opts ...grpc.CallOption) (*EvalResponse, error) {
 	out := new(EvalResponse)
 	err := c.cc.Invoke(ctx, FlagService_EvalFlag_FullMethodName, in, out, opts...)
@@ -162,6 +197,8 @@ type FlagServiceServer interface {
 	EvalFlagStream(*EvalRequest, FlagService_EvalFlagStreamServer) error
 	// Stream for getting notified when any feature flag's value changes.
 	EvalAllFlagsStream(*EvalRequest, FlagService_EvalAllFlagsStreamServer) error
+	// Signal for getting notified upon feature flag data changes.
+	NotifyStream(*Target, FlagService_NotifyStreamServer) error
 	// Evaluates a feature flag.
 	EvalFlag(context.Context, *EvalRequest) (*EvalResponse, error)
 	// Evaluates each feature flag.
@@ -182,6 +219,9 @@ func (UnimplementedFlagServiceServer) EvalFlagStream(*EvalRequest, FlagService_E
 }
 func (UnimplementedFlagServiceServer) EvalAllFlagsStream(*EvalRequest, FlagService_EvalAllFlagsStreamServer) error {
 	return status.Errorf(codes.Unimplemented, "method EvalAllFlagsStream not implemented")
+}
+func (UnimplementedFlagServiceServer) NotifyStream(*Target, FlagService_NotifyStreamServer) error {
+	return status.Errorf(codes.Unimplemented, "method NotifyStream not implemented")
 }
 func (UnimplementedFlagServiceServer) EvalFlag(context.Context, *EvalRequest) (*EvalResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method EvalFlag not implemented")
@@ -247,6 +287,27 @@ type flagServiceEvalAllFlagsStreamServer struct {
 }
 
 func (x *flagServiceEvalAllFlagsStreamServer) Send(m *EvalAllResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func _FlagService_NotifyStream_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(Target)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(FlagServiceServer).NotifyStream(m, &flagServiceNotifyStreamServer{stream})
+}
+
+type FlagService_NotifyStreamServer interface {
+	Send(*emptypb.Empty) error
+	grpc.ServerStream
+}
+
+type flagServiceNotifyStreamServer struct {
+	grpc.ServerStream
+}
+
+func (x *flagServiceNotifyStreamServer) Send(m *emptypb.Empty) error {
 	return x.ServerStream.SendMsg(m)
 }
 
@@ -355,6 +416,11 @@ var FlagService_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "EvalAllFlagsStream",
 			Handler:       _FlagService_EvalAllFlagsStream_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "NotifyStream",
+			Handler:       _FlagService_NotifyStream_Handler,
 			ServerStreams: true,
 		},
 	},

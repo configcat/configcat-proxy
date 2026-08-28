@@ -6,16 +6,14 @@
 </head>
 <body>
 <script>
-    const user = {
-        key: "test1",
-        user: {
-            Identifier: "09c63c8ad682"
-        }
+    const req = {
+        sdkKey: "configcat-sdk-1/XxPbCKmzIUGORk4vsufpzw/JM48sLAkJkO6Qkg9YvoOVA",
+        key: "test1"
     }
-    const data = btoa(JSON.stringify(user))
-    const evtSource = new EventSource("https://localhost:8050/sse/sdk-342/eval/" + data);
+    const data = btoa(JSON.stringify(req))
+    const evtSource = new EventSource("https://localhost:8050/sse/notify/k/"+ data);
     evtSource.onmessage = (event) => {
-        console.log(event.data);
+        console.log(event);
     };
 </script>
 </body>

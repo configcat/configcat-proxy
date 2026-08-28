@@ -42,6 +42,7 @@ func TestStreamServer_Load(t *testing.T) {
 				t.Parallel()
 				runSingleConnectionTest(t, fName, strServer.GetStreamOrNil("test"))
 				runAllConnectionTest(t, fName, strServer.GetStreamOrNil("test"))
+				runNotifyOnlyConnectionTest(t, fName, strServer.GetStreamOrNil("test"))
 			})
 		}
 	})
@@ -51,6 +52,7 @@ func TestStreamServer_Load(t *testing.T) {
 	_ = h.SetFlags(key, flags)
 	_ = reg.GetSdkOrNil("test").Refresh(t.Context())
 	assert.Equal(t, connCount, len(strServer.GetStreamOrNil("test").(*stream).channels[AllFlagsDiscriminator][0].(*allFlagsChannel).connections))
+	assert.Equal(t, connCount, len(strServer.GetStreamOrNil("test").(*stream).channels[NotifyOnlyDiscriminator][0].(*notifyOnlyChannel).connections))
 	t.Run("check refresh", func(t *testing.T) {
 		checkConnections(t, strServer)
 	})
@@ -69,6 +71,14 @@ func runAllConnectionTest(t *testing.T, fName string, str Stream) {
 	testutils.WithTimeout(2*time.Second, func() {
 		payload := <-conn.Receive()
 		assert.False(t, payload.(map[string]*model.ResponsePayload)[fName].Value.(bool))
+	})
+}
+
+func runNotifyOnlyConnectionTest(t *testing.T, fName string, str Stream) {
+	conn := str.CreateConnection(NotifyOnlyDiscriminator, nil)
+	testutils.WithTimeout(2*time.Second, func() {
+		payload := <-conn.Receive()
+		assert.Nil(t, payload)
 	})
 }
 
@@ -106,7 +116,20 @@ func checkConnections(t *testing.T, srv Server) {
 							})
 						})
 					}
+				case *notifyOnlyChannel:
+					for i, conn := range dChan.connections {
+						connect := conn
+						cId := i
+						t.Run("conn"+strconv.Itoa(cId)+"notify", func(t *testing.T) {
+							t.Parallel()
+							testutils.WithTimeout(2*time.Second, func() {
+								payload := <-connect.Receive()
+								assert.Nil(t, payload)
+							})
+						})
+					}
 				}
+
 			}
 		})
 	}

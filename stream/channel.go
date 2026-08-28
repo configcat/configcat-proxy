@@ -6,6 +6,7 @@ import (
 )
 
 const AllFlagsDiscriminator = "[ALL]"
+const NotifyOnlyDiscriminator = "[NOTIFY]"
 
 type channel interface {
 	Notify(sdkClient sdk.Client, key string) int
@@ -32,8 +33,14 @@ type allFlagsChannel struct {
 	connectionHolder
 }
 
+type notifyOnlyChannel struct {
+	connectionHolder
+}
+
 func createChannel(established *connEstablished, sdkClient sdk.Client) channel {
-	if established.key == AllFlagsDiscriminator {
+	if established.key == NotifyOnlyDiscriminator {
+		return &notifyOnlyChannel{}
+	} else if established.key == AllFlagsDiscriminator {
 		values := sdkClient.EvalAll(established.user)
 		payloads := make(map[string]*model.ResponsePayload)
 		for key, val := range values {
@@ -41,11 +48,10 @@ func createChannel(established *connEstablished, sdkClient sdk.Client) channel {
 			payloads[key] = &payload
 		}
 		return &allFlagsChannel{connectionHolder: connectionHolder{user: established.user}, lastPayload: payloads}
-	} else {
-		val := sdkClient.Eval(established.key, established.user)
-		payload := model.PayloadFromEvalData(&val)
-		return &singleFlagChannel{connectionHolder: connectionHolder{user: established.user}, lastPayload: &payload}
 	}
+	val := sdkClient.Eval(established.key, established.user)
+	payload := model.PayloadFromEvalData(&val)
+	return &singleFlagChannel{connectionHolder: connectionHolder{user: established.user}, lastPayload: &payload}
 }
 
 func (sf *singleFlagChannel) LastPayload() interface{} {
@@ -56,8 +62,11 @@ func (af *allFlagsChannel) LastPayload() interface{} {
 	return af.lastPayload
 }
 
+func (c *notifyOnlyChannel) LastPayload() interface{} {
+	return nil
+}
+
 func (sf *singleFlagChannel) Notify(sdkClient sdk.Client, key string) int {
-	sent := 0
 	val := sdkClient.Eval(key, sf.user)
 	if val.Error != nil {
 		return 0
@@ -65,16 +74,12 @@ func (sf *singleFlagChannel) Notify(sdkClient sdk.Client, key string) int {
 	if sf.lastPayload == nil || val.Value != sf.lastPayload.Value {
 		payload := model.PayloadFromEvalData(&val)
 		sf.lastPayload = &payload
-		for _, conn := range sf.connections {
-			sent++
-			conn.receive <- &payload
-		}
+		return sf.notify(&payload)
 	}
-	return sent
+	return 0
 }
 
 func (af *allFlagsChannel) Notify(sdkClient sdk.Client, _ string) int {
-	sent := 0
 	values := sdkClient.EvalAll(af.user)
 	if values == nil || len(values) == 0 {
 		return 0
@@ -86,10 +91,20 @@ func (af *allFlagsChannel) Notify(sdkClient sdk.Client, _ string) int {
 	}
 	af.lastPayload = final
 	if len(final) != 0 {
-		for _, conn := range af.connections {
-			sent++
-			conn.receive <- final
-		}
+		return af.notify(final)
+	}
+	return 0
+}
+
+func (c *notifyOnlyChannel) Notify(_ sdk.Client, _ string) int {
+	return c.notify(nil)
+}
+
+func (c *connectionHolder) notify(msg interface{}) int {
+	sent := 0
+	for _, conn := range c.connections {
+		sent++
+		conn.receive <- msg
 	}
 	return sent
 }

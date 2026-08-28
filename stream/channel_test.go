@@ -100,7 +100,7 @@ func TestStream_Collision(t *testing.T) {
 
 	iter := 500000
 	wg := &sync.WaitGroup{}
-	wg.Add(iter + iter)
+	wg.Add(iter * 3)
 	for i := 0; i < iter; i++ {
 		go func(it int) {
 			is := strconv.Itoa(it)
@@ -109,11 +109,19 @@ func TestStream_Collision(t *testing.T) {
 			wg.Done()
 		}(i)
 	}
-	for i := iter; i < iter+iter; i++ {
+	for i := iter; i < iter*2; i++ {
 		go func(it int) {
 			is := strconv.Itoa(it)
 			user := model.UserAttrs{"id": "u" + is}
 			_ = str.CreateConnection(AllFlagsDiscriminator, user)
+			wg.Done()
+		}(i)
+	}
+	for i := iter * 2; i < iter*3; i++ {
+		go func(it int) {
+			is := strconv.Itoa(it)
+			user := model.UserAttrs{"id": "u" + is}
+			_ = str.CreateConnection(NotifyOnlyDiscriminator, user)
 			wg.Done()
 		}(i)
 	}
@@ -123,4 +131,5 @@ func TestStream_Collision(t *testing.T) {
 
 	assert.Equal(t, iter, len(str.channels["test"]))
 	assert.Equal(t, iter, len(str.channels[AllFlagsDiscriminator]))
+	assert.Equal(t, iter, len(str.channels[NotifyOnlyDiscriminator]))
 }

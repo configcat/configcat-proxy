@@ -475,6 +475,9 @@ func (c *Config) compileOriginRegexes() error {
 	if err := c.Http.Sse.CORS.compileRegexes(); err != nil {
 		return err
 	}
+	if err := c.Http.OFREP.CORS.compileRegexes(); err != nil {
+		return err
+	}
 	return nil
 }
 

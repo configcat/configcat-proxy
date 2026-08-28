@@ -109,6 +109,10 @@ func TestSSE_NonExisting_SDK(t *testing.T) {
 	res = httptest.NewRecorder()
 	srv.AllFlags(res, req)
 	assert.Equal(t, http.StatusNotFound, res.Code)
+
+	res = httptest.NewRecorder()
+	srv.Notify(res, req)
+	assert.Equal(t, http.StatusNotFound, res.Code)
 }
 
 func TestSSE_NonExisting_SDK_With_Key(t *testing.T) {
@@ -128,6 +132,10 @@ func TestSSE_NonExisting_SDK_With_Key(t *testing.T) {
 
 	res = httptest.NewRecorder()
 	srv.AllFlags(res, req)
+	assert.Equal(t, http.StatusNotFound, res.Code)
+
+	res = httptest.NewRecorder()
+	srv.Notify(res, req)
 	assert.Equal(t, http.StatusNotFound, res.Code)
 }
 
@@ -170,6 +178,11 @@ func TestSSE_SDK_InvalidState(t *testing.T) {
 
 	res = httptest.NewRecorder()
 	srv.AllFlags(res, req)
+	assert.Equal(t, http.StatusInternalServerError, res.Code)
+	assert.Equal(t, "requested SDK is in an invalid state; please check the logs for more details\n", res.Body.String())
+
+	res = httptest.NewRecorder()
+	srv.Notify(res, req)
 	assert.Equal(t, http.StatusInternalServerError, res.Code)
 	assert.Equal(t, "requested SDK is in an invalid state; please check the logs for more details\n", res.Body.String())
 }
@@ -217,6 +230,56 @@ func TestSSE_Get_All_SdkRemoved(t *testing.T) {
 	assert.Equal(t, http.StatusOK, res.Code)
 	// line breaks are intentional
 	assert.Equal(t, `data: {"flag":{"value":true,"variationId":"v_flag"}}
+
+`, res.Body.String())
+	assert.Equal(t, "text/event-stream", res.Header().Get("Content-Type"))
+	assert.Equal(t, "no-cache", res.Header().Get("Cache-Control"))
+	assert.Equal(t, "keep-alive", res.Header().Get("Connection"))
+}
+
+func TestSSE_Notify(t *testing.T) {
+	res := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	srv := newServer(t, &config.SseConfig{Enabled: true})
+
+	ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
+	defer cancel()
+	data := base64.URLEncoding.EncodeToString([]byte(`{"key":"flag"}`))
+	testutils.AddSdkIdContextParam(req)
+	req.SetPathValue(streamDataName, data)
+	req = req.WithContext(ctx)
+	srv.Notify(res, req)
+
+	assert.Equal(t, http.StatusOK, res.Code)
+	// line breaks are intentional
+	assert.Equal(t, `data: 
+
+`, res.Body.String())
+	assert.Equal(t, "text/event-stream", res.Header().Get("Content-Type"))
+	assert.Equal(t, "no-cache", res.Header().Get("Cache-Control"))
+	assert.Equal(t, "keep-alive", res.Header().Get("Connection"))
+}
+
+func TestSSE_Notify_SdkRemoved(t *testing.T) {
+	res := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	srv, h := newServerWithAutoRegistrar(t, &config.SseConfig{Enabled: true})
+
+	data := base64.URLEncoding.EncodeToString([]byte(`{"key":"flag"}`))
+	testutils.AddSdkIdContextParam(req)
+	req.SetPathValue(streamDataName, data)
+
+	// the removal closes the connection, so it won't block indefinitely
+	h.RemoveSdk("test")
+	testutils.WithTimeout(5*time.Second, func() {
+		srv.Notify(res, req)
+	})
+
+	assert.Equal(t, http.StatusOK, res.Code)
+	// line breaks are intentional
+	assert.Equal(t, `data: 
 
 `, res.Body.String())
 	assert.Equal(t, "text/event-stream", res.Header().Get("Content-Type"))

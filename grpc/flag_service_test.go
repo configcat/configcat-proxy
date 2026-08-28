@@ -123,6 +123,101 @@ func TestGrpc_EvalFlagStream_SdkRemoved(t *testing.T) {
 	})
 }
 
+func TestGrpc_NotifyStream(t *testing.T) {
+	h, key, url := newFlagServer(t, map[string]*configcattest.Flag{
+		"flag": {
+			Default: "test1",
+		},
+	})
+	conn := createFlagServiceConnWithManualRegistrar(t, url, key)
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	client := proto.NewFlagServiceClient(conn)
+	cl, err := client.NotifyStream(t.Context(), &proto.Target{Identifier: &proto.Target_SdkId{SdkId: "test"}})
+
+	assert.NoError(t, err)
+
+	testutils.WithTimeout(2*time.Second, func() {
+		_, err = cl.Recv()
+		assert.NoError(t, err)
+	})
+
+	_ = h.SetFlags(key, map[string]*configcattest.Flag{
+		"flag": {
+			Default: "test2",
+		},
+	})
+
+	_, err = client.Refresh(t.Context(), &proto.RefreshRequest{Target: &proto.Target{Identifier: &proto.Target_SdkId{SdkId: "test"}}})
+	assert.NoError(t, err)
+
+	testutils.WithTimeout(2*time.Second, func() {
+		_, err = cl.Recv()
+		assert.NoError(t, err)
+	})
+}
+
+func TestGrpc_NotifyStream_With_Sdk_Key(t *testing.T) {
+	h, key, url := newFlagServer(t, map[string]*configcattest.Flag{
+		"flag": {
+			Default: "test1",
+		},
+	})
+	conn := createFlagServiceConnWithManualRegistrar(t, url, key)
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	client := proto.NewFlagServiceClient(conn)
+	cl, err := client.NotifyStream(t.Context(), &proto.Target{Identifier: &proto.Target_SdkKey{SdkKey: key}})
+
+	assert.NoError(t, err)
+
+	testutils.WithTimeout(2*time.Second, func() {
+		_, err = cl.Recv()
+		assert.NoError(t, err)
+	})
+
+	_ = h.SetFlags(key, map[string]*configcattest.Flag{
+		"flag": {
+			Default: "test2",
+		},
+	})
+
+	_, err = client.Refresh(t.Context(), &proto.RefreshRequest{Target: &proto.Target{Identifier: &proto.Target_SdkKey{SdkKey: key}}})
+	assert.NoError(t, err)
+
+	testutils.WithTimeout(2*time.Second, func() {
+		_, err = cl.Recv()
+		assert.NoError(t, err)
+	})
+}
+
+func TestGrpc_NotifyStream_SdkRemoved(t *testing.T) {
+	reg, conn, h := createFlagServiceConnWithAutoRegistrar(t)
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	client := proto.NewFlagServiceClient(conn)
+	cl, err := client.NotifyStream(t.Context(), &proto.Target{Identifier: &proto.Target_SdkId{SdkId: "test"}})
+	assert.NoError(t, err)
+
+	testutils.WithTimeout(2*time.Second, func() {
+		_, err = cl.Recv()
+		assert.NoError(t, err)
+	})
+
+	h.RemoveSdk("test")
+	reg.Refresh()
+	testutils.WithTimeout(10*time.Second, func() {
+		_, err = cl.Recv()
+		assert.Error(t, err, "rpc error: code = Aborted desc = connection aborted")
+	})
+}
+
 func TestGrpc_EvalAllFlagsStream(t *testing.T) {
 	h, key, url := newFlagServer(t, map[string]*configcattest.Flag{
 		"flag1": {
