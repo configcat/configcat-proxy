@@ -75,8 +75,10 @@ func (s *HttpRouter) setupSSERoutes(conf *config.SseConfig, sdkRegistrar sdk.Reg
 		{path: "/sse/{sdkId}/eval/{data}", handler: http.HandlerFunc(s.sseServer.SingleFlag), method: http.MethodGet},
 		{path: "/sse/{sdkId}/eval-all/{data}", handler: http.HandlerFunc(s.sseServer.AllFlags), method: http.MethodGet},
 		{path: "/sse/{sdkId}/eval-all", handler: http.HandlerFunc(s.sseServer.AllFlags), method: http.MethodGet},
+		{path: "/sse/{sdkId}/notify", handler: http.HandlerFunc(s.sseServer.Notify), method: http.MethodGet},
 		{path: "/sse/eval/k/{data}", handler: http.HandlerFunc(s.sseServer.SingleFlag), method: http.MethodGet},
 		{path: "/sse/eval-all/k/{data}", handler: http.HandlerFunc(s.sseServer.AllFlags), method: http.MethodGet},
+		{path: "/sse/notify/k/{data}", handler: http.HandlerFunc(s.sseServer.Notify), method: http.MethodGet},
 	}
 	for _, endpoint := range endpoints {
 		endpoint.handler = mware.AutoOptions(endpoint.handler)

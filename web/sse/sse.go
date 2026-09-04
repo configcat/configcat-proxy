@@ -83,6 +83,26 @@ func (s *Server) AllFlags(w http.ResponseWriter, r *http.Request) {
 	s.listenAndRespond(str, evalReq.User, stream.AllFlagsDiscriminator, w, r, flusher)
 }
 
+func (s *Server) Notify(w http.ResponseWriter, r *http.Request) {
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "streaming not supported", http.StatusNotImplemented)
+		return
+	}
+
+	sdkId := r.PathValue("sdkId")
+	evalReq := prepareResponse(w, r, sdkId == "")
+	if evalReq == nil {
+		return
+	}
+
+	str := s.getStream(w, sdkId, evalReq.SdkKey)
+	if str == nil {
+		return
+	}
+	s.listenAndRespond(str, nil, stream.NotifyOnlyDiscriminator, w, r, flusher)
+}
+
 func (s *Server) Close() {
 	close(s.stop)
 	s.streamServer.Close()
@@ -97,17 +117,27 @@ func (s *Server) listenAndRespond(str stream.Stream, attrs model.UserAttrs, key 
 	for {
 		select {
 		case payload := <-conn.Receive():
-			data, e := json.Marshal(payload)
-			if e == nil {
-				_, e = w.Write(formatSseMsg(data))
+			if payload == nil {
+				_, e := w.Write(formatSseDataMsg([]byte("")))
 				if e == nil {
 					flusher.Flush()
 				} else {
 					s.logger.Errorf("%s", e)
 				}
 			} else {
-				s.logger.Errorf("%s", e)
+				data, e := json.Marshal(payload)
+				if e == nil {
+					_, e = w.Write(formatSseDataMsg(data))
+					if e == nil {
+						flusher.Flush()
+					} else {
+						s.logger.Errorf("%s", e)
+					}
+				} else {
+					s.logger.Errorf("%s", e)
+				}
 			}
+
 		case <-r.Context().Done():
 			str.CloseConnection(conn, key)
 			return
@@ -130,23 +160,23 @@ func prepareResponse(w http.ResponseWriter, r *http.Request, dataMustSet bool) *
 		if dataMustSet {
 			http.Error(w, "'"+streamDataName+"' path parameter must be set", http.StatusBadRequest)
 			return nil
-		} else {
-			return &model.EvalRequest{}
 		}
-	} else {
-		streamContext, err := utils.Base64URLDecode(streamData)
-		if err != nil {
-			http.Error(w, "failed to decode incoming '"+streamDataName+"'", http.StatusBadRequest)
-			return nil
-		}
-		var evalReq model.EvalRequest
-		err = json.Unmarshal(streamContext, &evalReq)
-		if err != nil {
-			http.Error(w, "failed to deserialize incoming '"+streamDataName+"': "+err.Error(), http.StatusBadRequest)
-			return nil
-		}
-		return &evalReq
+
+		return &model.EvalRequest{}
 	}
+
+	streamContext, err := utils.Base64URLDecode(streamData)
+	if err != nil {
+		http.Error(w, "failed to decode incoming '"+streamDataName+"'", http.StatusBadRequest)
+		return nil
+	}
+	var evalReq model.EvalRequest
+	err = json.Unmarshal(streamContext, &evalReq)
+	if err != nil {
+		http.Error(w, "failed to deserialize incoming '"+streamDataName+"': "+err.Error(), http.StatusBadRequest)
+		return nil
+	}
+	return &evalReq
 }
 
 func (s *Server) getStream(w http.ResponseWriter, sdkId string, sdkKey string) stream.Stream {
@@ -174,7 +204,7 @@ func (s *Server) getStream(w http.ResponseWriter, sdkId string, sdkKey string) s
 	return str
 }
 
-func formatSseMsg(b []byte) []byte {
+func formatSseDataMsg(b []byte) []byte {
 	r := make([]byte, 0, len(b)+8)
 	r = append(r, "data: "...)
 	r = append(r, b...)

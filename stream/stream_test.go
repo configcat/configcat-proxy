@@ -27,6 +27,7 @@ func TestStream_Receive(t *testing.T) {
 
 	sConn := str.CreateConnection("flag", nil)
 	aConn := str.CreateConnection(AllFlagsDiscriminator, nil)
+	nConn := str.CreateConnection(NotifyOnlyDiscriminator, nil)
 	testutils.WithTimeout(2*time.Second, func() {
 		pyl := <-sConn.Receive()
 		assert.True(t, pyl.(*model.ResponsePayload).Value.(bool))
@@ -34,6 +35,10 @@ func TestStream_Receive(t *testing.T) {
 	testutils.WithTimeout(2*time.Second, func() {
 		pyl := <-aConn.Receive()
 		assert.True(t, pyl.(map[string]*model.ResponsePayload)["flag"].Value.(bool))
+	})
+	testutils.WithTimeout(2*time.Second, func() {
+		pyl := <-nConn.Receive()
+		assert.Nil(t, pyl)
 	})
 	_ = h.SetFlags(key, map[string]*configcattest.Flag{
 		"flag": {
@@ -49,6 +54,10 @@ func TestStream_Receive(t *testing.T) {
 		pyl := <-aConn.Receive()
 		assert.False(t, pyl.(map[string]*model.ResponsePayload)["flag"].Value.(bool))
 	})
+	testutils.WithTimeout(2*time.Second, func() {
+		pyl := <-nConn.Receive()
+		assert.Nil(t, pyl)
+	})
 }
 
 func TestStream_Offline_Receive(t *testing.T) {
@@ -62,6 +71,7 @@ func TestStream_Offline_Receive(t *testing.T) {
 
 		sConn := str.CreateConnection("flag", nil)
 		aConn := str.CreateConnection(AllFlagsDiscriminator, nil)
+		nConn := str.CreateConnection(NotifyOnlyDiscriminator, nil)
 		testutils.WithTimeout(2*time.Second, func() {
 			pyl := <-sConn.Receive()
 			assert.True(t, pyl.(*model.ResponsePayload).Value.(bool))
@@ -69,6 +79,10 @@ func TestStream_Offline_Receive(t *testing.T) {
 		testutils.WithTimeout(2*time.Second, func() {
 			pyl := <-aConn.Receive()
 			assert.True(t, pyl.(map[string]*model.ResponsePayload)["flag"].Value.(bool))
+		})
+		testutils.WithTimeout(2*time.Second, func() {
+			pyl := <-nConn.Receive()
+			assert.Nil(t, pyl)
 		})
 		testutils.WriteIntoFile(path, `{"f":{"flag":{"a":"","i":"v_flag","v":{"b":false},"t":0}}}`)
 		testutils.WithTimeout(2*time.Second, func() {
@@ -79,6 +93,10 @@ func TestStream_Offline_Receive(t *testing.T) {
 			pyl := <-aConn.Receive()
 			assert.False(t, pyl.(map[string]*model.ResponsePayload)["flag"].Value.(bool))
 		})
+		testutils.WithTimeout(2*time.Second, func() {
+			pyl := <-nConn.Receive()
+			assert.Nil(t, pyl)
+		})
 	})
 }
 
@@ -88,6 +106,7 @@ func TestStream_Receive_Close(t *testing.T) {
 	str := NewStream("test", clients["test"], telemetry.NewEmptyReporter(), log.NewNullLogger(), "test")
 	sConn := str.CreateConnection("flag", nil)
 	aConn := str.CreateConnection(AllFlagsDiscriminator, nil)
+	nConn := str.CreateConnection(NotifyOnlyDiscriminator, nil)
 	testutils.WithTimeout(2*time.Second, func() {
 		pyl := <-sConn.Receive()
 		assert.True(t, pyl.(*model.ResponsePayload).Value.(bool))
@@ -96,11 +115,17 @@ func TestStream_Receive_Close(t *testing.T) {
 		pyl := <-aConn.Receive()
 		assert.True(t, pyl.(map[string]*model.ResponsePayload)["flag"].Value.(bool))
 	})
+	testutils.WithTimeout(2*time.Second, func() {
+		pyl := <-nConn.Receive()
+		assert.Nil(t, pyl)
+	})
 	str.Close()
 	_ = str.CreateConnection("flag", nil)
 	_ = str.CreateConnection("flag", nil)
 	_ = str.CreateConnection(AllFlagsDiscriminator, nil)
 	_ = str.CreateConnection(AllFlagsDiscriminator, nil)
+	_ = str.CreateConnection(NotifyOnlyDiscriminator, nil)
+	_ = str.CreateConnection(NotifyOnlyDiscriminator, nil)
 }
 
 func TestStream_IsInValidState_True(t *testing.T) {
@@ -149,6 +174,9 @@ func TestStream_Goroutines(t *testing.T) {
 	conn7 := str.CreateConnection(AllFlagsDiscriminator, nil)
 	conn8 := str.CreateConnection(AllFlagsDiscriminator, nil)
 	conn9 := str.CreateConnection(AllFlagsDiscriminator, nil)
+	conn10 := str.CreateConnection(NotifyOnlyDiscriminator, nil)
+	conn11 := str.CreateConnection(NotifyOnlyDiscriminator, nil)
+	conn12 := str.CreateConnection(NotifyOnlyDiscriminator, nil)
 
 	defer func() {
 		str.CloseConnection(conn1, "flag")
@@ -160,6 +188,9 @@ func TestStream_Goroutines(t *testing.T) {
 		str.CloseConnection(conn7, AllFlagsDiscriminator)
 		str.CloseConnection(conn8, AllFlagsDiscriminator)
 		str.CloseConnection(conn9, AllFlagsDiscriminator)
+		str.CloseConnection(conn10, NotifyOnlyDiscriminator)
+		str.CloseConnection(conn11, NotifyOnlyDiscriminator)
+		str.CloseConnection(conn12, NotifyOnlyDiscriminator)
 	}()
 
 	time.Sleep(100 * time.Millisecond)

@@ -123,6 +123,101 @@ func TestGrpc_EvalFlagStream_SdkRemoved(t *testing.T) {
 	})
 }
 
+func TestGrpc_NotifyStream(t *testing.T) {
+	h, key, url := newFlagServer(t, map[string]*configcattest.Flag{
+		"flag": {
+			Default: "test1",
+		},
+	})
+	conn := createFlagServiceConnWithManualRegistrar(t, url, key)
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	client := proto.NewFlagServiceClient(conn)
+	cl, err := client.NotifyStream(t.Context(), &proto.Target{Identifier: &proto.Target_SdkId{SdkId: "test"}})
+
+	assert.NoError(t, err)
+
+	testutils.WithTimeout(2*time.Second, func() {
+		_, err = cl.Recv()
+		assert.NoError(t, err)
+	})
+
+	_ = h.SetFlags(key, map[string]*configcattest.Flag{
+		"flag": {
+			Default: "test2",
+		},
+	})
+
+	_, err = client.Refresh(t.Context(), &proto.RefreshRequest{Target: &proto.Target{Identifier: &proto.Target_SdkId{SdkId: "test"}}})
+	assert.NoError(t, err)
+
+	testutils.WithTimeout(2*time.Second, func() {
+		_, err = cl.Recv()
+		assert.NoError(t, err)
+	})
+}
+
+func TestGrpc_NotifyStream_With_Sdk_Key(t *testing.T) {
+	h, key, url := newFlagServer(t, map[string]*configcattest.Flag{
+		"flag": {
+			Default: "test1",
+		},
+	})
+	conn := createFlagServiceConnWithManualRegistrar(t, url, key)
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	client := proto.NewFlagServiceClient(conn)
+	cl, err := client.NotifyStream(t.Context(), &proto.Target{Identifier: &proto.Target_SdkKey{SdkKey: key}})
+
+	assert.NoError(t, err)
+
+	testutils.WithTimeout(2*time.Second, func() {
+		_, err = cl.Recv()
+		assert.NoError(t, err)
+	})
+
+	_ = h.SetFlags(key, map[string]*configcattest.Flag{
+		"flag": {
+			Default: "test2",
+		},
+	})
+
+	_, err = client.Refresh(t.Context(), &proto.RefreshRequest{Target: &proto.Target{Identifier: &proto.Target_SdkKey{SdkKey: key}}})
+	assert.NoError(t, err)
+
+	testutils.WithTimeout(2*time.Second, func() {
+		_, err = cl.Recv()
+		assert.NoError(t, err)
+	})
+}
+
+func TestGrpc_NotifyStream_SdkRemoved(t *testing.T) {
+	reg, conn, h := createFlagServiceConnWithAutoRegistrar(t)
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	client := proto.NewFlagServiceClient(conn)
+	cl, err := client.NotifyStream(t.Context(), &proto.Target{Identifier: &proto.Target_SdkId{SdkId: "test"}})
+	assert.NoError(t, err)
+
+	testutils.WithTimeout(2*time.Second, func() {
+		_, err = cl.Recv()
+		assert.NoError(t, err)
+	})
+
+	h.RemoveSdk("test")
+	reg.Refresh()
+	testutils.WithTimeout(10*time.Second, func() {
+		_, err = cl.Recv()
+		assert.Error(t, err, "rpc error: code = Aborted desc = connection aborted")
+	})
+}
+
 func TestGrpc_EvalAllFlagsStream(t *testing.T) {
 	h, key, url := newFlagServer(t, map[string]*configcattest.Flag{
 		"flag1": {
@@ -334,6 +429,12 @@ func TestGrpc_SDK_InvalidState(t *testing.T) {
 		assert.ErrorContains(t, err, "requested SDK is in an invalid state; please check the logs for more details")
 	})
 
+	cl2, err := client.NotifyStream(t.Context(), &proto.Target{Identifier: &proto.Target_SdkId{SdkId: "test"}})
+	testutils.WithTimeout(2*time.Second, func() {
+		_, err = cl2.Recv()
+		assert.ErrorContains(t, err, "requested SDK is in an invalid state; please check the logs for more details")
+	})
+
 	_, err = client.GetKeys(t.Context(), &proto.KeysRequest{Target: &proto.Target{Identifier: &proto.Target_SdkId{SdkId: "test"}}})
 	assert.ErrorContains(t, err, "requested SDK is in an invalid state; please check the logs for more details")
 }
@@ -366,6 +467,12 @@ func TestGrpc_Invalid_SdkKey(t *testing.T) {
 	cl1, err := client.EvalAllFlagsStream(t.Context(), &proto.EvalRequest{Key: "flag", Target: &proto.Target{Identifier: &proto.Target_SdkId{SdkId: "non-existing"}}})
 	testutils.WithTimeout(2*time.Second, func() {
 		_, err = cl1.Recv()
+		assert.ErrorContains(t, err, "could not identify a configured SDK")
+	})
+
+	cl2, err := client.NotifyStream(t.Context(), &proto.Target{Identifier: &proto.Target_SdkId{SdkId: "non-existing"}})
+	testutils.WithTimeout(2*time.Second, func() {
+		_, err = cl2.Recv()
 		assert.ErrorContains(t, err, "could not identify a configured SDK")
 	})
 
@@ -404,6 +511,12 @@ func TestGrpc_Invalid_Target(t *testing.T) {
 	cl1, err := client.EvalAllFlagsStream(t.Context(), &proto.EvalRequest{Key: "flag", Target: &proto.Target{}})
 	testutils.WithTimeout(2*time.Second, func() {
 		_, err = cl1.Recv()
+		assert.ErrorContains(t, err, "either the sdk id or the sdk key parameter must be set")
+	})
+
+	cl2, err := client.NotifyStream(t.Context(), &proto.Target{})
+	testutils.WithTimeout(2*time.Second, func() {
+		_, err = cl2.Recv()
 		assert.ErrorContains(t, err, "either the sdk id or the sdk key parameter must be set")
 	})
 

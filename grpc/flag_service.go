@@ -98,6 +98,45 @@ func (s *flagService) EvalAllFlagsStream(req *proto.EvalRequest, evalStream prot
 	}
 }
 
+func (s *flagService) NotifyStream(req *proto.Target, notifyStream proto.FlagService_NotifyStreamServer) error {
+	sdkId, sdkKey := identifyTarget(req, "")
+	if sdkId == "" && sdkKey == "" {
+		return status.Error(codes.InvalidArgument, "either the sdk id or the sdk key parameter must be set")
+	}
+
+	var str stream.Stream
+	if sdkId != "" {
+		str = s.streamServer.GetStreamOrNil(sdkId)
+	} else {
+		str = s.streamServer.GetStreamBySdkKeyOrNil(sdkKey)
+	}
+
+	if str == nil {
+		return status.Error(codes.InvalidArgument, "could not identify a configured SDK")
+	}
+	if !str.IsInValidState() {
+		return status.Error(codes.Internal, "requested SDK is in an invalid state; please check the logs for more details")
+	}
+	conn := str.CreateConnection(stream.NotifyOnlyDiscriminator, nil)
+
+	for {
+		select {
+		case <-conn.Receive():
+			err := notifyStream.Send(&emptypb.Empty{})
+			if err != nil {
+				s.log.Errorf("%s", err)
+			}
+		case <-notifyStream.Context().Done():
+			str.CloseConnection(conn, stream.AllFlagsDiscriminator)
+			return notifyStream.Context().Err()
+		case <-str.Closed():
+			return status.Error(codes.Aborted, "connection aborted")
+		case <-s.closed:
+			return status.Error(codes.Aborted, "server down")
+		}
+	}
+}
+
 func (s *flagService) EvalFlag(_ context.Context, req *proto.EvalRequest) (*proto.EvalResponse, error) {
 	var user model.UserAttrs
 	sdkClient, err := s.parseEvalRequest(req, &user, true)
@@ -109,9 +148,9 @@ func (s *flagService) EvalFlag(_ context.Context, req *proto.EvalRequest) (*prot
 		var errKeyNotFound configcat.ErrKeyNotFound
 		if errors.As(value.Error, &errKeyNotFound) {
 			return nil, status.Error(codes.NotFound, "feature flag or setting with key '"+req.GetKey()+"' not found")
-		} else {
-			return nil, status.Error(codes.Unknown, "the request failed; please check the logs for more details")
 		}
+
+		return nil, status.Error(codes.Unknown, "the request failed; please check the logs for more details")
 	}
 	payload := model.PayloadFromEvalData(&value)
 	return s.toPayload(&payload), nil
