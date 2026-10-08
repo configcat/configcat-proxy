@@ -85,7 +85,10 @@ func TestHandler_Metrics_Prometheus_Export(t *testing.T) {
 		body, _ := io.ReadAll(resp.Body)
 		_ = resp.Body.Close()
 
-		assert.Contains(t, string(body), "configcat_http_client_request_duration_seconds_bucket{http_request_method=\"GET\",http_response_status_code=\"200\",http_route=\"\",network_protocol_name=\"http\"")
+		bodyString := string(body)
+
+		assert.Contains(t, bodyString, "configcat_http_client_request_duration_seconds_bucket{http_request_method=\"GET\",http_response_status_code=\"200\",http_route=\"\",network_protocol_name=\"http\"")
+		assert.Contains(t, bodyString, "sdk=\"test\"")
 	})
 	t.Run("grpc", func(t *testing.T) {
 		opts := handler.InstrumentGrpc([]grpc.ServerOption{})
