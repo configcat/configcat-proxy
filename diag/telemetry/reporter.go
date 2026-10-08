@@ -265,7 +265,7 @@ func newClientMetricsLabelerInterceptor(attr []attribute.KeyValue, base http.Rou
 }
 
 func (i *httpClientMetricsLabelerInterceptor) RoundTrip(r *http.Request) (*http.Response, error) {
-	labeler, ok := otelhttp.LabelerFromContext(r.Context())
+	labeler, ok := otelhttp.ClientLabelerFromContext(r.Context())
 	if ok {
 		labeler.Add(i.attr...)
 		labeler.Add(semconv.HTTPRoute(r.URL.Path))
