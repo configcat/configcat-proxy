@@ -13,8 +13,8 @@ import (
 )
 
 var (
-	SdkId  = K("configcat.sdk.id")
-	Source = K("configcat.source")
+	SdkId  = "configcat.sdk.id"
+	Source = "configcat.source"
 )
 
 type traceHandler struct {

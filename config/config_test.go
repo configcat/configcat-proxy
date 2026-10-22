@@ -379,6 +379,21 @@ cache:
 	})
 }
 
+func TestFileCacheConfig_YAML(t *testing.T) {
+	testutils.UseTempFile(`
+cache:
+  file:
+    enabled: true
+    folder: "tmp"
+`, func(file string) {
+		conf, err := LoadConfigFromFileAndEnvironment(file)
+		require.NoError(t, err)
+
+		assert.True(t, conf.Cache.File.Enabled)
+		assert.Equal(t, "tmp", conf.Cache.File.Folder)
+	})
+}
+
 func TestMongoDbConfig_YAML(t *testing.T) {
 	testutils.UseTempFile(`
 cache:
@@ -429,6 +444,21 @@ cache:
 		assert.Equal(t, "url", conf.Cache.DynamoDb.Url)
 		assert.Equal(t, "db", conf.Cache.DynamoDb.Table)
 	})
+}
+
+func TestCacheConfig_IsSet(t *testing.T) {
+	testData := []struct {
+		config CacheConfig
+	}{
+		{config: CacheConfig{Redis: RedisConfig{Enabled: true}}},
+		{config: CacheConfig{MongoDb: MongoDbConfig{Enabled: true}}},
+		{config: CacheConfig{DynamoDb: DynamoDbConfig{Enabled: true}}},
+		{config: CacheConfig{File: FileCacheConfig{Enabled: true}}},
+	}
+
+	for _, test := range testData {
+		assert.True(t, test.config.IsSet())
+	}
 }
 
 func TestGlobalOfflineConfig_YAML(t *testing.T) {

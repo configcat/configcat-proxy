@@ -114,7 +114,7 @@ func (g *GlobalOfflineConfig) validate(c *CacheConfig) error {
 	if !g.Enabled {
 		return nil
 	}
-	if !c.Redis.Enabled {
+	if !c.IsSet() {
 		return fmt.Errorf("offline: global offline mode enabled, but no cache is configured")
 	}
 	if g.CachePollInterval < 1 {

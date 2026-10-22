@@ -218,6 +218,9 @@ func (h *HttpProxyConfig) loadEnv(prefix string) error {
 
 func (c *CacheConfig) loadEnv(prefix string) error {
 	prefix = concatPrefix(prefix, "CACHE")
+	if err := c.File.loadEnv(prefix); err != nil {
+		return err
+	}
 	if err := c.Redis.loadEnv(prefix); err != nil {
 		return err
 	}
@@ -281,6 +284,12 @@ func (r *RedisConfig) loadEnv(prefix string) error {
 		return err
 	}
 	return r.Tls.loadEnv(prefix)
+}
+
+func (f *FileCacheConfig) loadEnv(prefix string) error {
+	prefix = concatPrefix(prefix, "FILE")
+	readEnvString(prefix, "FOLDER", &f.Folder)
+	return readEnv(prefix, "ENABLED", &f.Enabled, toBool)
 }
 
 func (m *MongoDbConfig) loadEnv(prefix string) error {
