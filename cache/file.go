@@ -14,34 +14,25 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
 )
 
-type userCacheDirProvider interface {
-	GetUserCacheDir() (string, error)
-}
-
-type osUserCacheDirProvider struct{}
-
-func (p *osUserCacheDirProvider) GetUserCacheDir() (string, error) {
-	return os.UserCacheDir()
-}
-
 type fileStore struct {
 	folder            string
 	telemetryReporter telemetry.Reporter
+	fileSystem        fileSystemOperations
 }
 
-func newFileStore(conf *config.FileCacheConfig, telemetryReporter telemetry.Reporter, cacheDirProvider userCacheDirProvider, log log.Logger) (*fileStore, error) {
+func newFileStore(conf *config.FileCacheConfig, telemetryReporter telemetry.Reporter, fileSystem fileSystemOperations, log log.Logger) (*fileStore, error) {
 	fileLog := log.WithPrefix("file")
 	folder := conf.Folder
 	if conf.Folder == "" {
 		fileLog.Reportf("cache folder is not set, using the default user cache folder")
-		userCacheDir, err := cacheDirProvider.GetUserCacheDir()
-		if err != nil {
+		userCacheDir, err := fileSystem.GetUserCacheDir()
+		if err != nil || userCacheDir == "" {
 			fileLog.Errorf("failed to get user cache dir: %s", err)
 			return nil, fmt.Errorf("failed to get user cache dir: %s", err)
 		}
 		userCacheDir = path.Join(userCacheDir, "configcat-proxy")
 		if _, err = os.Stat(userCacheDir); err != nil && os.IsNotExist(err) {
-			err = os.MkdirAll(userCacheDir, 0700)
+			err = fileSystem.MkdirAll(userCacheDir, 0700)
 			if err != nil {
 				fileLog.Errorf("failed to create cache folder: %s", err)
 				return nil, fmt.Errorf("failed to create cache folder: %s", err)
@@ -56,6 +47,7 @@ func newFileStore(conf *config.FileCacheConfig, telemetryReporter telemetry.Repo
 	return &fileStore{
 		folder:            folder,
 		telemetryReporter: telemetryReporter,
+		fileSystem:        fileSystem,
 	}, nil
 }
 
@@ -86,15 +78,20 @@ func (f *fileStore) Set(ctx context.Context, key string, value []byte) error {
 }
 
 func (f *fileStore) Shutdown() {
+	// nothing to do
 }
 
 func (f *fileStore) writeAndReplaceFile(filePath string, value []byte) error {
-	tmpFile, err := os.CreateTemp(f.folder, filepath.Base(filePath)+"-*.tmp")
+	tmpFile, err := f.fileSystem.CreateTemp(f.folder, filepath.Base(filePath)+"-*.tmp")
 	if err != nil {
 		return err
 	}
 	renamed := false
+	closed := false
 	defer func() {
+		if !closed {
+			_ = tmpFile.Close()
+		}
 		if !renamed {
 			_ = os.Remove(tmpFile.Name())
 		}
@@ -108,9 +105,37 @@ func (f *fileStore) writeAndReplaceFile(filePath string, value []byte) error {
 	if err = tmpFile.Close(); err != nil {
 		return err
 	}
+	closed = true
 	if err = os.Rename(tmpFile.Name(), filePath); err != nil {
 		return err
 	}
 	renamed = true
 	return nil
+}
+
+type fileSystemOperations interface {
+	GetUserCacheDir() (string, error)
+	MkdirAll(string, os.FileMode) error
+	CreateTemp(string, string) (fileOperations, error)
+}
+
+type fileOperations interface {
+	Write([]byte) (int, error)
+	Sync() error
+	Close() error
+	Name() string
+}
+
+type osFileSystemOperations struct{}
+
+func (p *osFileSystemOperations) GetUserCacheDir() (string, error) {
+	return os.UserCacheDir()
+}
+
+func (p *osFileSystemOperations) MkdirAll(dir string, perm os.FileMode) error {
+	return os.MkdirAll(dir, perm)
+}
+
+func (p *osFileSystemOperations) CreateTemp(dir string, pattern string) (fileOperations, error) {
+	return os.CreateTemp(dir, pattern)
 }

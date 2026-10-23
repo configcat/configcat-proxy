@@ -35,7 +35,7 @@ func SetupExternalCache(conf *config.CacheConfig, telemetryReporter telemetry.Re
 	} else if conf.DynamoDb.Enabled {
 		return newDynamoDb(ctx, &conf.DynamoDb, telemetryReporter, cacheLog)
 	} else if conf.File.Enabled {
-		return newFileStore(&conf.File, telemetryReporter, &osUserCacheDirProvider{}, cacheLog)
+		return newFileStore(&conf.File, telemetryReporter, &osFileSystemOperations{}, cacheLog)
 	}
 	return nil, nil
 }
