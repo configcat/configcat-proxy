@@ -135,6 +135,17 @@ func TestRedisConfig_ENV(t *testing.T) {
 	assert.Equal(t, "./key2", conf.Cache.Redis.Tls.Certificates[1].Key)
 }
 
+func TestFileCacheConfig_ENV(t *testing.T) {
+	t.Setenv("CONFIGCAT_CACHE_FILE_ENABLED", "true")
+	t.Setenv("CONFIGCAT_CACHE_FILE_FOLDER", "tmp")
+
+	conf, err := LoadConfigFromFileAndEnvironment("")
+	require.NoError(t, err)
+
+	assert.True(t, conf.Cache.File.Enabled)
+	assert.Equal(t, "tmp", conf.Cache.File.Folder)
+}
+
 func TestMongoDbConfig_ENV(t *testing.T) {
 	t.Setenv("CONFIGCAT_CACHE_MONGODB_ENABLED", "true")
 	t.Setenv("CONFIGCAT_CACHE_MONGODB_URL", "url")

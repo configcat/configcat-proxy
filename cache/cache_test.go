@@ -62,3 +62,10 @@ func (s *dynamoDbTestSuite) TestSetupExternalCache() {
 	defer store.Shutdown()
 	assert.IsType(s.T(), &dynamoDbStore{}, store)
 }
+
+func TestSetupExternalCache_File(t *testing.T) {
+	store, err := SetupExternalCache(&config.CacheConfig{File: config.FileCacheConfig{Enabled: true, Folder: t.TempDir()}}, telemetry.NewEmptyReporter(), log.NewNullLogger())
+	assert.NoError(t, err)
+	defer store.Shutdown()
+	assert.IsType(t, &fileStore{}, store)
+}

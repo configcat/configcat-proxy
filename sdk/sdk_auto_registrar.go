@@ -19,6 +19,7 @@ import (
 	"github.com/configcat/configcat-proxy/model"
 	"github.com/configcat/configcat-proxy/pubsub"
 	"github.com/puzpuzpuz/xsync/v3"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 type AutoRegistrar interface {
@@ -49,7 +50,7 @@ type autoRegistrar struct {
 func newAutoRegistrar(conf *config.Config, telemetryReporter telemetry.Reporter, statusReporter status.Reporter, cache cache.ReaderWriter, log log.Logger) (*autoRegistrar, error) {
 	regLog := log.WithPrefix("profile-sdk-registrar").WithLevel(conf.Profile.Log.GetLevel())
 	transport := buildTransport(&conf.HttpProxy, regLog)
-	var profileTransport = telemetryReporter.InstrumentHttpClient(transport, telemetry.Source.V("profile"))
+	var profileTransport = telemetryReporter.InstrumentHttpClient(transport, attribute.Key(telemetry.Source).String("profile"))
 	registrar := &autoRegistrar{
 		refreshChan:        make(chan struct{}),
 		conf:               conf,
