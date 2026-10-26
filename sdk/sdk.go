@@ -19,6 +19,7 @@ import (
 	"github.com/configcat/configcat-proxy/sdk/store/file"
 	"github.com/configcat/go-sdk/v9"
 	"github.com/configcat/go-sdk/v9/configcatcache"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 const (
@@ -114,8 +115,8 @@ func NewClient(sdkCtx *Context, log log.Logger) Client {
 		}
 		clientConfig.Transport = sdkCtx.TelemetryReporter.InstrumentHttpClient(
 			status.InterceptSdk(sdkCtx.SdkId, sdkCtx.StatusReporter, clientConfig.Transport),
-			telemetry.SdkId.V(sdkCtx.SdkId),
-			telemetry.Source.V("sdk"))
+			attribute.Key(telemetry.SdkId).String(sdkCtx.SdkId),
+			attribute.Key(telemetry.Source).String("sdk"))
 
 	}
 	if sdkCtx.EvalReporter != nil {

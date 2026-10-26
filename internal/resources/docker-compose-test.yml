@@ -4,6 +4,7 @@ volumes:
   prometheus:
   grafana:
   influxdb:
+  filecache:
 
 configs:
   prometheus_4:
@@ -12,7 +13,7 @@ configs:
     file: monitor/grafana_ds.yml
   grafana_dashboards_2:
     file: monitor/dashboards.yml
-  grafana_dashboard_13:
+  grafana_dashboard_15:
     file: monitor/proxy_dashboard.json
 
 services:
@@ -22,12 +23,13 @@ services:
       dockerfile: Dockerfile
     volumes:
       - ./cert:/cert
+      - filecache:/home/nonroot
     environment:
 #      - CONFIGCAT_LOG_LEVEL=debug
       - CONFIGCAT_GRPC_KEEP_ALIVE_MAX_CONNECTION_IDLE=15
       - CONFIGCAT_GRPC_SERVER_REFLECTION_ENABLED=true
       - CONFIGCAT_PROFILE_KEY=08ddb657-51e9-4b6a-848e-017939e290fe
-      - CONFIGCAT_PROFILE_SECRET=configcat_pst_k+ImIcT3T08iPdLyBx9aZWVRiv4QAynj9DJ+SXcWPxU=
+      - CONFIGCAT_PROFILE_SECRET=configcat_pst_vEzuh4LgitYPZrByA49JBKAaX914zEbie8BwCzf8cUE=
       - CONFIGCAT_PROFILE_BASE_URL=https://test-api.configcat.com
       - CONFIGCAT_PROFILE_SDKS_BASE_URL=https://test-cdn-global.configcat.com
       - CONFIGCAT_PROFILE_POLL_INTERVAL=60
@@ -53,8 +55,10 @@ services:
 #      - CONFIGCAT_SDK2_LOG_LEVEL=error
 #      - CONFIGCAT_SDK2_OFFLINE_ENABLED=true
 #      - CONFIGCAT_SDK2_OFFLINE_USE_CACHE=true
-      - CONFIGCAT_CACHE_REDIS_ENABLED=true
-      - CONFIGCAT_CACHE_REDIS_ADDRESSES=["redis:6379"]
+#      - CONFIGCAT_CACHE_REDIS_ENABLED=true
+#      - CONFIGCAT_CACHE_REDIS_ADDRESSES=["redis:6379"]
+      - CONFIGCAT_CACHE_FILE_ENABLED=true
+      - CONFIGCAT_CACHE_FILE_FOLDER=/home/nonroot
 #      - CONFIGCAT_CACHE_MONGODB_ENABLED=true
 #      - CONFIGCAT_CACHE_MONGODB_URL=mongodb://mongodb:27017
 #      - CONFIGCAT_CACHE_DYNAMODB_ENABLED=true
@@ -74,6 +78,40 @@ services:
     depends_on:
       - redis
       - squid
+
+  configcat_proxy_offline:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    volumes:
+      - ./cert:/cert
+      - filecache:/home/nonroot
+    environment:
+      - CONFIGCAT_OFFLINE_ENABLED=true
+      - CONFIGCAT_GRPC_SERVER_REFLECTION_ENABLED=true
+      - CONFIGCAT_PROFILE_KEY=08ddb657-51e9-4b6a-848e-017939e290fe
+      - CONFIGCAT_PROFILE_LOG_LEVEL=debug
+      - CONFIGCAT_SDK_676_LOG_LEVEL=debug
+      - CONFIGCAT_DIAG_METRICS_OTLP_ENABLED=true
+      - CONFIGCAT_DIAG_METRICS_OTLP_PROTOCOL=grpc
+      - CONFIGCAT_DIAG_METRICS_OTLP_ENDPOINT=aspire-dashboard:18889
+      - CONFIGCAT_DIAG_TRACES_ENABLED=true
+      - CONFIGCAT_DIAG_TRACES_OTLP_ENABLED=true
+      - CONFIGCAT_DIAG_TRACES_OTLP_PROTOCOL=grpc
+      - CONFIGCAT_DIAG_TRACES_OTLP_ENDPOINT=aspire-dashboard:18889
+      - CONFIGCAT_DIAG_SERVICE_NAME=offline_proxy
+      - OTEL_EXPORTER_OTLP_HEADERS=x-otlp-api-key=test
+      - CONFIGCAT_CACHE_FILE_ENABLED=true
+      - CONFIGCAT_CACHE_FILE_FOLDER=/home/nonroot
+      - CONFIGCAT_HTTP_OFREP_ENABLED=true
+      - CONFIGCAT_TLS_ENABLED=true
+      - CONFIGCAT_TLS_CERTIFICATES=[{"key":"./cert/localhost.key","cert":"./cert/localhost.crt"}]
+    ports:
+      - "8060:8050"
+      - "8061:8051"
+      - "50061:50051"
+    depends_on:
+      - configcat_proxy
 
   prometheus:
     image: prom/prometheus
@@ -98,7 +136,7 @@ services:
         target: /etc/grafana/provisioning/datasources/prometheus.yml
       - source: grafana_dashboards_2
         target: /etc/grafana/provisioning/dashboards/dashboards.yml
-      - source: grafana_dashboard_13
+      - source: grafana_dashboard_15
         target: /etc/grafana/provisioning/dashboards/proxy/proxy_dashboard.json
     depends_on:
       - configcat_proxy

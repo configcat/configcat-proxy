@@ -29,23 +29,13 @@ func SetupExternalCache(conf *config.CacheConfig, telemetryReporter telemetry.Re
 	defer cancel()
 
 	if conf.Redis.Enabled {
-		redis, err := newRedis(&conf.Redis, telemetryReporter, cacheLog)
-		if err != nil {
-			return nil, err
-		}
-		return redis, nil
+		return newRedis(&conf.Redis, telemetryReporter, cacheLog)
 	} else if conf.MongoDb.Enabled {
-		mongoDb, err := newMongoDb(ctx, &conf.MongoDb, telemetryReporter, cacheLog)
-		if err != nil {
-			return nil, err
-		}
-		return mongoDb, nil
+		return newMongoDb(ctx, &conf.MongoDb, telemetryReporter, cacheLog)
 	} else if conf.DynamoDb.Enabled {
-		dynamoDb, err := newDynamoDb(ctx, &conf.DynamoDb, telemetryReporter, cacheLog)
-		if err != nil {
-			return nil, err
-		}
-		return dynamoDb, nil
+		return newDynamoDb(ctx, &conf.DynamoDb, telemetryReporter, cacheLog)
+	} else if conf.File.Enabled {
+		return newFileStore(&conf.File, telemetryReporter, &osFileSystemOperations{}, cacheLog)
 	}
 	return nil, nil
 }

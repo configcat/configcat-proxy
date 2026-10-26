@@ -19,6 +19,7 @@ import (
 	"github.com/testcontainers/testcontainers-go/modules/mongodb"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.opentelemetry.io/otel/attribute"
 	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
 	"go.opentelemetry.io/otel/trace/noop"
 	"google.golang.org/grpc"
@@ -76,7 +77,7 @@ func TestHandler_Metrics_Prometheus_Export(t *testing.T) {
 		srv := httptest.NewServer(h)
 		defer srv.Close()
 		client := http.Client{}
-		client.Transport = handler.InstrumentHttpClient(http.DefaultTransport, K("sdk").V("test"))
+		client.Transport = handler.InstrumentHttpClient(http.DefaultTransport, attribute.Key("sdk").String("test"))
 		req, _ := http.NewRequest(http.MethodGet, srv.URL, http.NoBody)
 		_, _ = client.Do(req)
 
@@ -162,7 +163,7 @@ func TestHandler_Metrics_Otlp_Export(t *testing.T) {
 		srv := httptest.NewServer(h)
 		defer srv.Close()
 		client := http.Client{}
-		client.Transport = handler.InstrumentHttpClient(http.DefaultTransport, K("sdk").V("test"))
+		client.Transport = handler.InstrumentHttpClient(http.DefaultTransport, attribute.Key("sdk").String("test"))
 		req, _ := http.NewRequest(http.MethodGet, srv.URL, http.NoBody)
 		_, _ = client.Do(req)
 

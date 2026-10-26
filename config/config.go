@@ -195,8 +195,9 @@ type GlobalOfflineConfig struct {
 
 type CacheConfig struct {
 	Redis    RedisConfig
-	MongoDb  MongoDbConfig  `yaml:"mongodb"`
-	DynamoDb DynamoDbConfig `yaml:"dynamodb"`
+	MongoDb  MongoDbConfig   `yaml:"mongodb"`
+	DynamoDb DynamoDbConfig  `yaml:"dynamodb"`
+	File     FileCacheConfig `yaml:"file"`
 }
 
 type RedisConfig struct {
@@ -220,6 +221,11 @@ type DynamoDbConfig struct {
 	Enabled bool   `yaml:"enabled"`
 	Url     string `yaml:"url"`
 	Table   string `yaml:"table"`
+}
+
+type FileCacheConfig struct {
+	Enabled bool   `yaml:"enabled"`
+	Folder  string `yaml:"folder"`
 }
 
 type LocalConfig struct {
@@ -522,7 +528,7 @@ func (k *KeepAliveConfig) ToParams() (keepalive.ServerParameters, bool) {
 }
 
 func (c *CacheConfig) IsSet() bool {
-	return c.Redis.Enabled || c.MongoDb.Enabled || c.DynamoDb.Enabled
+	return c.Redis.Enabled || c.MongoDb.Enabled || c.DynamoDb.Enabled || c.File.Enabled
 }
 
 func (a *ProfileConfig) IsSet() bool {

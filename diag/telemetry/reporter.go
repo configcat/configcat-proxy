@@ -24,21 +24,6 @@ import (
 	"google.golang.org/grpc"
 )
 
-type K string
-type V string
-
-type KV struct {
-	Key   K
-	Value V
-}
-
-func (k K) V(val string) KV {
-	return KV{
-		Key:   k,
-		Value: V(val),
-	}
-}
-
 type HttpClientType int
 
 type Reporter interface {
@@ -47,11 +32,11 @@ type Reporter interface {
 	RecordConnections(count int64, sdkId string, streamType string, flag string)
 	AddSentMessageCount(count int, sdkId string, streamType string, flag string)
 
-	StartSpan(ctx context.Context, name string, attributes ...KV) (context.Context, trace.Span)
+	StartSpan(ctx context.Context, name string, attributes ...attribute.KeyValue) (context.Context, trace.Span)
 	ForceFlush(ctx context.Context)
 
 	InstrumentHttp(operation string, method string, handler http.HandlerFunc) http.HandlerFunc
-	InstrumentHttpClient(handler http.RoundTripper, attributes ...KV) http.RoundTripper
+	InstrumentHttpClient(handler http.RoundTripper, attributes ...attribute.KeyValue) http.RoundTripper
 	InstrumentGrpc(opts []grpc.ServerOption) []grpc.ServerOption
 
 	InstrumentRedis(rdb redis.UniversalClient)
@@ -142,11 +127,11 @@ func (r *reporter) AddSentMessageCount(count int, sdkId string, streamType strin
 	r.metricsHandler.addSentMessageCount(count, sdkId, streamType, flag)
 }
 
-func (r *reporter) StartSpan(ctx context.Context, name string, attributes ...KV) (context.Context, trace.Span) {
+func (r *reporter) StartSpan(ctx context.Context, name string, attributes ...attribute.KeyValue) (context.Context, trace.Span) {
 	if r.tracer == nil {
-		return noop.NewTracerProvider().Tracer("noop").Start(ctx, "noop", trace.WithAttributes(toAttributeArray(attributes...)...))
+		return noop.NewTracerProvider().Tracer("noop").Start(ctx, "noop", trace.WithAttributes(attributes...))
 	}
-	return r.tracer.Start(ctx, name, trace.WithAttributes(toAttributeArray(attributes...)...), trace.WithSpanKind(trace.SpanKindInternal))
+	return r.tracer.Start(ctx, name, trace.WithAttributes(attributes...), trace.WithSpanKind(trace.SpanKindInternal))
 }
 
 func (r *reporter) InstrumentHttp(operation string, method string, handler http.HandlerFunc) http.HandlerFunc {
@@ -163,12 +148,12 @@ func (r *reporter) InstrumentHttp(operation string, method string, handler http.
 	return handler
 }
 
-func (r *reporter) InstrumentHttpClient(handler http.RoundTripper, attributes ...KV) http.RoundTripper {
+func (r *reporter) InstrumentHttpClient(handler http.RoundTripper, attributes ...attribute.KeyValue) http.RoundTripper {
 	var otelOpts []otelhttp.Option
 	if r.metricsHandler != nil {
 		otelOpts = append(otelOpts, otelhttp.WithMeterProvider(r.metricsHandler.provider))
 		if len(attributes) > 0 {
-			handler = newClientMetricsLabelerInterceptor(toAttributeArray(attributes...), handler)
+			handler = newClientMetricsLabelerInterceptor(attributes, handler)
 		}
 	}
 	if r.traceHandler != nil {
@@ -242,14 +227,6 @@ func buildResource(serviceName, version string) *resource.Resource {
 			semconv.ServiceVersion(version),
 		))
 	return res
-}
-
-func toAttributeArray(attributes ...KV) []attribute.KeyValue {
-	var result []attribute.KeyValue
-	for _, attr := range attributes {
-		result = append(result, attribute.String(string(attr.Key), string(attr.Value)))
-	}
-	return result
 }
 
 type httpClientMetricsLabelerInterceptor struct {
